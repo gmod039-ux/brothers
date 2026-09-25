@@ -11,14 +11,39 @@ const REACH := 160.0
 const DAMAGE := 25.0
 
 var room: Room
+## Seconds from landing to the bang.
+var fuse := FUSE
+## A thrown bomb flies from [member from] to its own position over this many
+## seconds before the fuse starts; 0 for one simply put down.
+var flight := 0.0
+var from := Vector2.ZERO
+## Where a thrown bomb lands.
+var to := Vector2.ZERO
+## Whoever threw it is not hurt by it.
+var thrower: Enemy
 
 var _clock := 0.0
+var _air := 0.0
+var _to := Vector2.ZERO
 var _done := false
 
 
+func _ready() -> void:
+	if flight > 0.0:
+		_to = to
+		global_position = from
+
+
 func _physics_process(delta: float) -> void:
+	if _air < flight:
+		_air += delta
+		var k := minf(_air / flight, 1.0)
+		global_position = from.lerp(_to, k)
+		if k >= 1.0:
+			Sfx.play("hit", -8.0)
+		return
 	_clock += delta
-	if _done or _clock < FUSE:
+	if _done or _clock < fuse:
 		return
 	_done = true
 	_explode()
@@ -27,7 +52,7 @@ func _physics_process(delta: float) -> void:
 func _explode() -> void:
 	var at := global_position
 	for enemy in room.enemies.duplicate():
-		if enemy.can_be_hit() and enemy.global_position.distance_to(at) < REACH + enemy.radius * 0.5:
+		if enemy != thrower and enemy.can_be_hit() and enemy.global_position.distance_to(at) < REACH + enemy.radius * 0.5:
 			enemy.hurt(DAMAGE, (enemy.global_position - at).normalized(), 2.0)
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(at) < REACH * 0.8:
@@ -51,8 +76,17 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	var drawing := int(_clock * Toon.FPS)
-	var left := 1.0 - _clock / FUSE
+	var drawing := int((_clock + _air) * Toon.FPS)
+	var left := 1.0 - _clock / fuse
+	if _air < flight:
+		# In the air: an arc over the floor, its shadow underneath.
+		var k := _air / flight
+		var up := sin(k * PI) * 160.0
+		Toon.spot(self, Vector2(0, 2), Vector2(20, 7), Color(Toon.INK, 0.25))
+		draw_set_transform(Vector2(0, -up), k * 8.0, Vector2.ONE)
+		Toon.blob(self, Vector2(0, -22), Vector2(24, 22), Toon.INK, drawing, 3, 3.5)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	# Swells as the fuse burns down, and flashes red in the last half second.
 	var swell := 1.0 + (1.0 - left) * 0.25 + (0.06 if drawing % 2 == 0 else 0.0)
 	var hot := left < 0.33 and drawing % 2 == 0

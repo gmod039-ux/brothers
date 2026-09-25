@@ -36,6 +36,8 @@ var spectral := false
 var knockback := 1.0
 ## A colour of its own (a fireball), or clear for the usual ink or spit.
 var tint := Color(0, 0, 0, 0)
+## How it is drawn: "" a drop, "card" a spinning playing card.
+var look := ""
 
 var _hit := {}
 
@@ -152,6 +154,12 @@ func _draw() -> void:
 	var angle := velocity.angle()
 	var fill := _fill()
 	var boil := int(_clock * Toon.FPS)
+	if look == "card":
+		# A playing card, spinning end over end, a red suit on it.
+		var spin := _clock * 9.0
+		Toon.box(self, at, Vector2(r * 0.8, r * 1.1), BrotherLook.WHITE, boil, 3, 3.5, spin)
+		Toon.heart(self, at, r * 0.9, 2, Color("c8392b"), Color("c8392b"))
+		return
 	Toon.blob(self, at, Vector2(r * 1.1, r * 0.92), fill, boil, get_instance_id() % 89, 4.0, angle)
 	Toon.spot(self, at + Vector2(-r * 0.32, -r * 0.34), Vector2(r * 0.3, r * 0.2),
 			Color(1, 1, 1, 0.85), 0, 0, -0.6)

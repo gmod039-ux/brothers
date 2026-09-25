@@ -45,5 +45,13 @@
 		"radius": 64,
 		"contact": 1,
 		"knockback": 0
+	},
+	"baron": {
+		"name": "Барон Когтев",
+		"hp": 300,
+		"speed": 90,
+		"radius": 60,
+		"contact": 1,
+		"knockback": 0
 	}
 }

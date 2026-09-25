@@ -245,7 +245,7 @@ func _toughen(enemy: Enemy) -> void:
 
 
 ## Who waits in the boss room of each floor: Bruno in the basement, the
-## stove in the boiler room, and both of them at the bottom.
+## stove in the boiler room, the Baron himself at the bottom.
 func _boss_lineup() -> Array[Boss]:
 	var lineup: Array[Boss] = []
 	match floor_index:
@@ -254,8 +254,7 @@ func _boss_lineup() -> Array[Boss]:
 		1:
 			lineup.append(StoveBoss.new())
 		_:
-			lineup.append(Boss.new())
-			lineup.append(StoveBoss.new())
+			lineup.append(BaronBoss.new())
 	return lineup
 
 
