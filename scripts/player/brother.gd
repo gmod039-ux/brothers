@@ -134,6 +134,7 @@ func fire(aim: Vector2) -> Shot:
 			middle = shot
 	look.recoil(aim)
 	shots_fired += 1
+	Sfx.play("shot", -9.0)
 	return middle
 
 
@@ -141,6 +142,7 @@ func fire(aim: Vector2) -> Shot:
 func place_bomb() -> Bomb:
 	bombs -= 1
 	inventory_changed.emit()
+	Sfx.play("fuse", -8.0)
 	var bomb := Bomb.new()
 	bomb.room = room
 	room.actors.add_child(bomb)
@@ -183,6 +185,7 @@ func hurt(amount: int, from: Vector2) -> bool:
 	_knock = (global_position - from).normalized() * KNOCKBACK
 	look.flinch()
 	hurt_taken.emit()
+	Sfx.play("hurt", -2.0)
 	if god:
 		return true
 	hp = maxi(hp - amount, 0)
@@ -219,6 +222,7 @@ func _die() -> void:
 	velocity = Vector2.ZERO
 	look.knocked = true
 	look.blink = false
+	Sfx.play("sad", 0.0, 0.0)
 	died.emit()
 
 

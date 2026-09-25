@@ -70,6 +70,7 @@ func _ready() -> void:
 	film = Film.new()
 	film.strength = float(_arg("film", "1.0"))
 	add_child(film)
+	add_child(Sfx.new())
 	var shooter := preload("res://scripts/dev/screenshot.gd").new()
 	shooter.name = "Screenshot"
 	add_child(shooter)
@@ -192,12 +193,15 @@ func _on_floor(index: int) -> void:
 
 func _on_boss(boss: Boss) -> void:
 	hud.boss = boss
+	Sfx.play("roar", 0.0, 0.0)
 	boss.stomped.connect(func() -> void: _shake = 0.3)
 	banner.say(boss.title, boss.subtitle, Run.BOSS_INTRO - 0.5)
 
 
 func _on_boss_beaten(_boss: Enemy) -> void:
 	hud.boss = null
+	Sfx.play("blast", -2.0)
+	Sfx.play("item", 0.0, 0.0)
 	_shake = 0.4
 	var sub := "люк открыт — вниз!" if not run.is_last_floor() else "люк открыт — на волю!"
 	banner.say("Победа!", sub, 2.0)
@@ -210,6 +214,7 @@ func _descend() -> void:
 		return
 	_busy = true
 	run.busy = true
+	Sfx.play("whistle_down", 0.0, 0.0)
 	await iris.close(brother.global_position + Vector2(0, -60), 0.7)
 	if run.is_last_floor():
 		_busy = false

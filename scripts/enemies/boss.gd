@@ -83,6 +83,7 @@ func _physics_process(delta: float) -> void:
 	if now != phase and state in ["walk", "recover", "land", "stunned"]:
 		phase = now
 		phase_changed.emit(phase)
+		Sfx.play("roar", 0.0, 0.0)
 		_go("roar")
 		return
 	velocity = Vector2.ZERO
@@ -130,6 +131,8 @@ func _physics_process(delta: float) -> void:
 	if state == "charge" and (get_slide_collision_count() > 0 or _t > 1.8):
 		_squash = 3.0 / Toon.FPS
 		stomped.emit()
+		Sfx.play("stomp", 0.0)
+		Sfx.play("stars", -6.0)
 		_go("stunned")
 
 
@@ -165,6 +168,7 @@ func _choose() -> void:
 func _take_off() -> void:
 	_from = global_position
 	var t := target()
+	Sfx.play("whistle_up", -4.0)
 	var aim_at := t.global_position if t != null else room.center()
 	# Lands where the brother was at take-off, but never in a wall.
 	var inside := room.floor_rect().grow(-radius)
@@ -177,6 +181,7 @@ func _land() -> void:
 	_height = 0.0
 	_squash = 3.0 / Toon.FPS
 	stomped.emit()
+	Sfx.play("stomp", 0.0)
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < STOMP_REACH:
 			brother.hurt(contact, global_position)
@@ -194,6 +199,7 @@ func _throw() -> void:
 		var spread := (i - (n - 1) * 0.5) * 0.22
 		_shoot(_aim.rotated(spread), 470.0, 10.0, 16.0, 70.0)
 	_throws += 1
+	Sfx.play("spit", -4.0)
 
 
 func _summon() -> void:

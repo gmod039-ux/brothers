@@ -44,6 +44,7 @@ func _spit() -> void:
 			_aim * float(def.get("shot_speed", 420.0)),
 			float(def.get("shot_range", 9.0)) * Room.TILE, 1.0, 12.0, true)
 	spits += 1
+	Sfx.play("spit", -8.0)
 	_squash = 2.0 / Toon.FPS
 
 

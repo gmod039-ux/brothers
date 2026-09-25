@@ -37,6 +37,7 @@ func _explode() -> void:
 			var cell := Vector2i(col, row)
 			if room.is_rock(cell) and room.tile_center(cell).distance_to(at) < REACH + 30.0:
 				room.break_rock(cell)
+	Sfx.play("blast", 0.0)
 	var blast := Blast.new()
 	blast.radius = REACH
 	room.effects.add_child(blast)

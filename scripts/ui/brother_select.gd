@@ -80,9 +80,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("p1_left") or event.is_action_pressed("p1_shoot_left"):
 		index = 0
+		Sfx.play("select", -6.0, 0.0)
 		_show()
 	elif event.is_action_pressed("p1_right") or event.is_action_pressed("p1_shoot_right"):
 		index = 1
+		Sfx.play("select", -6.0, 0.0)
 		_show()
 	elif event.is_action_pressed("confirm"):
 		pick()
@@ -92,6 +94,7 @@ func pick() -> void:
 	if _taken:
 		return
 	_taken = true
+	Sfx.play("confirm", -4.0, 0.0)
 	chosen.emit(IDS[index])
 
 

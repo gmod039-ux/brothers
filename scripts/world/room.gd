@@ -66,6 +66,7 @@ var run: Run
 var style := 0
 
 var _blockers := {}
+var _doors_set := false
 var _rocks := {}
 ## Doors that stay shut until someone brings a key: side -> true.
 var locked := {}
@@ -170,8 +171,10 @@ func free_tiles() -> Array[Vector2i]:
 
 
 func set_doors_open(open: bool) -> void:
+	var changed := false
 	for side: String in doors:
 		var really := open and not locked.has(side)
+		changed = changed or bool(open_doors.get(side, false)) != really
 		open_doors[side] = really
 		var blocker := _blockers.get(side) as CollisionShape2D
 		if blocker != null:
@@ -179,6 +182,10 @@ func set_doors_open(open: bool) -> void:
 	var lines := get_node_or_null("Lines") as CanvasItem
 	if lines != null:
 		lines.queue_redraw()
+	# The slam or creak of doors, but not when a room is first put up.
+	if changed and _doors_set:
+		Sfx.play("door", -3.0)
+	_doors_set = true
 
 
 ## Where a door meets the floor, in world coordinates.

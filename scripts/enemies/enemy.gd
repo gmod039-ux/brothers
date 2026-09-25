@@ -108,6 +108,7 @@ func hurt(damage: float, direction: Vector2, strength := 1.0) -> void:
 	if dead:
 		return
 	hp -= damage
+	Sfx.play("hit", -10.0, 0.12)
 	_flash = 1.0 / Toon.FPS
 	_squash = 2.0 / Toon.FPS
 	_knock = direction * KNOCK_SPEED * knockback * strength
@@ -119,6 +120,7 @@ func knock_out() -> void:
 	if dead:
 		return
 	dead = true
+	Sfx.play("poof", -4.0, 0.1)
 	room.enemies.erase(self)
 	var puff := Puff.new()
 	puff.radius = radius

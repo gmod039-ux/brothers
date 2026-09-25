@@ -34,6 +34,8 @@ func _physics_process(delta: float) -> void:
 			continue
 		if _use(brother):
 			gone = true
+			var sound: String = {"coin": "coin", "half_heart": "heart", "heart": "heart", "item": "item"}.get(kind, "pickup")
+			Sfx.play(sound, -4.0, 0.03)
 			taken.emit(brother)
 			var puff := Puff.new()
 			puff.radius = 26.0
