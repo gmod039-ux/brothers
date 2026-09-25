@@ -23,10 +23,14 @@ var run: Run:
 	set(value):
 		run = value
 		queue_redraw()
-var boss: Boss:
+## The bosses in the room, whose health the bar at the bottom shows as one.
+var bosses: Array[Boss] = []:
 	set(value):
-		boss = value
-		_boss_name.text = boss.title if boss != null else ""
+		bosses = value
+		var names: Array[String] = []
+		for boss in bosses:
+			names.append(boss.title)
+		_boss_name.text = " и ".join(names)
 		queue_redraw()
 
 var _floor: Label
@@ -64,9 +68,7 @@ func _process(_delta: float) -> void:
 		var text := "%s · %d" % [run.floor_name(), run.floor_index + 1]
 		if _floor.text != text:
 			_floor.text = text
-	if boss != null and not is_instance_valid(boss):
-		boss = null
-	if boss != null:
+	if not bosses.is_empty():
 		queue_redraw()
 
 
@@ -89,7 +91,7 @@ func _draw() -> void:
 					30, Color("f6e7c1"))
 	if run != null and run.plan != null:
 		_draw_map()
-	if boss != null and is_instance_valid(boss) and not boss.dead:
+	if not bosses.is_empty():
 		_draw_boss_bar()
 
 
@@ -143,7 +145,15 @@ func _draw_map() -> void:
 
 func _draw_boss_bar() -> void:
 	var bar := Rect2(560, 1014, 800, 24)
-	var share := clampf(boss.hp / boss.max_hp, 0.0, 1.0)
+	var hp := 0.0
+	var most := 0.0
+	for boss in bosses:
+		if is_instance_valid(boss):
+			hp += maxf(boss.hp, 0.0) if not boss.dead else 0.0
+			most += boss.max_hp
+	if most <= 0.0 or hp <= 0.0:
+		return
+	var share := clampf(hp / most, 0.0, 1.0)
 	draw_rect(bar.grow(5), Toon.INK)
 	draw_rect(bar, Color("4a2c22"))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), RED)

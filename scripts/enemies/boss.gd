@@ -212,11 +212,14 @@ func _summon() -> void:
 		Waves.spawn("fly", room, rng, global_position + Vector2(side * 110.0, -40.0))
 
 
-func _shoot(direction: Vector2, shot_speed: float, tiles: float, size: float, height: float) -> void:
+func _shoot(direction: Vector2, shot_speed: float, tiles: float, size: float, height: float,
+		tint := Color(0, 0, 0, 0)) -> Shot:
 	var shot := Shot.new()
 	room.actors.add_child(shot)
 	shot.launch(room, global_position + direction * radius * 0.8, height, direction * shot_speed,
 			tiles * Room.TILE, 1.0, size, true)
+	shot.tint = tint
+	return shot
 
 
 func _draw() -> void:

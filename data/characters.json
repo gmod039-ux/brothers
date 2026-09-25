@@ -12,7 +12,7 @@
 		"look": {
 			"build": "lanky",
 			"top": "quiff",
-			"size": 0.95,
+			"size": 1.04,
 			"shirt": "white",
 			"pants": "ink",
 			"shoes": "ink",
@@ -33,7 +33,7 @@
 		"look": {
 			"build": "chubby",
 			"top": "ears",
-			"size": 0.92,
+			"size": 1.0,
 			"shirt": "ink",
 			"pants": "white",
 			"shoes": "white",

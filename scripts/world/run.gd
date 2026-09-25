@@ -9,7 +9,9 @@ extends Node2D
 
 signal room_entered(info: FloorPlan.RoomInfo)
 signal room_cleared(info: FloorPlan.RoomInfo)
-signal boss_appeared(boss: Boss)
+## The boss (or bosses: the last floor has two) is in and the title card
+## should go up.
+signal bosses_appeared(bosses: Array[Boss])
 signal boss_beaten(boss: Boss)
 signal trapdoor_entered
 signal floor_started(index: int)
@@ -35,7 +37,7 @@ var brothers: Array[Brother] = []
 var camera: Camera2D
 ## True while moving between rooms or floors: nothing else happens then.
 var busy := false
-var boss: Boss
+var bosses: Array[Boss] = []
 var trapdoor: Trapdoor
 var kills := 0
 var rooms_cleared := 0
@@ -70,7 +72,7 @@ func start_floor(index: int) -> void:
 	floor_index = index
 	_floor_seed = rng.randi()
 	plan = FloorPlan.generate(rng, index, layouts)
-	boss = null
+	bosses.clear()
 	trapdoor = null
 	_fighting = false
 	var old := room
@@ -242,30 +244,57 @@ func _toughen(enemy: Enemy) -> void:
 	enemy.knocked_out.connect(func(_e: Enemy) -> void: kills += 1)
 
 
+## Who waits in the boss room of each floor: Bruno in the basement, the
+## stove in the boiler room, and both of them at the bottom.
+func _boss_lineup() -> Array[Boss]:
+	var lineup: Array[Boss] = []
+	match floor_index:
+		0:
+			lineup.append(Boss.new())
+		1:
+			lineup.append(StoveBoss.new())
+		_:
+			lineup.append(Boss.new())
+			lineup.append(StoveBoss.new())
+	return lineup
+
+
 func _start_boss() -> void:
 	room.set_doors_open(false)
-	boss = Boss.new()
-	boss.setup_boss(room, rng, floor_index)
-	room.actors.add_child(boss)
-	boss.global_position = room.tile_center(Vector2i(6, 1))
-	room.enemies.append(boss)
-	boss.knocked_out.connect(_on_boss_down)
+	bosses = _boss_lineup()
+	for i in bosses.size():
+		var boss := bosses[i]
+		boss.setup_boss(room, rng, floor_index)
+		if bosses.size() > 1:
+			# Two at once: each a good deal less tough.
+			boss.max_hp *= 0.65
+			boss.hp = boss.max_hp
+		room.actors.add_child(boss)
+		var col := 6 if bosses.size() == 1 else (3 + i * 6)
+		boss.global_position = room.tile_center(Vector2i(col, 1))
+		room.enemies.append(boss)
+		boss.knocked_out.connect(_on_boss_down)
 	_fighting = true
-	boss_appeared.emit(boss)
+	bosses_appeared.emit(bosses)
 	# Everyone holds still for the title card, as the curtain goes up.
 	for brother in brothers:
 		brother.frozen = true
-	var woken := boss
+	var woken := bosses.duplicate()
 	await get_tree().create_timer(BOSS_INTRO, false).timeout
 	for brother in brothers:
 		brother.frozen = false
-	if is_instance_valid(woken):
-		woken.wake()
+	for boss: Boss in woken:
+		if is_instance_valid(boss):
+			boss.wake()
 
 
 func _on_boss_down(beaten: Enemy) -> void:
-	bosses_beaten += 1
 	kills += 1
+	for boss in bosses:
+		if is_instance_valid(boss) and not boss.dead:
+			# One down, one to go.
+			return
+	bosses_beaten += 1
 	# His flies go with him.
 	for enemy in room.enemies.duplicate():
 		enemy.knock_out()

@@ -46,7 +46,7 @@ run "combat" --script res://dev/combat_check.gd
 run "arena, older" -- brother older demo arena seed 11 autoplay 90
 # A whole floor, boss included, with nobody at the keyboard.
 run "floor run, younger" -- brother younger demo seed 3 autoplay 200 need_bosses 1
-run "floor run, older" -- brother older demo seed 8 autoplay 240 need_bosses 1
+run "floor run, older" -- brother older demo seed 8 autoplay 300 need_bosses 2
 
 if [ $failed -eq 0 ]; then echo; echo "ALL OK"; else echo; echo "SOMETHING FAILED"; fi
 exit $failed

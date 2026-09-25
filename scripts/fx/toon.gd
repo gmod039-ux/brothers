@@ -18,6 +18,11 @@ extends RefCounted
 ## change at this rate.
 const FPS := 12.0
 
+## How much outlines boil, for everything drawn from here on. The brothers
+## turn it down while they are drawn: they are the thing the eye follows,
+## and their lines should read clean.
+static var wobble_scale := 0.55
+
 const INK := Color("1b1410")
 const PAPER := Color("f3e6c8")
 const WHITE := Color("fbf6ea")
@@ -48,6 +53,7 @@ static func ellipse_points(center: Vector2, radii: Vector2, boil: int, seed: int
 	# phases change from drawing to drawing.
 	var p1 := hash01(boil, seed) * TAU
 	var p2 := hash01(seed + 101, boil) * TAU
+	wobble *= wobble_scale
 	var segments := clampi(int(maxf(radii.x, radii.y) * 0.9), 16, 56)
 	var points := PackedVector2Array()
 	points.resize(segments)

@@ -17,6 +17,7 @@ static func setup() -> void:
 	_action("restart", [KEY_R], [])
 	_action("pause", [KEY_ESCAPE], [JOY_BUTTON_START])
 	_action("confirm", [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE], [JOY_BUTTON_A])
+	_action("fullscreen", [KEY_F11], [])
 
 
 ## Actions for one brother: `<prefix>left` … for walking, `<prefix>shoot_left`

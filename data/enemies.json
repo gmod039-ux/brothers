@@ -37,5 +37,13 @@
 		"radius": 62,
 		"contact": 1,
 		"knockback": 0
+	},
+	"stove": {
+		"name": "Пыхтун",
+		"hp": 260,
+		"speed": 60,
+		"radius": 64,
+		"contact": 1,
+		"knockback": 0
 	}
 }

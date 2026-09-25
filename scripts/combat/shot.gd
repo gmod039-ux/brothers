@@ -34,6 +34,8 @@ var homing := false
 var pierce := false
 var spectral := false
 var knockback := 1.0
+## A colour of its own (a fireball), or clear for the usual ink or spit.
+var tint := Color(0, 0, 0, 0)
 
 var _hit := {}
 
@@ -122,11 +124,17 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+func _fill() -> Color:
+	if tint.a > 0.0:
+		return tint
+	return SPIT if hostile else INK_BLUE
+
+
 func _end(how: String) -> void:
 	ended = how
 	finished.emit(how)
 	var splat := Splat.new()
-	splat.color = SPIT if hostile else INK_BLUE
+	splat.color = _fill()
 	splat.radius = radius
 	# Against a wall the splash is where the drop was, up in the air; on the
 	# floor, where it landed.
@@ -142,7 +150,7 @@ func _draw() -> void:
 	Toon.spot(self, Vector2.ZERO, Vector2(r * 0.95, r * 0.36) * shade, Color(Toon.INK, 0.22))
 	var at := Vector2(0, -height)
 	var angle := velocity.angle()
-	var fill := SPIT if hostile else INK_BLUE
+	var fill := _fill()
 	var boil := int(_clock * Toon.FPS)
 	Toon.blob(self, at, Vector2(r * 1.1, r * 0.92), fill, boil, get_instance_id() % 89, 4.0, angle)
 	Toon.spot(self, at + Vector2(-r * 0.32, -r * 0.34), Vector2(r * 0.3, r * 0.2),

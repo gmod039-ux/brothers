@@ -45,6 +45,7 @@ func _ready() -> void:
 	Controls.setup()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_args = OS.get_cmdline_user_args()
+	_fit_window()
 	world = Node2D.new()
 	world.name = "World"
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -90,6 +91,39 @@ func _ready() -> void:
 		_autoplay(float(_arg("autoplay", "60")))
 	if _args.has("watch"):
 		add_child(load("res://dev/watch.gd").new())
+
+
+## A window of 1280 by 720 is 1280 by 720 pixels, and on a Retina screen
+## that is under half its width: the brothers came out the size of a
+## fingernail. So the window takes most of the screen it opens on, 16:9,
+## centred. Screenshots and anything given a --resolution keep theirs.
+func _fit_window() -> void:
+	if DisplayServer.get_name() == "headless" or OS.get_cmdline_args().has("--resolution"):
+		return
+	if _args.has("shot") or _args.has("tour"):
+		return
+	var screen := DisplayServer.window_get_current_screen()
+	var area := DisplayServer.screen_get_usable_rect(screen)
+	var width := mini(int(area.size.x * 0.9), int(area.size.y * 0.9 * 16.0 / 9.0))
+	var size := Vector2i(width, int(width * 9.0 / 16.0))
+	DisplayServer.window_set_size(size)
+	DisplayServer.window_set_position(area.position + (area.size - size) / 2)
+
+
+func _toggle_fullscreen() -> void:
+	var mode := DisplayServer.window_get_mode()
+	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		_fit_window()
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _input(event: InputEvent) -> void:
+	# Before anything else gets it, in every state, the menu included.
+	if event.is_action_pressed("fullscreen"):
+		_toggle_fullscreen()
+		get_viewport().set_input_as_handled()
 
 
 func _arg(key: String, fallback: String) -> String:
@@ -147,7 +181,7 @@ func start_run(seed_value: int) -> void:
 		world.add_child(run)
 		run.floor_started.connect(_on_floor)
 		run.map_changed.connect(hud.queue_redraw)
-		run.boss_appeared.connect(_on_boss)
+		run.bosses_appeared.connect(_on_bosses)
 		run.boss_beaten.connect(_on_boss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
@@ -191,15 +225,19 @@ func _on_floor(index: int) -> void:
 	banner.say(run.floor_name(), "этаж %d из %d" % [index + 1, Run.FLOORS])
 
 
-func _on_boss(boss: Boss) -> void:
-	hud.boss = boss
+func _on_bosses(bosses: Array[Boss]) -> void:
+	hud.bosses = bosses
 	Sfx.play("roar", 0.0, 0.0)
-	boss.stomped.connect(func() -> void: _shake = 0.3)
-	banner.say(boss.title, boss.subtitle, Run.BOSS_INTRO - 0.5)
+	var names: Array[String] = []
+	for boss in bosses:
+		boss.stomped.connect(func() -> void: _shake = 0.3)
+		names.append(boss.title)
+	var sub := bosses[0].subtitle if bosses.size() == 1 else "оба разом!"
+	banner.say(" и ".join(names), sub, Run.BOSS_INTRO - 0.5)
 
 
 func _on_boss_beaten(_boss: Enemy) -> void:
-	hud.boss = null
+	hud.bosses = []
 	Sfx.play("blast", -2.0)
 	Sfx.play("item", 0.0, 0.0)
 	_shake = 0.4
@@ -245,7 +283,7 @@ func _clear_world() -> void:
 	run = null
 	if hud != null:
 		hud.run = null
-		hud.boss = null
+		hud.bosses = []
 
 
 func _on_wave(number: int, total: int) -> void:

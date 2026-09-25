@@ -126,11 +126,14 @@ func _draw() -> void:
 	Toon.spot(self, Vector2(0, 2), Vector2(32, 10) * s, Color(Toon.INK, 0.28))
 	if blink:
 		return
+	var wobble := Toon.wobble_scale
+	Toon.wobble_scale = 0.2
 	if knocked:
 		_draw_knocked()
-		return
-	var shocked := _flinch > 0.0 or pose_shocked
-	_draw_figure(facing, aim, moving, shocked, -0.12 if shocked else _squash(moving))
+	else:
+		var shocked := _flinch > 0.0 or pose_shocked
+		_draw_figure(facing, aim, moving, shocked, -0.12 if shocked else _squash(moving))
+	Toon.wobble_scale = wobble
 
 
 ## The four-drawing walk cycle position, or -1 standing.
