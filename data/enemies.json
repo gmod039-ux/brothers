@@ -29,5 +29,13 @@
 		"windup": 0.5,
 		"shot_speed": 420,
 		"shot_range": 9
+	},
+	"boss": {
+		"name": "Громила Бруно",
+		"hp": 220,
+		"speed": 80,
+		"radius": 62,
+		"contact": 1,
+		"knockback": 0
 	}
 }

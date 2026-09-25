@@ -36,6 +36,8 @@ var god := false
 var look: BrotherLook
 var shots_fired := 0
 var damage_taken := 0
+## Held still, e.g. while the camera slides to the next room.
+var frozen := false
 
 var _walk := Vector2.ZERO
 var _knock := Vector2.ZERO
@@ -71,7 +73,7 @@ func is_invulnerable() -> bool:
 
 
 func _physics_process(delta: float) -> void:
-	if dead:
+	if dead or frozen:
 		return
 	input.update(self, delta)
 	var target := input.move.limit_length(1.0) * stats.walk_px()
@@ -143,6 +145,20 @@ func hurt(amount: int, from: Vector2) -> bool:
 	if hp == 0:
 		_die()
 	return true
+
+
+## Stops dead: no walk, no slide, no knockback left over.
+func stop() -> void:
+	_walk = Vector2.ZERO
+	_knock = Vector2.ZERO
+	velocity = Vector2.ZERO
+
+
+## One more heart for good, and filled.
+func add_heart() -> void:
+	stats.hearts += 1
+	hp = mini(hp + 2, stats.max_hp())
+	health_changed.emit(hp, stats.max_hp())
 
 
 func heal(amount: int) -> void:

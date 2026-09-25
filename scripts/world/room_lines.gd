@@ -8,6 +8,9 @@ extends Node2D
 const DOOR_WIDTH := 150.0
 const BRICK := Color(0.2, 0.08, 0.04, 0.55)
 const FRAME := Color("c9b08a")
+## Frames of doors to special rooms: the boss's is iron with a red glow
+## beyond, the treasure room's gold.
+const FRAMES := {"boss": Color("5a4a44"), "treasure": Color("e0b23a")}
 const DOOR_WOOD := Color("7a4a2a")
 const DOOR_PLANK := Color(0.2, 0.1, 0.05, 0.8)
 
@@ -22,8 +25,8 @@ func _draw() -> void:
 	for side: String in Room.DOORS:
 		_bricks(quads[side], side)
 	_outlines()
-	for side: String in Room.DOORS:
-		_door(quads[side], side, bool(room.open_doors[side]))
+	for side: String in room.doors:
+		_door(quads[side], side, bool(room.open_doors.get(side, false)), str(room.doors[side]))
 
 
 ## The floor darkens towards the walls: light from the middle of the room
@@ -122,16 +125,25 @@ func _outlines() -> void:
 ## A door: an arched opening in a stone frame, dark when open and filled with
 ## a plank door when shut. Drawn in the face's own (u, v) coordinates, so a
 ## door in a side wall is foreshortened the way the wall is.
-func _door(quad: Array, side: String, open: bool) -> void:
+func _door(quad: Array, side: String, open: bool, beyond: String) -> void:
 	var length: float = (quad[3] as Vector2).distance_to(quad[2])
 	var half := DOOR_WIDTH * 0.5 / length
 	var frame := _arch(quad, half * 1.32, 0.12, 0.34)
 	draw_colored_polygon(Toon.grown(frame, 5.0), Toon.INK)
-	draw_colored_polygon(frame, FRAME)
+	draw_colored_polygon(frame, FRAMES.get(beyond, FRAME))
+	if beyond == "boss":
+		# Horns on the boss's door.
+		for u: float in [0.5 - half * 1.25, 0.5 + half * 1.25]:
+			var root := Room.face_point(quad, u, 0.2)
+			var tip := Room.face_point(quad, u + (u - 0.5) * 0.35, 0.02)
+			Toon.shape(self, PackedVector2Array([root + (tip - root).orthogonal().normalized() * 9.0,
+					tip, root - (tip - root).orthogonal().normalized() * 9.0]), Color("e8dcc4"), 4.0)
+	elif beyond == "treasure":
+		Toon.star(self, Room.face_point(quad, 0.5, 0.14), 12.0, 0.0, Color("fff1a8"))
 	var hole := _arch(quad, half, 0.26, 0.44)
 	draw_colored_polygon(Toon.grown(hole, 3.0), Toon.INK)
 	if open:
-		draw_colored_polygon(hole, Color("24160f"))
+		draw_colored_polygon(hole, Color("5a1a14") if beyond == "boss" else Color("24160f"))
 		return
 	draw_colored_polygon(hole, DOOR_WOOD)
 	# Planks: lines along the door's height.

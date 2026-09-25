@@ -1,9 +1,11 @@
 extends Node2D
-## The game as it stands: choose a brother, then fight the test room's waves.
-## Dying or clearing the room ends the run; R starts another at once.
+## The game as it stands: choose a brother, then go down through the floors
+## of the basement -- rooms of enemies, a treasure room, a boss and a
+## trapdoor on each. Dying or getting out ends the run; R starts another.
 ##
 ## Command line, after `--`:
 ##   brother older|younger  skip the choice
+##   arena                  the old test room with its waves, not a floor
 ##   seed N                 the first run's seed
 ##   demo                   a bot plays (and cannot lose)
 ##   god                    hits cost nothing
@@ -21,6 +23,7 @@ var select: BrotherSelect
 var room: Room
 var brother: Brother
 var waves: Waves
+var run: Run
 var rng := RandomNumberGenerator.new()
 var run_seed := 0
 ## "select", "play" or "over".
@@ -84,6 +87,8 @@ func _ready() -> void:
 		show_select()
 	if _args.has("autoplay"):
 		_autoplay(float(_arg("autoplay", "60")))
+	if _args.has("watch"):
+		add_child(load("res://dev/watch.gd").new())
 
 
 func _arg(key: String, fallback: String) -> String:
@@ -120,32 +125,104 @@ func start_run(seed_value: int) -> void:
 	get_tree().paused = false
 	banner.clear()
 	_clear_world()
-	room = Room.new()
-	room.name = "Room"
-	world.add_child(room)
-	room.build(GameData.room_layout("arena"), seed_value)
-	room.set_doors_open(false)
 	brother = Brother.new()
 	var input: PlayerInput = BotInput.new() if demo else DeviceInput.new("p1_")
-	brother.setup(chosen, room, input)
+	brother.setup(chosen, null, input)
 	brother.god = god
-	room.actors.add_child(brother)
-	brother.global_position = room.tile_center(Vector2i(6, 4))
-	room.brothers.append(brother)
 	brother.health_changed.connect(hud.set_health)
 	brother.hurt_taken.connect(_on_hurt)
 	brother.died.connect(_on_died)
 	hud.brother = brother
 	hud.visible = true
+	if _args.has("arena"):
+		_start_arena()
+	else:
+		run = Run.new()
+		run.name = "Run"
+		world.add_child(run)
+		run.floor_started.connect(_on_floor)
+		run.map_changed.connect(hud.queue_redraw)
+		run.boss_appeared.connect(_on_boss)
+		run.boss_beaten.connect(_on_boss_beaten)
+		run.trapdoor_entered.connect(_descend)
+		var brothers: Array[Brother] = [brother]
+		if _args.has("verbose"):
+			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:
+				print("%6.1f s  enter %s %s (%s)" % [_play_time, info.kind, info.cell, info.layout_name]))
+			run.room_cleared.connect(func(info: FloorPlan.RoomInfo) -> void:
+				print("%6.1f s  cleared %s" % [_play_time, info.cell]))
+		run.begin(rng, camera, brothers)
+		room = run.room
+	hud.run = run
+	_play_time = 0.0
+	print("run: seed %d, %s" % [seed_value, chosen])
+	iris.open(brother.global_position + Vector2(0, -60))
+
+
+## The test room of the first days: one room, waves of enemies. Kept for
+## trying out enemies and numbers without a floor round them.
+func _start_arena() -> void:
+	room = Room.new()
+	room.name = "Room"
+	world.add_child(room)
+	room.build(GameData.room_layout("arena"), run_seed,
+			{"top": "normal", "right": "normal", "bottom": "normal", "left": "normal"})
+	room.set_doors_open(false)
+	room.actors.add_child(brother)
+	brother.room = room
+	brother.global_position = room.tile_center(Vector2i(6, 4))
+	room.brothers.append(brother)
 	waves = Waves.new()
 	room.add_child(waves)
 	waves.wave_started.connect(_on_wave)
 	waves.cleared.connect(_on_cleared)
 	waves.begin(room, rng, GameData.waves("arena"))
 	hud.set_wave(0, waves.list.size())
-	_play_time = 0.0
-	print("run: seed %d, %s" % [seed_value, chosen])
+
+
+func _on_floor(index: int) -> void:
+	room = run.room
+	banner.say(run.floor_name(), "этаж %d из %d" % [index + 1, Run.FLOORS])
+
+
+func _on_boss(boss: Boss) -> void:
+	hud.boss = boss
+	boss.stomped.connect(func() -> void: _shake = 0.3)
+	banner.say(boss.title, boss.subtitle, Run.BOSS_INTRO - 0.5)
+
+
+func _on_boss_beaten(_boss: Enemy) -> void:
+	hud.boss = null
+	_shake = 0.4
+	var sub := "люк открыт — вниз!" if not run.is_last_floor() else "люк открыт — на волю!"
+	banner.say("Победа!", sub, 2.0)
+	print("boss beaten on floor %d at %.0f s" % [run.floor_index + 1, _play_time])
+
+
+## Down the trapdoor: through the iris to the next floor, or out.
+func _descend() -> void:
+	if _busy or state != "play":
+		return
+	_busy = true
+	run.busy = true
+	await iris.close(brother.global_position + Vector2(0, -60), 0.7)
+	if run.is_last_floor():
+		_busy = false
+		_finish()
+		return
+	run.descend()
+	room = run.room
 	iris.open(brother.global_position + Vector2(0, -60))
+	_busy = false
+
+
+func _finish() -> void:
+	state = "over"
+	get_tree().paused = true
+	var seconds := _play_time
+	banner.say("Выбрались!", "за %d:%02d   ·   R — ещё раз   ·   Esc — выбрать брата"
+			% [int(seconds) / 60, int(seconds) % 60], 0.0)
+	print("finished in %.1f s" % seconds)
 
 
 func _clear_world() -> void:
@@ -155,6 +232,10 @@ func _clear_world() -> void:
 	room = null
 	brother = null
 	waves = null
+	run = null
+	if hud != null:
+		hud.run = null
+		hud.boss = null
 
 
 func _on_wave(number: int, total: int) -> void:
@@ -176,14 +257,17 @@ func _on_hurt() -> void:
 
 func _on_died() -> void:
 	state = "over"
-	waves.stop()
+	if waves != null:
+		waves.stop()
 	var at := brother.global_position + Vector2(0, -40)
 	await get_tree().create_timer(1.2).timeout
 	if state != "over" or brother == null:
 		return
 	await iris.close(at, 0.8)
 	get_tree().paused = true
-	banner.say("Эх, братец…", "волна %d   ·   R — ещё раз   ·   Esc — выбрать брата" % waves.current, 0.0)
+	var where := "волна %d" % waves.current if waves != null else \
+			"%s, комнат пройдено: %d" % [run.floor_name(), run.rooms_cleared] if run != null else ""
+	banner.say("Эх, братец…", where + "   ·   R — ещё раз   ·   Esc — выбрать брата", 0.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -210,7 +294,7 @@ func _restart(to_select: bool) -> void:
 	get_tree().paused = false
 	banner.clear()
 	if not iris.is_closed():
-		var at := brother.global_position + Vector2(0, -60) if brother != null else camera.position
+		var at := brother.global_position + Vector2(0, -60) if brother != null else camera.position + Vector2.ZERO
 		await iris.close(at, 0.5)
 	if to_select:
 		show_select()
@@ -235,10 +319,25 @@ func _process(delta: float) -> void:
 ## nobody out -- something between shooting and hitting is broken.
 func _autoplay(seconds: float) -> void:
 	await get_tree().create_timer(seconds, true, true).timeout
-	var kills := waves.kills if waves != null else 0
-	print("autoplay: %.0f s, %s, waves %d/%d, knocked out %d, shots %d, hits taken %d, %s" % [
-			seconds, chosen, waves.current if waves != null else 0,
-			waves.list.size() if waves != null else 0, kills,
-			brother.shots_fired if brother != null else 0,
-			brother.damage_taken if brother != null else 0, state])
-	get_tree().quit(0 if kills > 0 else 1)
+	var kills := 0
+	if waves != null:
+		kills = waves.kills
+		print("autoplay: %.0f s, %s, waves %d/%d, knocked out %d, shots %d, hits taken %d, %s" % [
+				seconds, chosen, waves.current, waves.list.size(), kills,
+				brother.shots_fired if brother != null else 0,
+				brother.damage_taken if brother != null else 0, state])
+	elif run != null:
+		kills = run.kills
+		var visited := 0
+		for info: FloorPlan.RoomInfo in run.plan.rooms.values():
+			if info.visited:
+				visited += 1
+		print("autoplay: %.0f s, %s, floor %d, rooms %d/%d visited, %d cleared, bosses %d, knocked out %d, shots %d, %s" % [
+				seconds, chosen, run.floor_index + 1, visited, run.plan.rooms.size(), run.rooms_cleared,
+				run.bosses_beaten, kills, brother.shots_fired if brother != null else 0, state])
+	# `need_bosses N`: the run must also have got past that many bosses.
+	var bosses := run.bosses_beaten if run != null else 0
+	var needed := int(_arg("need_bosses", "0"))
+	if bosses < needed:
+		printerr("autoplay: %d bosses beaten, %d needed" % [bosses, needed])
+	get_tree().quit(0 if kills > 0 and bosses >= needed else 1)

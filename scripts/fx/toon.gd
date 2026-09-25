@@ -107,6 +107,18 @@ static func clip_below(points: PackedVector2Array, y: float) -> PackedVector2Arr
 	return out
 
 
+## The part of a convex shape above the line y = [param y].
+static func clip_above(points: PackedVector2Array, y: float) -> PackedVector2Array:
+	var flipped := PackedVector2Array()
+	for p in points:
+		flipped.append(Vector2(p.x, -p.y))
+	var kept := clip_below(flipped, -y)
+	var out := PackedVector2Array()
+	for p in kept:
+		out.append(Vector2(p.x, -p.y))
+	return out
+
+
 ## A rounded box with an ink outline: a bottle, a label.
 static func box(ci: CanvasItem, center: Vector2, radii: Vector2, fill: Color, boil: int,
 		seed := 0, line := LINE, rot := 0.0) -> void:

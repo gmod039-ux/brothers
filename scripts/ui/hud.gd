@@ -1,34 +1,56 @@
 class_name Hud
 extends Node2D
-## Hearts in the top-left corner over the wall, as in Isaac, and the wave
-## count at the top.
+## What is on the screen over the room: hearts in the top-left corner, as in
+## Isaac, the map of the floor in the top-right with the floor's name under
+## it, and the boss's health across the bottom while there is a boss.
 
 const RED := Color("d8412f")
 const EMPTY := Color("4a2c22")
 const HEART := 40.0
+## The map: one little card per room, laid out like the floor.
+const MAP_CELL := Vector2(40, 26)
+const MAP_GAP := 6.0
+const MAP_CENTER := Vector2(1920 - 200, 120)
+const MAP_VISITED := Color("c9b08a")
+const MAP_HERE := Color("f7f0e1")
+const MAP_UNKNOWN := Color("5a463a")
 
 var brother: Brother:
 	set(value):
 		brother = value
 		queue_redraw()
+var run: Run:
+	set(value):
+		run = value
+		queue_redraw()
+var boss: Boss:
+	set(value):
+		boss = value
+		_boss_name.text = boss.title if boss != null else ""
+		queue_redraw()
 
-var _wave: Label
+var _floor: Label
 var _name: Label
+var _boss_name: Label
 
 
 func _ready() -> void:
-	_wave = Ui.label("", Ui.text(36), 400)
-	_wave.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_wave.position = Vector2(1920 - 64 - 400, 36)
-	add_child(_wave)
+	_floor = Ui.label("", Ui.text(28), 460)
+	_floor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_floor.position = Vector2(1920 - 70 - 460, 196)
+	add_child(_floor)
 	_name = Ui.label("", Ui.text(30), 400)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_name.position = Vector2(64, 98)
 	add_child(_name)
+	_boss_name = Ui.label("", Ui.text(38), 900)
+	_boss_name.position = Vector2(510, 952)
+	add_child(_boss_name)
 
 
+## The wave count of the arena, where there is no floor.
 func set_wave(number: int, total: int) -> void:
-	_wave.text = "Волна %d из %d" % [number, total]
+	_floor.text = "Волна %d из %d" % [number, total]
 
 
 func set_health(_hp: int, _max_hp: int) -> void:
@@ -38,12 +60,84 @@ func set_health(_hp: int, _max_hp: int) -> void:
 func _process(_delta: float) -> void:
 	if brother != null and _name.text != brother.display_name:
 		_name.text = brother.display_name
+	if run != null:
+		var text := "%s · %d" % [run.floor_name(), run.floor_index + 1]
+		if _floor.text != text:
+			_floor.text = text
+	if boss != null and not is_instance_valid(boss):
+		boss = null
+	if boss != null:
+		queue_redraw()
 
 
 func _draw() -> void:
-	if brother == null:
+	if brother != null:
+		var hearts := brother.stats.max_hp() / 2
+		for i in hearts:
+			var fill := clampi(brother.hp - i * 2, 0, 2)
+			var row := i / 6
+			Toon.heart(self, Vector2(88 + (i % 6) * 58, 66 + row * 52), HEART, fill, RED, EMPTY)
+	if run != null and run.plan != null:
+		_draw_map()
+	if boss != null and is_instance_valid(boss) and not boss.dead:
+		_draw_boss_bar()
+
+
+func _draw_map() -> void:
+	var plan := run.plan
+	var cells: Array[Vector2i] = []
+	for cell: Vector2i in plan.rooms:
+		if plan.known(cell):
+			cells.append(cell)
+	if cells.is_empty():
 		return
-	var hearts := brother.stats.max_hp() / 2
-	for i in hearts:
-		var fill := clampi(brother.hp - i * 2, 0, 2)
-		Toon.heart(self, Vector2(88 + i * 58, 66), HEART, fill, RED, EMPTY)
+	# Centred on the room the brothers are in, like Isaac's, on a dark card
+	# just big enough for the rooms known so far.
+	var step := MAP_CELL + Vector2(MAP_GAP, MAP_GAP)
+	var limit := Rect2(MAP_CENTER - Vector2(180, 92), Vector2(360, 184))
+	var used := Rect2()
+	for cell in cells:
+		var at := MAP_CENTER + Vector2(cell - run.cell) * step
+		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
+		used = rect if used.size == Vector2.ZERO else used.merge(rect)
+	var back := used.grow(12.0).intersection(limit)
+	draw_rect(back.grow(3.0), Color(Toon.INK, 0.6))
+	draw_rect(back, Color("2a1d16", 0.55))
+	for cell in cells:
+		var info := plan.info(cell)
+		var at := MAP_CENTER + Vector2(cell - run.cell) * step
+		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
+		if not limit.encloses(rect):
+			continue
+		var fill := MAP_HERE if cell == run.cell else (MAP_VISITED if info.visited else MAP_UNKNOWN)
+		draw_rect(rect.grow(2.5), Toon.INK)
+		draw_rect(rect, fill)
+		match info.kind:
+			"boss":
+				Toon.spot(self, at, Vector2(7, 7), Color("b8322a"))
+				Toon.spot(self, at + Vector2(-3, -2), Vector2(1.6, 1.6), Toon.INK)
+				Toon.spot(self, at + Vector2(3, -2), Vector2(1.6, 1.6), Toon.INK)
+			"treasure":
+				Toon.star(self, at, 7.0, 0.0, Color("e0b23a"))
+	# Doors between known rooms: small ticks in the gaps.
+	for cell in cells:
+		for side: String in ["right", "bottom"]:
+			var next: Vector2i = cell + FloorPlan.SIDES[side]
+			if cells.has(next):
+				var a := MAP_CENTER + Vector2(cell - run.cell) * step
+				var b := MAP_CENTER + Vector2(next - run.cell) * step
+				var mid := (a + b) * 0.5
+				if limit.has_point(mid):
+					draw_rect(Rect2(mid - Vector2(3, 3), Vector2(6, 6)), Toon.INK)
+
+
+func _draw_boss_bar() -> void:
+	var bar := Rect2(560, 1014, 800, 24)
+	var share := clampf(boss.hp / boss.max_hp, 0.0, 1.0)
+	draw_rect(bar.grow(5), Toon.INK)
+	draw_rect(bar, Color("4a2c22"))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), RED)
+	# Marks where the phases change.
+	for mark: float in [0.33, 0.66]:
+		var x := bar.position.x + bar.size.x * mark
+		draw_line(Vector2(x, bar.position.y), Vector2(x, bar.end.y), Toon.INK, 3.0)

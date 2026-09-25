@@ -2,7 +2,7 @@ class_name Room
 extends Node2D
 ## One room of a floor: a screen-sized box seen from above and a little in
 ## front, the way Isaac's rooms are. 13 by 7 tiles of floor, walls on all
-## four sides with a door in the middle of each.
+## four sides, and a door in the middle of each wall that has a room beyond.
 ##
 ## The room is its own coordinate frame: (0, 0) is the top-left corner of the
 ## screen it fills, and everything inside -- brothers, enemies, shots -- lives
@@ -22,6 +22,11 @@ const WALL_LAYER := 1
 const ROCK_LAYER := 32
 
 const DOORS := ["top", "right", "bottom", "left"]
+## Width of the gap a door leaves in its wall.
+const DOOR_GAP := 124.0
+## How far past the floor's edge, through an open door, a brother has to
+## walk before he is in the next room.
+const EXIT_DEPTH := 34.0
 
 ## Palettes of the basement: walls in brick red-brown, floor in warm stone.
 const WALL_FACE := Color("a0563a")
@@ -41,8 +46,19 @@ var enemies: Array[Enemy] = []
 var actors: Node2D
 ## Puffs, splats and the like, drawn over the actors.
 var effects: Node2D
+## Things lying flat on the floor, under everyone: the trapdoor.
+var decals: Node2D
+## The doors: side -> the kind of room beyond it ("normal", "boss",
+## "treasure", "start"). Sides without a door are plain wall.
+var doors := {}
 ## Which doors are open. A door that is shut is a wall.
-var open_doors := {"top": false, "right": false, "bottom": false, "left": false}
+var open_doors := {}
+## The cell of the floor this room is in.
+var cell := Vector2i.ZERO
+## The run this room is part of; null in tests and the arena.
+var run: Run
+
+var _blockers := {}
 
 var _solid := PackedByteArray()
 var _paint: Node2D
@@ -54,9 +70,14 @@ func _init() -> void:
 
 
 ## Builds the room from a text layout: [constant ROWS] lines of
-## [constant COLS] characters, `.` floor and `#` rock.
-func build(layout: PackedStringArray, seed_value: int) -> void:
+## [constant COLS] characters, `.` floor and `#` rock (letters for enemies
+## are the run's business). [param doors_] is [member doors]; they start
+## shut.
+func build(layout: PackedStringArray, seed_value: int, doors_ := {}) -> void:
 	_layout_seed = seed_value
+	doors = doors_
+	for side: String in doors:
+		open_doors[side] = false
 	_paint = Node2D.new()
 	_paint.name = "Paint"
 	add_child(_paint)
@@ -67,6 +88,9 @@ func build(layout: PackedStringArray, seed_value: int) -> void:
 	lines.name = "Lines"
 	add_child(lines)
 	_add_walls()
+	decals = Node2D.new()
+	decals.name = "Decals"
+	add_child(decals)
 	actors = Node2D.new()
 	actors.name = "Actors"
 	actors.y_sort_enabled = true
@@ -129,11 +153,75 @@ func free_tiles() -> Array[Vector2i]:
 
 
 func set_doors_open(open: bool) -> void:
-	for side in DOORS:
+	for side: String in doors:
 		open_doors[side] = open
+		var blocker := _blockers.get(side) as CollisionShape2D
+		if blocker != null:
+			blocker.set_deferred("disabled", open)
 	var lines := get_node_or_null("Lines") as CanvasItem
 	if lines != null:
 		lines.queue_redraw()
+
+
+## Where a door meets the floor, in world coordinates.
+func door_point(side: String) -> Vector2:
+	var f := FLOOR
+	var local: Vector2 = {
+		"top": Vector2(f.get_center().x, f.position.y),
+		"bottom": Vector2(f.get_center().x, f.end.y),
+		"left": Vector2(f.position.x, f.get_center().y),
+		"right": Vector2(f.end.x, f.get_center().y),
+	}[side]
+	return global_position + local
+
+
+## Where someone coming in through the door on [param side] stands: just
+## inside it, on the floor.
+func entry_point(side: String) -> Vector2:
+	var inward: Vector2 = -Vector2(FloorPlan.SIDES[side])
+	return door_point(side) + inward * TILE * 0.6
+
+
+## The door [param at] has gone out through, or "" while still inside.
+func exit_side(at: Vector2) -> String:
+	var local := at - global_position
+	var f := FLOOR
+	if local.y < f.position.y - EXIT_DEPTH and doors.has("top"):
+		return "top"
+	if local.y > f.end.y + EXIT_DEPTH and doors.has("bottom"):
+		return "bottom"
+	if local.x < f.position.x - EXIT_DEPTH and doors.has("left"):
+		return "left"
+	if local.x > f.end.x + EXIT_DEPTH and doors.has("right"):
+		return "right"
+	return ""
+
+
+## A path over open tiles from [param from] to [param to], both included,
+## or an empty one if there is none.
+func path_to(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	var path: Array[Vector2i] = []
+	if not in_floor(from) or not in_floor(to):
+		return path
+	var came := {from: from}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var here: Vector2i = queue.pop_front()
+		if here == to:
+			break
+		for step: Vector2i in FloorPlan.SIDES.values():
+			var next := here + step
+			if in_floor(next) and not is_rock(next) and not came.has(next):
+				came[next] = here
+				queue.append(next)
+	if not came.has(to):
+		return path
+	var at := to
+	while at != from:
+		path.push_front(at)
+		at = came[at]
+	path.push_front(from)
+	return path
 
 
 ## The four wall faces as quads: outer edge first (left to right as seen
@@ -192,28 +280,58 @@ func _paper(base: Color, stain: Color, blotch: float, amount: float) -> ShaderMa
 	return material
 
 
-## Walls are four slabs round the floor. Doors are drawn, but in this room
-## there is nowhere to go through them yet, so the slabs have no gaps.
+## Walls are slabs round the floor, with a gap where a door is. A shut door
+## fills its gap with a blocker at the floor's edge.
 func _add_walls() -> void:
 	var body := StaticBody2D.new()
 	body.name = "Walls"
 	body.collision_layer = WALL_LAYER
 	body.collision_mask = 0
 	var f := FLOOR
-	var slabs := [
-		Rect2(0, 0, SIZE.x, f.position.y),
-		Rect2(0, f.end.y, SIZE.x, SIZE.y - f.end.y),
-		Rect2(0, 0, f.position.x, SIZE.y),
-		Rect2(f.end.x, 0, SIZE.x - f.end.x, SIZE.y),
-	]
-	for slab: Rect2 in slabs:
-		var shape := CollisionShape2D.new()
-		var rect := RectangleShape2D.new()
-		rect.size = slab.size
-		shape.shape = rect
-		shape.position = slab.get_center()
-		body.add_child(shape)
+	var cx := f.get_center().x
+	var cy := f.get_center().y
+	var half := DOOR_GAP * 0.5
+	var slabs: Array[Rect2] = []
+	# Top and bottom run the full width, split round a door; left and right
+	# fill in between them.
+	for side: String in ["top", "bottom"]:
+		var y := 0.0 if side == "top" else f.end.y
+		var h := f.position.y if side == "top" else SIZE.y - f.end.y
+		if doors.has(side):
+			slabs.append(Rect2(0, y, cx - half, h))
+			slabs.append(Rect2(cx + half, y, SIZE.x - cx - half, h))
+		else:
+			slabs.append(Rect2(0, y, SIZE.x, h))
+	for side: String in ["left", "right"]:
+		var x := 0.0 if side == "left" else f.end.x
+		var w := f.position.x if side == "left" else SIZE.x - f.end.x
+		if doors.has(side):
+			slabs.append(Rect2(x, f.position.y, w, cy - half - f.position.y))
+			slabs.append(Rect2(x, cy + half, w, f.end.y - cy - half))
+		else:
+			slabs.append(Rect2(x, f.position.y, w, f.size.y))
+	for slab in slabs:
+		body.add_child(_box(slab))
+	var blocks := {
+		"top": Rect2(cx - half, f.position.y - 40.0, DOOR_GAP, 40.0),
+		"bottom": Rect2(cx - half, f.end.y, DOOR_GAP, 40.0),
+		"left": Rect2(f.position.x - 40.0, cy - half, 40.0, DOOR_GAP),
+		"right": Rect2(f.end.x, cy - half, 40.0, DOOR_GAP),
+	}
+	for side: String in doors:
+		var blocker := _box(blocks[side])
+		body.add_child(blocker)
+		_blockers[side] = blocker
 	add_child(body)
+
+
+static func _box(rect: Rect2) -> CollisionShape2D:
+	var shape := CollisionShape2D.new()
+	var box := RectangleShape2D.new()
+	box.size = rect.size
+	shape.shape = box
+	shape.position = rect.get_center()
+	return shape
 
 
 func _add_rock(cell: Vector2i) -> void:

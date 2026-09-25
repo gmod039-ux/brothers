@@ -41,9 +41,12 @@ run() {
 }
 
 run "data" --script res://dev/data_check.gd
+run "floors" --script res://dev/floor_check.gd
 run "combat" --script res://dev/combat_check.gd
-run "autoplay, older" -- brother older demo seed 11 autoplay 90
-run "autoplay, younger" -- brother younger demo seed 12 autoplay 90
+run "arena, older" -- brother older demo arena seed 11 autoplay 90
+# A whole floor, boss included, with nobody at the keyboard.
+run "floor run, younger" -- brother younger demo seed 3 autoplay 200 need_bosses 1
+run "floor run, older" -- brother older demo seed 8 autoplay 240 need_bosses 1
 
 if [ $failed -eq 0 ]; then echo; echo "ALL OK"; else echo; echo "SOMETHING FAILED"; fi
 exit $failed
