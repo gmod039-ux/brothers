@@ -15,6 +15,7 @@ extends Node
 ##   bomb          drop a bomb at his feet
 ##   goto KIND     jump to the floor's shop, treasure room, boss room …
 ##   coins N       give him N coins
+##   floor N       go down to floor N (1 is the first)
 ##   god on|off    whether hits cost anything
 ##   *.png         save the screen there
 ##
@@ -86,6 +87,12 @@ func _tour(words: PackedStringArray) -> void:
 				var run := main.get("run") as Run
 				if run != null:
 					run.teleport(value)
+				i += 2
+			"floor":
+				var run_down := main.get("run") as Run
+				if run_down != null:
+					while run_down.floor_index < int(value) - 1:
+						run_down.descend()
 				i += 2
 			"coins":
 				var rich := main.get("brother") as Brother

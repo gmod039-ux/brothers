@@ -28,12 +28,17 @@ const DOOR_GAP := 124.0
 ## walk before he is in the next room.
 const EXIT_DEPTH := 34.0
 
-## Palettes of the basement: walls in brick red-brown, floor in warm stone.
-const WALL_FACE := Color("a0563a")
-const WALL_STAIN := Color("6e3524")
-const FLOOR_BASE := Color("e9d6ac")
-const FLOOR_STAIN := Color("c6a26c")
-const GROUT := Color(0.42, 0.29, 0.18, 0.55)
+## The look of each floor: the basement in brick red-brown and warm stone,
+## the boiler room in slate and pale concrete, the catacombs in mossy
+## green-grey.
+const STYLES := [
+	{"wall": Color("a0563a"), "wall_stain": Color("6e3524"), "floor": Color("e9d6ac"),
+			"floor_stain": Color("c6a26c"), "grout": Color(0.42, 0.29, 0.18, 0.55)},
+	{"wall": Color("6c707e"), "wall_stain": Color("3c404c"), "floor": Color("dcd3c3"),
+			"floor_stain": Color("a3968a"), "grout": Color(0.25, 0.24, 0.26, 0.55)},
+	{"wall": Color("6f7d5c"), "wall_stain": Color("3f4a32"), "floor": Color("d4d6bb"),
+			"floor_stain": Color("98a078"), "grout": Color(0.24, 0.29, 0.2, 0.55)},
+]
 const ROCK := Color("a79a86")
 const ROCK_DARK := Color("7d705f")
 
@@ -57,6 +62,8 @@ var open_doors := {}
 var cell := Vector2i.ZERO
 ## The run this room is part of; null in tests and the arena.
 var run: Run
+## Which of [constant STYLES] it is painted in; set before [method build].
+var style := 0
 
 var _blockers := {}
 var _rocks := {}
@@ -109,6 +116,10 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 		for col in mini(line.length(), COLS):
 			if line[col] == "#" and not broken.has(Vector2i(col, row)):
 				_add_rock(Vector2i(col, row))
+
+
+func palette() -> Dictionary:
+	return STYLES[clampi(style, 0, STYLES.size() - 1)]
 
 
 ## The middle of tile [param cell], in world coordinates.
@@ -266,13 +277,13 @@ func _paint_floor_and_walls() -> void:
 		face.polygon = PackedVector2Array(quads[side])
 		var shade: float = shades[side]
 		face.color = Color(shade, shade, shade)
-		face.material = _paper(WALL_FACE, WALL_STAIN, 180.0, 0.55)
+		face.material = _paper(palette()["wall"], palette()["wall_stain"], 180.0, 0.55)
 		_paint.add_child(face)
 	var ground := Polygon2D.new()
 	var f := FLOOR
 	ground.polygon = PackedVector2Array([f.position, Vector2(f.end.x, f.position.y), f.end,
 			Vector2(f.position.x, f.end.y)])
-	ground.material = _paper(FLOOR_BASE, FLOOR_STAIN, 260.0, 0.7)
+	ground.material = _paper(palette()["floor"], palette()["floor_stain"], 260.0, 0.7)
 	_paint.add_child(ground)
 
 

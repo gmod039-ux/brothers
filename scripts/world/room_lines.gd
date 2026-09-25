@@ -78,13 +78,13 @@ func _grout() -> void:
 		var p0 := c + Vector2(cos(a), sin(a)) * t * 0.3
 		var p1 := c + Vector2(cos(a + 2.6), sin(a + 2.6)) * t * 0.08
 		var p2 := p1 + Vector2(cos(a + 0.9), sin(a + 0.9)) * t * 0.22
-		Toon.stroke(self, PackedVector2Array([p0, p1, p2]), 2.2, Room.GROUT)
+		Toon.stroke(self, PackedVector2Array([p0, p1, p2]), 2.2, room.palette()["grout"])
 
 
 func _grout_stroke(a: Vector2, b: Vector2, n: int) -> void:
 	var gap := 5.0 + Toon.hash01(seed_value, n) * 6.0
 	var dir := (b - a).normalized()
-	Toon.hand_line(self, a + dir * gap, b - dir * gap, 2.6, seed_value * 7 + n, Room.GROUT, 1.8)
+	Toon.hand_line(self, a + dir * gap, b - dir * gap, 2.6, seed_value * 7 + n, room.palette()["grout"], 1.8)
 
 
 ## Rows of bricks running along a wall face, with the joints staggered row

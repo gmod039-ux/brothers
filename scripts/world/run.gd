@@ -17,7 +17,7 @@ signal map_changed
 signal unlocked
 
 const FLOORS := 3
-const FLOOR_NAMES := ["Подвал", "Подвал поглубже", "Самое дно"]
+const FLOOR_NAMES := ["Подвал", "Котельная", "Катакомбы"]
 ## Seconds for the camera to slide from one room to the next.
 const SLIDE_TIME := 0.38
 ## Seconds of title card before the boss starts.
@@ -124,6 +124,7 @@ func _enter(to: Vector2i, through: String) -> void:
 	next.run = self
 	add_child(next)
 	next.position = Vector2(to) * Room.SIZE
+	next.style = floor_index
 	var doors := plan.doors(to)
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
