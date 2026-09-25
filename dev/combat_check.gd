@@ -38,6 +38,9 @@ func _run() -> void:
 	await _touch_and_grace()
 	await _spit_hurts()
 	await _wave_spawns_clear_and_ends()
+	await _items()
+	await _bomb()
+	await _shop()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -141,6 +144,75 @@ func _wave_spawns_clear_and_ends() -> void:
 		enemy.knock_out()
 	await _until(func() -> bool: return ended[0], 30)
 	_expect(ended[0], "knocking out the last wave clears the room")
+
+
+func _items() -> void:
+	await _fresh_room(EMPTY)
+	var brother := _brother(Vector2i(1, 3))
+	var items := GameData.items()
+	var damage := brother.stats.damage
+	brother.take_item("pepper")
+	_expect(is_equal_approx(brother.stats.damage, damage + float(items["pepper"]["add"]["damage"])),
+			"the pepper adds its damage (%.1f → %.1f)" % [damage, brother.stats.damage])
+	var hearts := brother.stats.hearts
+	brother.take_item("pie")
+	_expect(brother.stats.hearts == hearts + 1 and brother.hp == brother.stats.max_hp(), "the pie adds a full heart")
+	# The fork: three shots a press.
+	brother.take_item("fork")
+	var before := room.actors.get_child_count()
+	await _fire(brother, Vector2.RIGHT)
+	_expect(room.actors.get_child_count() - before == 3, "the fork fires three shots (%d)"
+			% (room.actors.get_child_count() - before))
+	# The needle: one shot through two walkers in a row.
+	await _fresh_room(EMPTY)
+	brother = _brother(Vector2i(1, 3))
+	brother.take_item("needle")
+	var first := _enemy("walker", Vector2i(4, 3))
+	var second := _enemy("walker", Vector2i(6, 3))
+	var shot := await _fire(brother, Vector2.RIGHT)
+	await _finish(shot, 120)
+	_expect(first.hp < first.max_hp and second.hp < second.max_hp, "the needle's shot goes through both walkers")
+	# Ghost ink: over a rock.
+	await _fresh_room(ROCK_IN_ROW_3)
+	brother = _brother(Vector2i(2, 3))
+	brother.take_item("ghost")
+	var walker := _enemy("walker", Vector2i(8, 3))
+	shot = await _fire(brother, Vector2.RIGHT)
+	await _finish(shot, 120)
+	_expect(walker.hp < walker.max_hp, "ghost ink flies over the rock")
+
+
+func _bomb() -> void:
+	await _fresh_room(ROCK_IN_ROW_3)
+	var brother := _brother(Vector2i(4, 3))
+	var walker := _enemy("walker", Vector2i(4, 2))
+	var bombs := brother.bombs
+	var bomb := brother.place_bomb()
+	_expect(brother.bombs == bombs - 1, "placing a bomb uses one up")
+	var full := brother.hp
+	await _steps(int(Bomb.FUSE * 60) + 4)
+	_expect(not room.is_rock(Vector2i(5, 3)), "the blast breaks the rock next to it")
+	_expect(not is_instance_valid(walker) or walker.hp <= walker.max_hp - Bomb.DAMAGE, "the blast hurts the walker")
+	_expect(brother.hp == full - 2, "standing on it costs a whole heart (hp %d → %d)" % [full, brother.hp])
+	_expect(not is_instance_valid(bomb), "the bomb is gone")
+
+
+func _shop() -> void:
+	await _fresh_room(EMPTY)
+	var brother := _brother(Vector2i(2, 3))
+	var pickup := Pickup.new()
+	pickup.kind = "bomb"
+	pickup.price = 5
+	pickup.room = room
+	room.actors.add_child(pickup)
+	pickup.global_position = brother.global_position
+	var bombs := brother.bombs
+	await _steps(40)
+	_expect(is_instance_valid(pickup) and brother.bombs == bombs, "no coins, no bomb")
+	brother.coins = 7
+	await _steps(4)
+	_expect(not is_instance_valid(pickup) and brother.bombs == bombs + 1 and brother.coins == 2,
+			"with the coins it is bought (coins 7 → %d)" % brother.coins)
 
 
 # --- helpers ---------------------------------------------------------------

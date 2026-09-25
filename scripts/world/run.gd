@@ -4,7 +4,8 @@ extends Node2D
 ## through doors with the camera sliding along, fills a room with its
 ## enemies and shuts the doors until they are beaten, puts the boss in his
 ## room, and opens the trapdoor down to the next floor. Only the room the
-## brothers are in exists; the rest of the floor is the [FloorPlan].
+## brothers are in exists; the rest of the floor is the [FloorPlan], which
+## also remembers what each room had left lying about.
 
 signal room_entered(info: FloorPlan.RoomInfo)
 signal room_cleared(info: FloorPlan.RoomInfo)
@@ -13,6 +14,7 @@ signal boss_beaten(boss: Boss)
 signal trapdoor_entered
 signal floor_started(index: int)
 signal map_changed
+signal unlocked
 
 const FLOORS := 3
 const FLOOR_NAMES := ["Подвал", "Подвал поглубже", "Самое дно"]
@@ -20,8 +22,8 @@ const FLOOR_NAMES := ["Подвал", "Подвал поглубже", "Само
 const SLIDE_TIME := 0.38
 ## Seconds of title card before the boss starts.
 const BOSS_INTRO := 2.0
-## Chance a cleared room leaves a heart behind.
-const HEART_CHANCE := 0.3
+## What a shop sells, and for how much.
+const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5}
 
 var rng: RandomNumberGenerator
 var layouts: RoomLayouts
@@ -38,6 +40,8 @@ var trapdoor: Trapdoor
 var kills := 0
 var rooms_cleared := 0
 var bosses_beaten := 0
+## Items not yet offered this run: each turns up once at most.
+var pool: Array[String] = []
 
 var _floor_seed := 0
 var _fighting := false
@@ -48,6 +52,9 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	camera = camera_
 	brothers = brothers_
 	layouts = RoomLayouts.load_file("res://data/rooms/basement.txt")
+	for id: String in GameData.items():
+		pool.append(id)
+	pool.sort()
 	start_floor(0)
 
 
@@ -75,18 +82,55 @@ func start_floor(index: int) -> void:
 	floor_started.emit(index)
 
 
+## Straight into the first room of [param kind] on the floor, without
+## walking there: for screenshots and trying things out.
+func teleport(kind: String) -> void:
+	for at: Vector2i in plan.rooms:
+		var info := plan.info(at)
+		if info.kind == kind:
+			info.locked = false
+			var old := room
+			room = null
+			_enter(at, "")
+			if old != null:
+				old.queue_free()
+			camera.position = room.center()
+			return
+
+
+## Down the trapdoor: the next floor, same brothers, same hearts.
+func descend() -> void:
+	start_floor(floor_index + 1)
+	busy = false
+
+
+## An item from the pool, gone from it; "" once every item has turned up.
+func draw_item() -> String:
+	if pool.is_empty():
+		return ""
+	return pool.pop_at(rng.randi() % pool.size())
+
+
 ## Moves the brothers into the room at [param to], having left the last one
 ## by its [param through] door ("" to appear in the middle of it).
 func _enter(to: Vector2i, through: String) -> void:
 	var info := plan.info(to)
 	var old := room
+	if old != null:
+		_remember(old)
 	var next := Room.new()
 	next.name = "Room_%d_%d" % [to.x, to.y]
 	next.cell = to
 	next.run = self
 	add_child(next)
 	next.position = Vector2(to) * Room.SIZE
-	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, plan.doors(to))
+	var doors := plan.doors(to)
+	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
+	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
+	for side: String in doors:
+		var beyond := plan.info(to + FloorPlan.SIDES[side])
+		if beyond.locked:
+			next.locked[side] = true
 	next.set_doors_open(info.cleared)
 	room = next
 	cell = to
@@ -119,11 +163,33 @@ func _enter(to: Vector2i, through: String) -> void:
 	_populate(info)
 
 
+## Writes down what is still lying on the floor of a room being left, so it
+## is there on coming back. Shop wares are the shop's own list.
+func _remember(left: Room) -> void:
+	var info := plan.info(left.cell)
+	info.pickups.clear()
+	for node in left.actors.get_children():
+		var pickup := node as Pickup
+		if pickup != null and not pickup.gone and pickup.price == 0:
+			info.pickups.append([pickup.kind, pickup.item, 0, pickup.global_position - left.global_position])
+
+
 func _populate(info: FloorPlan.RoomInfo) -> void:
-	if info.kind == "treasure" and not info.looted:
-		var prize := _drop("heart_container", room.tile_center(Vector2i(6, 3)))
-		prize.taken.connect(func(_by: Brother) -> void: info.looted = true)
-		return
+	for kept: Array in info.pickups:
+		_drop(kept[0], room.global_position + (kept[3] as Vector2), kept[1])
+	info.pickups.clear()
+	match info.kind:
+		"treasure":
+			if not info.looted:
+				if info.prize == "":
+					info.prize = draw_item()
+				if info.prize != "":
+					var prize := _drop("item", room.tile_center(Vector2i(6, 3)), info.prize)
+					prize.taken.connect(func(_by: Brother) -> void: info.looted = true)
+			return
+		"shop":
+			_open_shop(info)
+			return
 	if info.cleared:
 		return
 	if info.kind == "boss":
@@ -138,6 +204,32 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		var enemy := Waves.spawn(spawn[0], room, rng, room.tile_center(spawn[1]))
 		_toughen(enemy)
 	_fighting = true
+
+
+## A shop: the shopkeeper behind his counter, across the room from the
+## door, and his wares in a row in front of it.
+func _open_shop(info: FloorPlan.RoomInfo) -> void:
+	if info.stock.is_empty() and not info.looted:
+		var item := draw_item()
+		if item != "":
+			info.stock.append(["item", item, PRICES["item"]])
+		info.stock.append(["heart", "", PRICES["heart"]])
+		info.stock.append(["bomb", "", PRICES["bomb"]])
+		info.stock.append(["key", "", PRICES["key"]])
+		# Stocked once: what is bought is gone for good.
+		info.looted = true
+	var keeper_row := 5 if room.doors.has("top") else 1
+	var keeper := Shopkeeper.new()
+	room.actors.add_child(keeper)
+	keeper.global_position = room.tile_center(Vector2i(6, keeper_row)) + Vector2(0, 44)
+	for col: int in [5, 6, 7]:
+		room.block_tile(Vector2i(col, keeper_row))
+	var cols := [3, 5, 7, 9]
+	for i in info.stock.size():
+		var ware: Array = info.stock[i]
+		var pickup := _drop(ware[0], room.tile_center(Vector2i(cols[i], 3)), ware[1])
+		pickup.price = ware[2]
+		pickup.taken.connect(func(_by: Brother) -> void: info.stock.erase(ware))
 
 
 ## Deeper floors, tougher enemies.
@@ -182,13 +274,11 @@ func _on_boss_down(beaten: Enemy) -> void:
 	room.decals.add_child(trapdoor)
 	trapdoor.global_position = room.tile_center(Vector2i(6, 3))
 	trapdoor.entered.connect(func(_b: Brother) -> void: trapdoor_entered.emit())
-	_drop("heart", room.tile_center(Vector2i(6, 5)))
-
-
-## Down the trapdoor: the next floor, same brothers, same hearts.
-func descend() -> void:
-	start_floor(floor_index + 1)
-	busy = false
+	# A boss always leaves an item behind, as in Isaac, and a heart.
+	var prize := draw_item()
+	if prize != "":
+		_drop("item", room.tile_center(Vector2i(6, 1)), prize)
+	_drop("heart", room.tile_center(Vector2i(4, 3)))
 
 
 func _physics_process(_delta: float) -> void:
@@ -200,8 +290,8 @@ func _physics_process(_delta: float) -> void:
 		info.cleared = true
 		rooms_cleared += 1
 		room.set_doors_open(true)
-		if info.kind == "normal" and rng.randf() < HEART_CHANCE:
-			_drop("half_heart" if rng.randf() < 0.6 else "heart", room.tile_center(_open_tile_near(Vector2i(6, 3))))
+		if info.kind == "normal":
+			_reward()
 		room_cleared.emit(info)
 	for brother in brothers:
 		if brother.dead:
@@ -210,11 +300,50 @@ func _physics_process(_delta: float) -> void:
 		if side != "" and bool(room.open_doors.get(side, false)):
 			_enter(cell + FloorPlan.SIDES[side], side)
 			return
+		if brother.keys > 0 and not room.locked.is_empty():
+			_try_unlock(brother)
 
 
-func _drop(kind: String, at: Vector2) -> Pickup:
+## A brother with a key walking up to a locked door opens it.
+func _try_unlock(brother: Brother) -> void:
+	for side: String in room.locked.keys():
+		if brother.global_position.distance_to(room.door_point(side)) < 90.0:
+			brother.keys -= 1
+			brother.inventory_changed.emit()
+			room.locked.erase(side)
+			plan.info(cell + FloorPlan.SIDES[side]).locked = false
+			room.set_doors_open(plan.info(cell).cleared)
+			map_changed.emit()
+			unlocked.emit()
+			return
+
+
+## What a beaten room leaves behind: often nothing, sometimes a coin or
+## two, a heart, a bomb, a key. Luck makes nothing rarer.
+func _reward() -> void:
+	var luck := 0.0
+	for brother in brothers:
+		luck = maxf(luck, brother.stats.luck)
+	var nothing := clampf(0.4 - luck * 0.06, 0.1, 0.4)
+	var at := room.tile_center(_open_tile_near(Vector2i(6, 3)))
+	if rng.randf() < nothing:
+		return
+	var roll := rng.randf()
+	if roll < 0.45:
+		for i in rng.randi_range(1, 3):
+			_drop("coin", at + Vector2(i * 26.0 - 26.0, (i % 2) * 18.0))
+	elif roll < 0.7:
+		_drop("half_heart" if rng.randf() < 0.6 else "heart", at)
+	elif roll < 0.85:
+		_drop("bomb", at)
+	else:
+		_drop("key", at)
+
+
+func _drop(kind: String, at: Vector2, item := "") -> Pickup:
 	var pickup := Pickup.new()
 	pickup.kind = kind
+	pickup.item = item
 	pickup.room = room
 	room.actors.add_child(pickup)
 	pickup.global_position = at
@@ -233,14 +362,15 @@ func _open_tile_near(wanted: Vector2i) -> Vector2i:
 
 
 ## Where the demo bot should head next: the nearest room it has not been
-## in, the boss once it has been everywhere else.
-func bot_goal() -> Vector2i:
+## in (locked ones only with a key), the boss once it has been everywhere
+## else.
+func bot_goal(has_key := false) -> Vector2i:
 	var seen := {cell: true}
 	var queue: Array[Vector2i] = [cell]
 	while not queue.is_empty():
 		var here: Vector2i = queue.pop_front()
 		var info := plan.info(here)
-		if not info.visited and info.kind != "boss":
+		if not info.visited and info.kind != "boss" and (not info.locked or has_key):
 			return here
 		for step: Vector2i in FloorPlan.SIDES.values():
 			var next := here + step

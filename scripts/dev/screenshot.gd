@@ -12,6 +12,9 @@ extends Node
 ##   film X        set the old-film strength
 ##   press ACTION  press an input action for one frame (p1_right, confirm …)
 ##   hurt | die    hit the brother, or knock him out
+##   bomb          drop a bomb at his feet
+##   goto KIND     jump to the floor's shop, treasure room, boss room …
+##   coins N       give him N coins
 ##   god on|off    whether hits cost anything
 ##   *.png         save the screen there
 ##
@@ -73,6 +76,23 @@ func _tour(words: PackedStringArray) -> void:
 						brother.hp = 1
 					brother.hurt(1, brother.global_position + Vector2(40, 0))
 				i += 1
+			"bomb":
+				var bomber := main.get("brother") as Brother
+				if bomber != null:
+					bomber.bombs += 1
+					bomber.place_bomb()
+				i += 1
+			"goto":
+				var run := main.get("run") as Run
+				if run != null:
+					run.teleport(value)
+				i += 2
+			"coins":
+				var rich := main.get("brother") as Brother
+				if rich != null:
+					rich.coins = int(value)
+					rich.inventory_changed.emit()
+				i += 2
 			"god":
 				var brother := main.get("brother") as Brother
 				if brother != null:

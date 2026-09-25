@@ -59,6 +59,7 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	var smallest := 99
 	var largest := 0
+	var shops := 0
 	for seed_value in SEEDS:
 		rng.seed = seed_value
 		var plan := FloorPlan.generate(rng, floor_index, layouts)
@@ -75,6 +76,11 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 		_expect(boss.depth >= 2, "boss not next to the start (seed %d)" % seed_value)
 		_expect(plan.boss != plan.treasure, "boss and treasure apart (seed %d)" % seed_value)
 		_expect(boss.kind == "boss" and treasure.kind == "treasure", "kinds set (seed %d)" % seed_value)
+		_expect(treasure.locked == (floor_index > 0), "treasure locked below the first floor (seed %d)" % seed_value)
+		if plan.shop != Vector2i(-1, -1):
+			shops += 1
+			var shop := plan.info(plan.shop)
+			_expect(shop.kind == "shop" and plan.doors(plan.shop).size() == 1, "a shop is a dead end (seed %d)" % seed_value)
 		for cell: Vector2i in plan.rooms:
 			var info := plan.info(cell)
 			_expect(info.rows.size() == Room.ROWS, "room %s has a layout (seed %d)" % [cell, seed_value])
@@ -82,7 +88,8 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 				_expect(info.depth <= boss.depth, "no dead end deeper than the boss (seed %d)" % seed_value)
 		if _failures > 20:
 			break
-	print("floor %d: %d seeds, %d to %d rooms" % [floor_index + 1, SEEDS, smallest, largest])
+	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%" % [floor_index + 1, SEEDS, smallest, largest,
+			shops * 100 / SEEDS])
 
 
 func _expect(ok: bool, what: String) -> void:

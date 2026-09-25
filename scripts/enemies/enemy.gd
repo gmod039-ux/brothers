@@ -102,13 +102,15 @@ func target() -> Brother:
 	return best
 
 
-func hurt(damage: float, direction: Vector2) -> void:
+## Takes [param damage] from a hit going [param direction]; [param strength]
+## scales the knockback (items make it hit harder).
+func hurt(damage: float, direction: Vector2, strength := 1.0) -> void:
 	if dead:
 		return
 	hp -= damage
 	_flash = 1.0 / Toon.FPS
 	_squash = 2.0 / Toon.FPS
-	_knock = direction * KNOCK_SPEED * knockback
+	_knock = direction * KNOCK_SPEED * knockback * strength
 	if hp <= 0.0:
 		knock_out()
 

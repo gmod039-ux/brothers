@@ -64,7 +64,7 @@ func can_be_hit() -> bool:
 	return not dead and state != "air" and state != "wait"
 
 
-func hurt(damage: float, _direction: Vector2) -> void:
+func hurt(damage: float, _direction: Vector2, _strength := 1.0) -> void:
 	super.hurt(damage, Vector2.ZERO)
 
 

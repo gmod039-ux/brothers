@@ -39,9 +39,9 @@ func _ready() -> void:
 	_floor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_floor.position = Vector2(1920 - 70 - 460, 196)
 	add_child(_floor)
-	_name = Ui.label("", Ui.text(30), 400)
-	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_name.position = Vector2(64, 98)
+	_name = Ui.label("", Ui.text(26), 400)
+	_name.position = Vector2(1920 - 70 - 460 + 60, 236)
+	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_name)
 	_boss_name = Ui.label("", Ui.text(38), 900)
 	_boss_name.position = Vector2(510, 952)
@@ -77,6 +77,16 @@ func _draw() -> void:
 			var fill := clampi(brother.hp - i * 2, 0, 2)
 			var row := i / 6
 			Toon.heart(self, Vector2(88 + (i % 6) * 58, 66 + row * 52), HEART, fill, RED, EMPTY)
+	if brother != null:
+		# Coins, bombs and keys under the hearts, as in Isaac.
+		var rows := 1 + (brother.stats.max_hp() / 2 - 1) / 6
+		var y := 66.0 + rows * 52.0 + 30.0
+		var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
+		for i in counts.size():
+			var at := Vector2(80, y + i * 44.0)
+			ItemIcon.draw(self, counts[i][0], at, 34.0, 0)
+			draw_string(Ui.font(), at + Vector2(26, 12), "%02d" % int(counts[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
+					30, Color("f6e7c1"))
 	if run != null and run.plan != null:
 		_draw_map()
 	if boss != null and is_instance_valid(boss) and not boss.dead:

@@ -28,6 +28,14 @@ var travelled := 0.0
 var falling := false
 ## What stopped it: "" still flying, "floor", "wall", "enemy", "brother".
 var ended := ""
+## Item powers: turns towards the nearest enemy; goes on through enemies;
+## flies over rocks; how hard it knocks enemies back.
+var homing := false
+var pierce := false
+var spectral := false
+var knockback := 1.0
+
+var _hit := {}
 
 var _vz := 0.0
 var _clock := 0.0
@@ -48,6 +56,8 @@ func launch(room_: Room, at: Vector2, height_: float, velocity_: Vector2, reach_
 func _physics_process(delta: float) -> void:
 	if ended != "":
 		return
+	if homing and not hostile:
+		_home(delta)
 	var step := velocity * delta
 	global_position += step
 	travelled += step.length()
@@ -60,7 +70,7 @@ func _physics_process(delta: float) -> void:
 			height = 0.0
 			_end("floor")
 			return
-	if room.blocks_shot(global_position):
+	if room.blocks_shot(global_position, spectral):
 		_end("wall")
 		return
 	if hostile:
@@ -74,11 +84,37 @@ func _physics_process(delta: float) -> void:
 				return
 	else:
 		for enemy in room.enemies:
+			if _hit.has(enemy):
+				continue
 			if enemy.can_be_hit() and global_position.distance_to(enemy.global_position) \
 					< radius + enemy.radius:
-				enemy.hurt(damage, velocity.normalized())
+				enemy.hurt(damage, velocity.normalized(), knockback)
+				if pierce:
+					# On through, but never twice into the same one.
+					_hit[enemy] = true
+					continue
 				_end("enemy")
 				return
+
+
+## Bends the flight a little towards the nearest enemy ahead, keeping the
+## speed.
+func _home(delta: float) -> void:
+	var best: Enemy = null
+	var best_d := 420.0
+	for enemy in room.enemies:
+		if not enemy.can_be_hit() or _hit.has(enemy):
+			continue
+		var d := global_position.distance_to(enemy.global_position)
+		if d < best_d:
+			best_d = d
+			best = enemy
+	if best == null:
+		return
+	var want := (best.global_position - global_position).angle()
+	var now := velocity.angle()
+	var turn := clampf(wrapf(want - now, -PI, PI), -4.0 * delta, 4.0 * delta)
+	velocity = velocity.rotated(turn)
 
 
 func _process(delta: float) -> void:

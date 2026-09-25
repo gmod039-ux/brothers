@@ -4,7 +4,8 @@ extends RefCounted
 ## and which layout it uses. Grown the way Isaac grows its floors: out from
 ## the start, a room at a time, never next to more than one room already
 ## there -- so the floor branches instead of clumping -- with the boss in the
-## dead end furthest from the start and the treasure room in another.
+## dead end furthest from the start, the treasure room in another and, when
+## there is a third, a shop. Below the first floor both are locked.
 
 const WIDTH := 9
 const HEIGHT := 8
@@ -19,7 +20,7 @@ const OPPOSITE := {"top": "bottom", "bottom": "top", "left": "right", "right": "
 
 class RoomInfo:
 	var cell := Vector2i.ZERO
-	## "start", "normal", "boss" or "treasure".
+	## "start", "normal", "boss", "treasure" or "shop".
 	var kind := "normal"
 	var layout_name := ""
 	var rows := PackedStringArray()
@@ -29,6 +30,17 @@ class RoomInfo:
 	var cleared := false
 	## The treasure room's prize has been picked up.
 	var looted := false
+	## Needs a key to get in.
+	var locked := false
+	## The item waiting here (treasure room), once chosen.
+	var prize := ""
+	## A shop's wares: [kind, item, price] each; bought ones are removed.
+	var stock: Array = []
+	## Things left lying on the floor when the brothers walked out:
+	## [kind, item, price, position in the room].
+	var pickups: Array = []
+	## Rocks blown up: cell -> true.
+	var broken := {}
 
 
 var index := 0
@@ -36,6 +48,8 @@ var rooms := {}
 var start := Vector2i(4, 4)
 var boss := Vector2i.ZERO
 var treasure := Vector2i.ZERO
+## No shop when the floor has only two dead ends: (-1, -1).
+var shop := Vector2i(-1, -1)
 
 
 ## Grows floor [param floor_index] (0 is the first): more rooms deeper down.
@@ -89,6 +103,9 @@ static func _grow(rng: RandomNumberGenerator, target: int) -> FloorPlan:
 	ends.erase(far)
 	plan.boss = far
 	plan.treasure = ends[rng.randi() % ends.size()]
+	ends.erase(plan.treasure)
+	if not ends.is_empty():
+		plan.shop = ends[rng.randi() % ends.size()]
 	for cell: Vector2i in depth:
 		var info := RoomInfo.new()
 		info.cell = cell
@@ -108,9 +125,12 @@ func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
 			info.kind = "boss"
 		elif cell == treasure:
 			info.kind = "treasure"
+		elif cell == shop:
+			info.kind = "shop"
 		if info.kind != "normal":
 			info.layout_name = "@" + info.kind
 			info.cleared = info.kind != "boss"
+			info.locked = index > 0 and info.kind in ["treasure", "shop"]
 		else:
 			# Deal layouts from a shuffled deck, so a floor repeats one only
 			# once it has used them all.

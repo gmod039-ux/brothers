@@ -151,6 +151,16 @@ func _door(quad: Array, side: String, open: bool, beyond: String) -> void:
 		var u := 0.5 - half + half * 2.0 * i / 4.0
 		Toon.hand_line(self, Room.face_point(quad, u, 0.36), Room.face_point(quad, u, 0.98),
 				2.4, seed_value + i * 31 + side.length(), DOOR_PLANK, 0.5)
+	if room.locked.has(side):
+		# A padlock on it: a key opens it.
+		var lock := Room.face_point(quad, 0.5, 0.66)
+		var shackle := PackedVector2Array()
+		for i in 9:
+			var a := PI + PI * i / 8.0
+			shackle.append(lock + Vector2(cos(a) * 11.0, -8.0 + sin(a) * 13.0))
+		Toon.stroke(self, shackle, 5.0)
+		Toon.box(self, lock + Vector2(0, 6), Vector2(16, 13), ItemIcon.GOLD, 0, 90, 4.0)
+		Toon.spot(self, lock + Vector2(0, 5), Vector2(3, 4), Toon.INK)
 	# An iron band across it.
 	Toon.hand_line(self, Room.face_point(quad, 0.5 - half * 0.95, 0.72),
 			Room.face_point(quad, 0.5 + half * 0.95, 0.72), 6.0, seed_value + 77 + side.length(),

@@ -132,6 +132,10 @@ func start_run(seed_value: int) -> void:
 	brother.health_changed.connect(hud.set_health)
 	brother.hurt_taken.connect(_on_hurt)
 	brother.died.connect(_on_died)
+	brother.inventory_changed.connect(hud.queue_redraw)
+	brother.item_taken.connect(func(id: String) -> void:
+		var item: Dictionary = GameData.items().get(id, {})
+		banner.caption(str(item.get("name", id)), str(item.get("text", ""))))
 	hud.brother = brother
 	hud.visible = true
 	if _args.has("arena"):
@@ -145,6 +149,7 @@ func start_run(seed_value: int) -> void:
 		run.boss_appeared.connect(_on_boss)
 		run.boss_beaten.connect(_on_boss_beaten)
 		run.trapdoor_entered.connect(_descend)
+		run.unlocked.connect(hud.queue_redraw)
 		var brothers: Array[Brother] = [brother]
 		if _args.has("verbose"):
 			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:

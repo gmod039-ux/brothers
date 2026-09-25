@@ -11,6 +11,8 @@ extends RefCounted
 var move := Vector2.ZERO
 ## Shooting direction: one of the four axes, or zero for not shooting.
 var shoot := Vector2.ZERO
+## True for the one frame a bomb is asked for.
+var bomb := false
 
 
 func update(_brother: Brother, _delta: float) -> void:

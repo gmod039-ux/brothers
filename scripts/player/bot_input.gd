@@ -132,8 +132,9 @@ func _next_stop(room: Room, brother: Brother) -> Vector2:
 	# Hearts it can use first.
 	for node in room.actors.get_children():
 		var pickup := node as Pickup
-		if pickup != null and not pickup.gone:
-			var useful := pickup.kind == "heart_container" or brother.hp < brother.stats.max_hp()
+		if pickup != null and not pickup.gone and pickup.price <= brother.coins:
+			var hearts := pickup.kind == "heart" or pickup.kind == "half_heart"
+			var useful := not hearts or brother.hp < brother.stats.max_hp()
 			if useful:
 				return _walk_to(room, brother, room.tile_at(pickup.global_position), pickup.global_position)
 	var run := room.run
@@ -141,7 +142,7 @@ func _next_stop(room: Room, brother: Brother) -> Vector2:
 		return Vector2.INF
 	if run.trapdoor != null:
 		return _walk_to(room, brother, room.tile_at(run.trapdoor.global_position), run.trapdoor.global_position)
-	var side := run.plan.step_towards(run.cell, run.bot_goal())
+	var side := run.plan.step_towards(run.cell, run.bot_goal(brother.keys > 0))
 	if side == "":
 		return Vector2.INF
 	var door_tile: Vector2i = RoomLayouts.DOOR_TILES[side]

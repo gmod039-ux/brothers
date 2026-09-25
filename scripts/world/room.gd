@@ -59,6 +59,12 @@ var cell := Vector2i.ZERO
 var run: Run
 
 var _blockers := {}
+var _rocks := {}
+## Doors that stay shut until someone brings a key: side -> true.
+var locked := {}
+
+## A rock was blown up, so the run can remember it.
+signal rock_broken(cell: Vector2i)
 
 var _solid := PackedByteArray()
 var _paint: Node2D
@@ -73,7 +79,7 @@ func _init() -> void:
 ## [constant COLS] characters, `.` floor and `#` rock (letters for enemies
 ## are the run's business). [param doors_] is [member doors]; they start
 ## shut.
-func build(layout: PackedStringArray, seed_value: int, doors_ := {}) -> void:
+func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {}) -> void:
 	_layout_seed = seed_value
 	doors = doors_
 	for side: String in doors:
@@ -101,7 +107,7 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}) -> void:
 	for row in mini(layout.size(), ROWS):
 		var line := layout[row]
 		for col in mini(line.length(), COLS):
-			if line[col] == "#":
+			if line[col] == "#" and not broken.has(Vector2i(col, row)):
 				_add_rock(Vector2i(col, row))
 
 
@@ -125,12 +131,12 @@ func is_rock(cell: Vector2i) -> bool:
 
 
 ## True when a shot at world point [param at] has hit something solid: a
-## wall, or a rock.
-func blocks_shot(at: Vector2) -> bool:
+## wall, or a rock unless [param over_rocks].
+func blocks_shot(at: Vector2, over_rocks := false) -> bool:
 	var local := at - global_position
 	if not FLOOR.has_point(local):
 		return true
-	return is_rock(tile_at(at))
+	return not over_rocks and is_rock(tile_at(at))
 
 
 ## The floor rectangle in world coordinates.
@@ -154,10 +160,11 @@ func free_tiles() -> Array[Vector2i]:
 
 func set_doors_open(open: bool) -> void:
 	for side: String in doors:
-		open_doors[side] = open
+		var really := open and not locked.has(side)
+		open_doors[side] = really
 		var blocker := _blockers.get(side) as CollisionShape2D
 		if blocker != null:
-			blocker.set_deferred("disabled", open)
+			blocker.set_deferred("disabled", really)
 	var lines := get_node_or_null("Lines") as CanvasItem
 	if lines != null:
 		lines.queue_redraw()
@@ -334,6 +341,41 @@ static func _box(rect: Rect2) -> CollisionShape2D:
 	return shape
 
 
+## Makes a tile solid without a rock drawn on it: something else stands
+## there (a shop counter).
+func block_tile(cell: Vector2i) -> void:
+	if not in_floor(cell) or is_rock(cell):
+		return
+	_solid[cell.y * COLS + cell.x] = 1
+	var body := StaticBody2D.new()
+	body.collision_layer = ROCK_LAYER
+	body.collision_mask = 0
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(TILE, TILE * 0.8)
+	shape.shape = rect
+	body.add_child(shape)
+	body.position = tile_center(cell) - global_position
+	add_child(body)
+
+
+## Blows a rock away: gone from the floor, the collision and the drawing.
+func break_rock(cell: Vector2i) -> void:
+	if not is_rock(cell):
+		return
+	_solid[cell.y * COLS + cell.x] = 0
+	var parts: Array = _rocks.get(cell, [])
+	for part: Node in parts:
+		part.queue_free()
+	_rocks.erase(cell)
+	var puff := Puff.new()
+	puff.radius = 44.0
+	puff.stars = 0
+	effects.add_child(puff)
+	puff.global_position = tile_center(cell)
+	rock_broken.emit(cell)
+
+
 func _add_rock(cell: Vector2i) -> void:
 	_solid[cell.y * COLS + cell.x] = 1
 	var rock := Rock.new()
@@ -350,3 +392,4 @@ func _add_rock(cell: Vector2i) -> void:
 	body.add_child(shape)
 	body.position = rock.position
 	add_child(body)
+	_rocks[cell] = [rock, body]

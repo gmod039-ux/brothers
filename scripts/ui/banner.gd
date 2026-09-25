@@ -6,6 +6,11 @@ extends Node2D
 var _title: Label
 var _sub: Label
 var _tween: Tween
+## The smaller line at the top: what was just picked up.
+var _caption: Node2D
+var _caption_title: Label
+var _caption_sub: Label
+var _caption_tween: Tween
 
 
 func _init() -> void:
@@ -20,6 +25,33 @@ func _ready() -> void:
 	_sub.position = Vector2(0, 520)
 	add_child(_sub)
 	visible = false
+	_caption = Node2D.new()
+	add_sibling.call_deferred(_caption)
+	_caption_title = Ui.label("", Ui.title(64))
+	_caption_title.position = Vector2(0, 120)
+	_caption.add_child(_caption_title)
+	_caption_sub = Ui.label("", Ui.text(32))
+	_caption_sub.position = Vector2(0, 204)
+	_caption.add_child(_caption_sub)
+	_caption.visible = false
+
+
+## A smaller line at the top of the screen for a moment: the name of an item
+## just picked up and what it does, the way Isaac shows it.
+func caption(text: String, sub := "", seconds := 2.2) -> void:
+	_caption_title.text = text
+	_caption_sub.text = sub
+	_caption.visible = true
+	_caption.modulate.a = 1.0
+	if _caption_tween != null:
+		_caption_tween.kill()
+	_caption_tween = create_tween()
+	for step: float in [0.7, 1.1, 1.0]:
+		_caption_tween.tween_callback(func() -> void: _caption_title.scale = Vector2(step, step))
+		_caption_tween.tween_interval(1.0 / Toon.FPS)
+	_caption_tween.tween_interval(seconds)
+	_caption_tween.tween_property(_caption, "modulate:a", 0.0, 0.3)
+	_caption_tween.tween_callback(func() -> void: _caption.visible = false)
 
 
 ## Shows [param text] with [param sub] under it for [param seconds]; 0 keeps

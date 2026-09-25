@@ -35,6 +35,10 @@ static func enemies() -> Dictionary:
 	return json("res://data/enemies.json")
 
 
+static func items() -> Dictionary:
+	return json("res://data/items.json")
+
+
 static func waves(set_name: String) -> Array:
 	var all := json("res://data/waves.json")
 	return all.get(set_name, [])

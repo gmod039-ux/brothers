@@ -7,6 +7,9 @@ extends CharacterBody2D
 signal health_changed(hp: int, max_hp: int)
 signal hurt_taken
 signal died
+## Coins, bombs, keys or items changed.
+signal inventory_changed
+signal item_taken(id: String)
 
 ## The body on the floor: feet, not the whole drawing. Heads may overlap
 ## walls and enemies' tops, as in Isaac; feet may not.
@@ -38,6 +41,11 @@ var shots_fired := 0
 var damage_taken := 0
 ## Held still, e.g. while the camera slides to the next room.
 var frozen := false
+var coins := 0
+var bombs := 1
+var keys := 0
+## Items taken, in order.
+var items: Array[String] = []
 
 var _walk := Vector2.ZERO
 var _knock := Vector2.ZERO
@@ -84,6 +92,8 @@ func _physics_process(delta: float) -> void:
 	_knock = _knock.move_toward(Vector2.ZERO, 2400.0 * delta)
 	_invulnerable = maxf(_invulnerable - delta, 0.0)
 	_shoot(delta)
+	if input.bomb and bombs > 0:
+		place_bomb()
 	_touch_enemies()
 	_update_look()
 
@@ -101,18 +111,54 @@ func _shoot(delta: float) -> void:
 	fire(input.shoot)
 
 
-## Fires one shot along [param aim] (one of the four axes).
+## Fires along [param aim] (one of the four axes): one shot, or three in a
+## fan with the fork. Returns the middle one.
 func fire(aim: Vector2) -> Shot:
 	var side := aim.orthogonal() * (7.0 if _hand == 0 else -7.0)
 	_hand = 1 - _hand
-	var shot := Shot.new()
-	room.actors.add_child(shot)
-	shot.launch(room, global_position + aim * 18.0 + side, SHOT_HEIGHT,
-			aim * stats.shot_px() + _walk * CARRY, stats.range_px(), stats.damage,
-			stats.shot_radius(), false)
+	var angles: Array[float] = [0.0]
+	if stats.has("triple"):
+		angles = [0.0, -0.17, 0.17]
+	var middle: Shot = null
+	for angle in angles:
+		var shot := Shot.new()
+		room.actors.add_child(shot)
+		shot.launch(room, global_position + aim * 18.0 + side, SHOT_HEIGHT,
+				aim.rotated(angle) * stats.shot_px() + _walk * CARRY, stats.range_px(), stats.damage,
+				stats.shot_radius(), false)
+		shot.homing = stats.has("homing")
+		shot.pierce = stats.has("pierce")
+		shot.spectral = stats.has("spectral")
+		shot.knockback = stats.knockback
+		if middle == null:
+			middle = shot
 	look.recoil(aim)
 	shots_fired += 1
-	return shot
+	return middle
+
+
+## Drops a lit bomb at his feet.
+func place_bomb() -> Bomb:
+	bombs -= 1
+	inventory_changed.emit()
+	var bomb := Bomb.new()
+	bomb.room = room
+	room.actors.add_child(bomb)
+	bomb.global_position = global_position + Vector2(0, 6)
+	return bomb
+
+
+## Takes an item: its numbers go into his stats at once.
+func take_item(id: String) -> void:
+	var item: Dictionary = GameData.items().get(id, {})
+	var old_max := stats.max_hp()
+	stats.apply(item)
+	items.append(id)
+	if stats.max_hp() > old_max:
+		hp = mini(hp + stats.max_hp() - old_max, stats.max_hp())
+	health_changed.emit(hp, stats.max_hp())
+	inventory_changed.emit()
+	item_taken.emit(id)
 
 
 ## Contact damage, the way it is in Isaac: touching an enemy hurts, and
