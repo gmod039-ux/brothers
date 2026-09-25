@@ -84,6 +84,8 @@ func _physics_process(delta: float) -> void:
 		phase = now
 		phase_changed.emit(phase)
 		Sfx.play("roar", 0.0, 0.0)
+		Fx.flash(Color(1, 0.95, 0.85), 0.12)
+		Fx.shake(0.3)
 		_go("roar")
 		return
 	velocity = Vector2.ZERO
@@ -91,6 +93,10 @@ func _physics_process(delta: float) -> void:
 		"walk":
 			if t != null:
 				velocity = _aim * speed * (1.5 if phase == 3 else 1.0)
+		"whistle":
+			if _t > 0.7:
+				_summon()
+				_go("recover")
 			if _t > _walk_for:
 				_choose()
 		"windup":
@@ -118,14 +124,17 @@ func _physics_process(delta: float) -> void:
 				_go("charge")
 		"charge":
 			velocity = _charge * CHARGE_SPEED
+			if int(_t * 30.0) % 2 == 0:
+				Fx.burst(room, global_position + Vector2(0, -4), "dust", 1, 0.4)
 		"stunned":
 			if _t > 1.2:
 				_go("walk")
 		"roar":
 			if _t > 0.8:
-				if phase == 2:
-					_summon()
-				_go("walk")
+				if phase >= 2:
+					_go("whistle")
+				else:
+					_go("walk")
 	if state != "air":
 		move_and_slide()
 	if state == "charge" and (get_slide_collision_count() > 0 or _t > 1.8):
@@ -133,6 +142,8 @@ func _physics_process(delta: float) -> void:
 		stomped.emit()
 		Sfx.play("stomp", 0.0)
 		Sfx.play("stars", -6.0)
+		Fx.burst(room, global_position + Vector2(0, -200), "stars", 6, 0.6)
+		Fx.burst(room, global_position, "dust", 8, 1.0)
 		_go("stunned")
 
 
@@ -151,7 +162,7 @@ func _choose() -> void:
 		2:
 			options = ["jump", "throw", "throw", "summon"]
 		_:
-			options = ["charge", "charge", "jump", "throw"]
+			options = ["charge", "charge", "jump", "throw", "summon"]
 	var pick := options[rng.randi() % options.size()]
 	match pick:
 		"jump":
@@ -161,8 +172,8 @@ func _choose() -> void:
 		"charge":
 			_go("charge_windup")
 		"summon":
-			_summon()
-			_go("recover")
+			_go("whistle")
+			Sfx.play("whistle_up", -2.0, 0.0)
 
 
 func _take_off() -> void:
@@ -185,6 +196,9 @@ func _land() -> void:
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < STOMP_REACH:
 			brother.hurt(contact, global_position)
+	Fx.ring(room, global_position, STOMP_REACH * 2.4, Toon.INK, 0.45, 12.0)
+	Fx.burst(room, global_position, "dust", 12, 1.3)
+	Fx.shake(0.3)
 	# A ring of dust thrown out along the floor.
 	var n := 10 if phase < 3 else 14
 	for i in n:
@@ -202,14 +216,23 @@ func _throw() -> void:
 	Sfx.play("spit", -4.0)
 
 
+## Bruno whistles his boys in: bulldog pups come in through the ropes from
+## both sides of the ring. Never more than three about at once.
 func _summon() -> void:
-	var flies := 0
+	var boys := 0
 	for enemy in room.enemies:
-		if enemy != self:
-			flies += 1
-	for i in maxi(0, 2 - flies):
-		var side := -1.0 if i == 0 else 1.0
-		Waves.spawn("fly", room, rng, global_position + Vector2(side * 110.0, -40.0))
+		if not enemy is Boss:
+			boys += 1
+	var floor_box := room.floor_rect()
+	for i in maxi(0, (2 if phase < 3 else 3) - boys):
+		var side := i % 2
+		var x := floor_box.position.x + 50.0 if side == 0 else floor_box.end.x - 50.0
+		var y := floor_box.position.y + floor_box.size.y * (0.3 + 0.4 * rng.randf())
+		var pup := Waves.spawn("pup", room, rng, Vector2(x, y))
+		Fx.burst(room, Vector2(x, y), "dust", 5, 0.8)
+		if pup != null:
+			pup.max_hp *= 1.0 + 0.3 * floor_index
+			pup.hp = pup.max_hp
 
 
 func _shoot(direction: Vector2, shot_speed: float, tiles: float, size: float, height: float,
@@ -275,6 +298,9 @@ func _draw_bruno(boil: int, flash: bool) -> void:
 	# forward to charge, hanging when he sees stars.
 	var fists := [Vector2(-74, -64), Vector2(74, -64)]
 	match state:
+		"whistle":
+			# Two fingers in his mouth.
+			fists[1] = Vector2(26, -126)
 		"throw_windup":
 			fists[1] = Vector2(60, -190)
 		"windup", "air":

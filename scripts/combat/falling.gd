@@ -11,7 +11,8 @@ const COAL := Color("2a2626")
 var room: Room
 ## Seconds before the shadow even starts, so a shower lands one by one.
 var delay := 0.0
-## "coal", or "bag": a sack of money that bursts into coins where it lands.
+## "coal", "card", or "bag": a sack of money that bursts into coins where
+## it lands.
 var look := "coal"
 
 var _clock := 0.0
@@ -59,7 +60,11 @@ func _draw() -> void:
 	if not _landed:
 		Toon.spot(self, Vector2.ZERO, Vector2(REACH, REACH * 0.34) * (0.3 + 0.7 * t), Color(Toon.INK, 0.35))
 		var height := (1.0 - t) * (1.0 - t) * 700.0
-		if look == "bag":
+		if look == "card":
+			var spin := _clock * 7.0
+			Toon.box(self, Vector2(0, -height - 20), Vector2(13, 18), BrotherLook.WHITE, d, 1, 3.5, spin)
+			Toon.heart(self, Vector2(0, -height - 20), 14.0, 2, Color("c8392b"), Color("c8392b"))
+		elif look == "bag":
 			var bag := Vector2(0, -height - 24)
 			Toon.blob(self, bag, Vector2(24, 22), Color("c9a86a"), d, 1, 4.0)
 			Toon.blob(self, bag + Vector2(0, -22), Vector2(10, 7), Color("c9a86a"), d, 2, 3.5)

@@ -64,6 +64,9 @@ var cell := Vector2i.ZERO
 var run: Run
 ## Which of [constant STYLES] it is painted in; set before [method build].
 var style := 0
+## A boss's own room ("ring", "boiler", "cabaret"), or "" for a plain one.
+## Set before [method build].
+var arena := ""
 
 var _blockers := {}
 var _doors_set := false
@@ -105,6 +108,11 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 	decals = Node2D.new()
 	decals.name = "Decals"
 	add_child(decals)
+	if arena != "":
+		var dressing := Arena.new()
+		dressing.kind = arena
+		dressing.room = self
+		decals.add_child(dressing)
 	actors = Node2D.new()
 	actors.name = "Actors"
 	actors.y_sort_enabled = true
@@ -120,6 +128,8 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 
 
 func palette() -> Dictionary:
+	if arena != "":
+		return Arena.PALETTES[arena]
 	return STYLES[clampi(style, 0, STYLES.size() - 1)]
 
 

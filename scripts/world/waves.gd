@@ -84,6 +84,12 @@ static func spawn(kind: String, room_: Room, rng_: RandomNumberGenerator, at: Ve
 			enemy = WalkerEnemy.new()
 		"shooter":
 			enemy = ShooterEnemy.new()
+		"pup":
+			enemy = PupEnemy.new()
+		"ember":
+			enemy = EmberEnemy.new()
+		"kitten":
+			enemy = KittenEnemy.new()
 		_:
 			push_error("no enemy called %s" % kind)
 			return null

@@ -59,6 +59,9 @@ func _physics_process(delta: float) -> void:
 		phase = now
 		phase_changed.emit(phase)
 		Sfx.play("roar", 0.0, 0.0)
+		Fx.flash(Color(1, 0.9, 0.5), 0.15)
+		Fx.shake(0.25)
+		Fx.burst(room, global_position + Vector2(0, -120), "confetti", 30, 1.4)
 		_go("roar")
 		return
 	velocity = Vector2.ZERO
@@ -83,6 +86,10 @@ func _physics_process(delta: float) -> void:
 		"bags_windup":
 			if _t > 0.6:
 				_money_rain()
+				_go("recover")
+		"cardrain_windup":
+			if _t > 0.6:
+				_card_rain()
 				_go("recover")
 		"vanish":
 			if _t > 0.2 and not _hidden:
@@ -123,9 +130,10 @@ func _choose() -> void:
 		2:
 			options = ["cards", "hat", "bags", "vanish"]
 		_:
-			options = ["sweep", "sweep", "vanish", "hat", "bags"]
+			options = ["sweep", "sweep", "vanish", "hat", "cardrain"]
 	var pick := options[rng.randi() % options.size()]
 	if pick == "vanish":
+		Fx.burst(room, global_position + Vector2(0, -100), "confetti", 16, 1.0)
 		var puff := Puff.new()
 		puff.radius = radius * 1.2
 		room.effects.add_child(puff)
@@ -146,7 +154,40 @@ func _cards() -> void:
 	Sfx.play("spit", -6.0)
 
 
-## Out of the hat: a lit bomb lobbed at the brother, or a pair of flies.
+## Kittens out of the hat, two or three, in a burst of confetti.
+func _summon() -> void:
+	var kittens := 0
+	for enemy in room.enemies:
+		if enemy is KittenEnemy:
+			kittens += 1
+	var hat := global_position + Vector2(-40, -40)
+	for i in maxi(0, mini(2 + (1 if phase == 3 else 0), 4 - kittens)):
+		var kitten := Waves.spawn("kitten", room, rng, hat + Vector2((i - 1) * 60.0, 50.0))
+		if kitten != null:
+			kitten.max_hp *= 1.0 + 0.3 * maxi(floor_index - 2, 0)
+			kitten.hp = kitten.max_hp
+	Fx.burst(room, hat + Vector2(0, -60), "confetti", 20, 1.0)
+
+
+## A shower of playing cards from above, each falling where its shadow is.
+func _card_rain() -> void:
+	var floor_box := room.floor_rect().grow(-60.0)
+	var t := target()
+	for i in 10:
+		var at := Vector2(rng.randf_range(floor_box.position.x, floor_box.end.x),
+				rng.randf_range(floor_box.position.y, floor_box.end.y))
+		if i % 3 == 0 and t != null:
+			at = t.global_position + Vector2(rng.randf_range(-40, 40), rng.randf_range(-30, 30))
+		var card := Falling.new()
+		card.room = room
+		card.look = "card"
+		card.delay = i * 0.1
+		room.effects.add_child(card)
+		card.global_position = at
+	Sfx.play("select", 0.0, 0.3)
+
+
+## Out of the hat: a lit bomb lobbed at the brother, or kittens.
 func _hat_trick() -> void:
 	var t := target()
 	if t == null or rng.randf() < 0.35:
@@ -216,7 +257,7 @@ func _draw() -> void:
 	Toon.spot(self, Vector2(0, 4), Vector2(74, 20), Color(Toon.INK, 0.3))
 	var squash := 0.0
 	match state:
-		"cards_windup", "hat_windup", "bags_windup", "sweep_windup":
+		"cards_windup", "hat_windup", "bags_windup", "sweep_windup", "cardrain_windup":
 			squash = 0.08
 		"roar":
 			squash = -0.08 if boil % 2 == 0 else 0.04
@@ -267,7 +308,7 @@ func _draw_baron(boil: int, flash: bool) -> void:
 			free_hand = Vector2(-60, -150)
 		"hat_windup":
 			free_hand = Vector2(-20, -235)
-		"bags_windup":
+		"bags_windup", "cardrain_windup":
 			free_hand = Vector2(-90, -170)
 			cane_hand = Vector2(90, -170)
 		"sweep_windup", "sweep":

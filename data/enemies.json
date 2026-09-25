@@ -53,5 +53,31 @@
 		"radius": 60,
 		"contact": 1,
 		"knockback": 0
+	},
+	"pup": {
+		"name": "Щенок-хулиган",
+		"hp": 8,
+		"speed": 110,
+		"dash_speed": 640,
+		"radius": 22,
+		"contact": 1,
+		"knockback": 1.2
+	},
+	"ember": {
+		"name": "Уголёк",
+		"hp": 6,
+		"speed": 75,
+		"radius": 18,
+		"contact": 1,
+		"knockback": 1.0,
+		"fuse": 5.0
+	},
+	"kitten": {
+		"name": "Котёнок",
+		"hp": 7,
+		"speed": 150,
+		"radius": 20,
+		"contact": 1,
+		"knockback": 1.3
 	}
 }

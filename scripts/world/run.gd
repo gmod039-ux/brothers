@@ -24,6 +24,8 @@ const FLOOR_NAMES := ["Подвал", "Котельная", "Катакомбы"
 const SLIDE_TIME := 0.38
 ## Seconds of title card before the boss starts.
 const BOSS_INTRO := 2.0
+## Each boss's own room, floor by floor.
+const ARENAS := ["ring", "boiler", "cabaret"]
 ## What a shop sells, and for how much.
 const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5}
 
@@ -127,6 +129,8 @@ func _enter(to: Vector2i, through: String) -> void:
 	add_child(next)
 	next.position = Vector2(to) * Room.SIZE
 	next.style = floor_index
+	if info.kind == "boss":
+		next.arena = ARENAS[mini(floor_index, ARENAS.size() - 1)]
 	var doors := plan.doors(to)
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)

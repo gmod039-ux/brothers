@@ -33,6 +33,7 @@ var demo := false
 var god := false
 
 var _select_layer: CanvasLayer
+var _flash: ColorRect
 var _shake := 0.0
 ## Seconds of play in this run: game time, so it is right in fast checks
 ## and stops while paused.
@@ -68,6 +69,16 @@ func _ready() -> void:
 	add_child(ui_layer)
 	banner = Banner.new()
 	ui_layer.add_child(banner)
+	var flash_layer := CanvasLayer.new()
+	flash_layer.layer = 18
+	add_child(flash_layer)
+	_flash = ColorRect.new()
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.color = Color(1, 1, 1, 0)
+	flash_layer.add_child(_flash)
+	Fx.on_flash = _screen_flash
+	Fx.on_shake = func(seconds: float) -> void: _shake = maxf(_shake, seconds)
 	film = Film.new()
 	film.strength = float(_arg("film", "1.0"))
 	add_child(film)
@@ -78,6 +89,9 @@ func _ready() -> void:
 
 	if _args.has("concepts"):
 		_select_layer.add_child(preload("res://scripts/dev/concept_sheet.gd").new())
+		return
+	if _args.has("bestiary"):
+		_select_layer.add_child(preload("res://scripts/dev/bestiary.gd").new())
 		return
 	demo = _args.has("demo")
 	god = _args.has("god") or demo
@@ -108,6 +122,13 @@ func _fit_window() -> void:
 	var size := Vector2i(width, int(width * 9.0 / 16.0))
 	DisplayServer.window_set_size(size)
 	DisplayServer.window_set_position(area.position + (area.size - size) / 2)
+
+
+## The whole screen flashes a colour for a moment: a boss losing his temper.
+func _screen_flash(color: Color, seconds: float) -> void:
+	_flash.color = Color(color, 0.55)
+	var tween := create_tween()
+	tween.tween_property(_flash, "color:a", 0.0, seconds)
 
 
 func _toggle_fullscreen() -> void:

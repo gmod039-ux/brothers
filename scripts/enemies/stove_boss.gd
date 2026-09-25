@@ -57,6 +57,9 @@ func _physics_process(delta: float) -> void:
 		phase = now
 		phase_changed.emit(phase)
 		Sfx.play("roar", 0.0, 0.0)
+		Fx.flash(Color(1, 0.55, 0.3), 0.18)
+		Fx.shake(0.3)
+		Fx.burst(room, global_position + Vector2(0, -150), "embers", 16, 1.3)
 		_go("roar")
 		return
 	velocity = Vector2.ZERO
@@ -74,6 +77,10 @@ func _physics_process(delta: float) -> void:
 			if _t > 0.6:
 				_coal_rain()
 				_go("recover")
+		"belch_windup":
+			if _t > 0.5:
+				_belch()
+				_go("recover")
 		"spin_windup":
 			if _t > 0.5:
 				_next_ember = 0.0
@@ -88,6 +95,7 @@ func _physics_process(delta: float) -> void:
 					var direction := Vector2.from_angle(_spin + PI * k)
 					_shoot(direction, 330.0, 8.0, 13.0, 50.0, FIRE)
 				Sfx.play("spit", -12.0, 0.2)
+				Fx.burst(room, global_position + Vector2(0, -80), "embers", 2, 0.8)
 			if _t > 2.4:
 				_go("recover")
 		"recover":
@@ -103,11 +111,11 @@ func _choose() -> void:
 	var options: Array[String] = []
 	match phase:
 		1:
-			options = ["fire", "fire", "coal"]
+			options = ["fire", "fire", "coal", "belch"]
 		2:
-			options = ["fire", "coal", "coal"]
+			options = ["fire", "coal", "coal", "belch"]
 		_:
-			options = ["spin", "spin", "fire", "coal"]
+			options = ["spin", "spin", "fire", "coal", "belch"]
 	_go(options[rng.randi() % options.size()] + "_windup")
 
 
@@ -115,8 +123,36 @@ func _fireballs() -> void:
 	var n := 3 if phase == 1 else 5
 	for i in n:
 		var spread := (i - (n - 1) * 0.5) * 0.24
-		_shoot(_aim.rotated(spread), 430.0, 9.0, 16.0, 70.0, FIRE)
+		var ball := _shoot(_aim.rotated(spread), 430.0, 9.0, 16.0, 70.0, FIRE)
+		# Where a fireball comes down it leaves a puddle of fire.
+		ball.finished.connect(func(how: String) -> void:
+			if how == "floor" or how == "wall":
+				_fire_patch(ball.global_position))
+	Fx.burst(room, global_position + Vector2(0, -76), "embers", 8, 1.0)
 	Sfx.play("spit", -2.0)
+	_squash = 2.0 / Toon.FPS
+
+
+func _fire_patch(at: Vector2) -> void:
+	var inside := room.floor_rect().grow(-30.0)
+	var patch := FirePatch.new()
+	patch.room = room
+	room.decals.add_child(patch)
+	patch.global_position = Vector2(clampf(at.x, inside.position.x, inside.end.x),
+			clampf(at.y, inside.position.y, inside.end.y))
+
+
+## Coughs up live coals that waddle at the brother. At most four about.
+func _belch() -> void:
+	var coals := 0
+	for enemy in room.enemies:
+		if enemy is EmberEnemy:
+			coals += 1
+	for i in maxi(0, mini(2 + (phase - 1), 4 - coals)):
+		var at := global_position + Vector2((i - 1) * 50.0, 40.0)
+		Waves.spawn("ember", room, rng, at)
+	Fx.burst(room, global_position + Vector2(0, -76), "embers", 14, 1.2)
+	Sfx.play("spit", 0.0, 0.0)
 	_squash = 2.0 / Toon.FPS
 
 
@@ -144,7 +180,7 @@ func _draw() -> void:
 	Toon.spot(self, Vector2(0, 4), Vector2(78, 22), Color(Toon.INK, 0.3))
 	var squash := 0.0
 	match state:
-		"fire_windup", "coal_windup", "spin_windup":
+		"fire_windup", "coal_windup", "spin_windup", "belch_windup":
 			squash = 0.1
 		"roar":
 			squash = -0.08 if boil % 2 == 0 else 0.04
@@ -192,7 +228,7 @@ func _draw_stove(boil: int, flash: bool) -> void:
 		Toon.spot(self, body + Vector2(x, 60), Vector2(3.5, 3.5), Toon.INK)
 		Toon.spot(self, body + Vector2(x, -58), Vector2(3.5, 3.5), Toon.INK)
 	# The mouth: the fire door, wide open while he gets ready to spit.
-	var open := 1.35 if state in ["fire_windup", "spin", "roar"] else 1.0
+	var open := 1.35 if state in ["fire_windup", "spin", "roar", "belch_windup"] else 1.0
 	var mouth := body + Vector2(0, 22)
 	Toon.box(self, mouth, Vector2(38, 22 * open), Color("1a0d08"), boil, 14, 4.5)
 	for k in 3:
