@@ -104,6 +104,13 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 	lines.seed_value = seed_value
 	lines.name = "Lines"
 	add_child(lines)
+	if arena == "":
+		var decor := RoomDecor.new()
+		decor.name = "Decor"
+		decor.room = self
+		decor.seed_value = seed_value
+		decor.style = style
+		add_child(decor)
 	_add_walls()
 	decals = Node2D.new()
 	decals.name = "Decals"

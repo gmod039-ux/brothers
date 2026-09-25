@@ -151,6 +151,15 @@ func _door(quad: Array, side: String, open: bool, beyond: String) -> void:
 		var u := 0.5 - half + half * 2.0 * i / 4.0
 		Toon.hand_line(self, Room.face_point(quad, u, 0.36), Room.face_point(quad, u, 0.98),
 				2.4, seed_value + i * 31 + side.length(), DOOR_PLANK, 0.5)
+	# Iron hinge straps across the planks, studs, and a ring for a handle.
+	for v: float in [0.5, 0.86]:
+		Toon.hand_line(self, Room.face_point(quad, 0.5 - half * 0.9, v), Room.face_point(quad, 0.5 + half * 0.2, v),
+				5.0, seed_value + int(v * 100) + side.length(), Color("3a302a"), 0.3)
+		for u: float in [-0.7, -0.35, 0.0]:
+			draw_circle(Room.face_point(quad, 0.5 + half * u, v), 2.6, Color("c9b08a"))
+	var ring := Room.face_point(quad, 0.5 + half * 0.55, 0.64)
+	draw_arc(ring + Vector2(0, 6), 7.0, 0.0, TAU, 16, Color("3a302a"), 3.0, true)
+	draw_circle(ring, 3.0, Color("3a302a"))
 	if room.locked.has(side):
 		# A padlock on it: a key opens it.
 		var lock := Room.face_point(quad, 0.5, 0.66)
