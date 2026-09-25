@@ -147,6 +147,17 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Static references die last, after the engine has already taken down what
+## they point at: a Callable into this node left in Fx made Godot abort on
+## every quit ("recursive_mutex lock failed"), and macOS showed a crash
+## report each time. So they are all let go of here, while things still
+## stand.
+func _exit_tree() -> void:
+	Fx.on_flash = Callable()
+	Fx.on_shake = Callable()
+	Ui.release()
+
+
 func _arg(key: String, fallback: String) -> String:
 	var at := _args.find(key)
 	return _args[at + 1] if at >= 0 and at + 1 < _args.size() else fallback

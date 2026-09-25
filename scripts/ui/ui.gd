@@ -7,6 +7,11 @@ extends RefCounted
 static var _font: Font
 
 
+## Lets go of the font before quitting (see Main._exit_tree).
+static func release() -> void:
+	_font = null
+
+
 static func font() -> Font:
 	if _font == null:
 		var system := SystemFont.new()
