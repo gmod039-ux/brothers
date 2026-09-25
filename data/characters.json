@@ -1,0 +1,44 @@
+{
+	"older": {
+		"name": "Старший",
+		"about": "Медленный, но бьёт больно",
+		"hearts": 4,
+		"speed": 0.9,
+		"damage": 4.5,
+		"tears": 2.2,
+		"range": 6.0,
+		"shot_speed": 0.95,
+		"luck": 0,
+		"look": {
+			"size": 1.08,
+			"skin": "#f3cfa2",
+			"shirt": "#c8392b",
+			"pants": "#3d4a78",
+			"shoes": "#3a2418",
+			"hat": "cap",
+			"hat_color": "#6f4a2e",
+			"nose": "#d9826a"
+		}
+	},
+	"younger": {
+		"name": "Младший",
+		"about": "Шустрый и стреляет часто",
+		"hearts": 3,
+		"speed": 1.12,
+		"damage": 3.0,
+		"tears": 3.3,
+		"range": 6.8,
+		"shot_speed": 1.1,
+		"luck": 1,
+		"look": {
+			"size": 0.94,
+			"skin": "#f6d6ae",
+			"shirt": "#e0b23a",
+			"pants": "#3f7a57",
+			"shoes": "#3a2418",
+			"hat": "tuft",
+			"hat_color": "#b8562a",
+			"nose": "#e08c74"
+		}
+	}
+}

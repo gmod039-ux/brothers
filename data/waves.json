@@ -1,0 +1,9 @@
+{
+	"arena": [
+		{"fly": 3},
+		{"fly": 2, "walker": 2},
+		{"walker": 2, "shooter": 1},
+		{"fly": 4, "shooter": 2},
+		{"walker": 3, "shooter": 2, "fly": 2}
+	]
+}

@@ -1,0 +1,33 @@
+{
+	"fly": {
+		"name": "Муха",
+		"hp": 5,
+		"speed": 125,
+		"radius": 24,
+		"contact": 1,
+		"flying": true,
+		"knockback": 1.4
+	},
+	"walker": {
+		"name": "Топтун",
+		"hp": 14,
+		"speed": 95,
+		"chase_speed": 135,
+		"notice": 380,
+		"radius": 30,
+		"contact": 1,
+		"knockback": 0.8
+	},
+	"shooter": {
+		"name": "Плевун",
+		"hp": 11,
+		"speed": 45,
+		"radius": 30,
+		"contact": 1,
+		"knockback": 0.6,
+		"shot_every": 2.4,
+		"windup": 0.5,
+		"shot_speed": 420,
+		"shot_range": 9
+	}
+}

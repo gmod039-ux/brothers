@@ -1,0 +1,113 @@
+class_name Shot
+extends Node2D
+## A shot: a drop of ink from a brother, or a spit from an enemy. It flies at
+## a height over the floor with its shadow under it, goes straight until its
+## range is nearly used up, then drops and splashes where it lands -- the
+## way Isaac's tears fall short.
+##
+## Its node sits on the floor at the shadow; the drop is drawn [member height]
+## above. Hits are worked out on the floor, between shadow and feet.
+
+## Sent just before the shot goes, with what stopped it.
+signal finished(how: String)
+
+const GRAVITY := 1800.0
+## Past this share of the range the shot starts to fall.
+const FALL_AT := 0.8
+const INK_BLUE := Color("2d4f8a")
+const SPIT := Color("9a2f24")
+
+var room: Room
+var velocity := Vector2.ZERO
+var height := 40.0
+var damage := 3.5
+var radius := 13.0
+var hostile := false
+var reach := 700.0
+var travelled := 0.0
+var falling := false
+## What stopped it: "" still flying, "floor", "wall", "enemy", "brother".
+var ended := ""
+
+var _vz := 0.0
+var _clock := 0.0
+
+
+func launch(room_: Room, at: Vector2, height_: float, velocity_: Vector2, reach_: float,
+		damage_: float, radius_: float, hostile_: bool) -> void:
+	room = room_
+	global_position = at
+	height = height_
+	velocity = velocity_
+	reach = reach_
+	damage = damage_
+	radius = radius_
+	hostile = hostile_
+
+
+func _physics_process(delta: float) -> void:
+	if ended != "":
+		return
+	var step := velocity * delta
+	global_position += step
+	travelled += step.length()
+	if not falling and travelled >= reach * FALL_AT:
+		falling = true
+	if falling:
+		_vz += GRAVITY * delta
+		height -= _vz * delta
+		if height <= 0.0:
+			height = 0.0
+			_end("floor")
+			return
+	if room.blocks_shot(global_position):
+		_end("wall")
+		return
+	if hostile:
+		for brother in room.brothers:
+			# The body is taller than the feet: a spit at head height
+			# still hits.
+			if not brother.dead and global_position.distance_to(brother.global_position) \
+					< radius + Brother.RADIUS + 6.0:
+				brother.hurt(1, global_position - velocity.normalized() * 10.0)
+				_end("brother")
+				return
+	else:
+		for enemy in room.enemies:
+			if enemy.can_be_hit() and global_position.distance_to(enemy.global_position) \
+					< radius + enemy.radius:
+				enemy.hurt(damage, velocity.normalized())
+				_end("enemy")
+				return
+
+
+func _process(delta: float) -> void:
+	_clock += delta
+	queue_redraw()
+
+
+func _end(how: String) -> void:
+	ended = how
+	finished.emit(how)
+	var splat := Splat.new()
+	splat.color = SPIT if hostile else INK_BLUE
+	splat.radius = radius
+	# Against a wall the splash is where the drop was, up in the air; on the
+	# floor, where it landed.
+	var at := global_position + (Vector2(0, -height) if how != "floor" else Vector2.ZERO)
+	room.effects.add_child(splat)
+	splat.global_position = at
+	queue_free()
+
+
+func _draw() -> void:
+	var r := radius
+	var shade := clampf(1.0 - height / 160.0, 0.5, 1.0)
+	Toon.spot(self, Vector2.ZERO, Vector2(r * 0.95, r * 0.36) * shade, Color(Toon.INK, 0.22))
+	var at := Vector2(0, -height)
+	var angle := velocity.angle()
+	var fill := SPIT if hostile else INK_BLUE
+	var boil := int(_clock * Toon.FPS)
+	Toon.blob(self, at, Vector2(r * 1.1, r * 0.92), fill, boil, get_instance_id() % 89, 4.0, angle)
+	Toon.spot(self, at + Vector2(-r * 0.32, -r * 0.34), Vector2(r * 0.3, r * 0.2),
+			Color(1, 1, 1, 0.85), 0, 0, -0.6)

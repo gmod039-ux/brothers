@@ -1,0 +1,12 @@
+# Godot's import cache and generated files
+.godot/
+
+# macOS
+.DS_Store
+
+# Screenshots from the dev tools: output, not source (.gdignore stays).
+/dev/out/*
+!/dev/out/.gdignore
+
+# Exported builds
+/build/
