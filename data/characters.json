@@ -10,14 +10,14 @@
 		"shot_speed": 0.95,
 		"luck": 0,
 		"look": {
-			"size": 1.08,
-			"skin": "#f3cfa2",
-			"shirt": "#c8392b",
-			"pants": "#3d4a78",
-			"shoes": "#3a2418",
-			"hat": "cap",
-			"hat_color": "#6f4a2e",
-			"nose": "#d9826a"
+			"build": "lanky",
+			"top": "quiff",
+			"size": 0.95,
+			"shirt": "white",
+			"pants": "ink",
+			"shoes": "ink",
+			"accent": "#c8392b",
+			"wear": "bow"
 		}
 	},
 	"younger": {
@@ -31,14 +31,14 @@
 		"shot_speed": 1.1,
 		"luck": 1,
 		"look": {
-			"size": 0.94,
-			"skin": "#f6d6ae",
-			"shirt": "#e0b23a",
-			"pants": "#3f7a57",
-			"shoes": "#3a2418",
-			"hat": "tuft",
-			"hat_color": "#b8562a",
-			"nose": "#e08c74"
+			"build": "chubby",
+			"top": "ears",
+			"size": 0.92,
+			"shirt": "ink",
+			"pants": "white",
+			"shoes": "white",
+			"accent": "#e0b23a",
+			"wear": "straps"
 		}
 	}
 }

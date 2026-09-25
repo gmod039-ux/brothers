@@ -39,8 +39,11 @@ static func hash01(a: int, b: int) -> float:
 ##
 ## [param power] above 2 squares the ellipse off towards a rounded box
 ## (a superellipse): 4 is a bottle, a tile, a sign.
+##
+## [param egg] widens the lower half and narrows the upper one: 0.3 is a
+## pear, the body shape of every rubber-hose character.
 static func ellipse_points(center: Vector2, radii: Vector2, boil: int, seed: int,
-		grow := 0.0, rot := 0.0, wobble := 1.2, power := 2.0) -> PackedVector2Array:
+		grow := 0.0, rot := 0.0, wobble := 1.2, power := 2.0, egg := 0.0) -> PackedVector2Array:
 	# A smooth bend, not a jitter per point: two waves around the rim whose
 	# phases change from drawing to drawing.
 	var p1 := hash01(boil, seed) * TAU
@@ -56,7 +59,8 @@ static func ellipse_points(center: Vector2, radii: Vector2, boil: int, seed: int
 		if power != 2.0:
 			c = signf(c) * pow(absf(c), 2.0 / power)
 			sn = signf(sn) * pow(absf(sn), 2.0 / power)
-		var p := Vector2(c * maxf(radii.x + grow + w, 0.5), sn * maxf(radii.y + grow + w, 0.5))
+		var p := Vector2(c * maxf(radii.x * (1.0 + egg * sn) + grow + w, 0.5),
+				sn * maxf(radii.y + grow + w, 0.5))
 		points[i] = center + p.rotated(rot)
 	return points
 
@@ -66,6 +70,41 @@ static func blob(ci: CanvasItem, center: Vector2, radii: Vector2, fill: Color, b
 		seed := 0, line := LINE, rot := 0.0) -> void:
 	ci.draw_colored_polygon(ellipse_points(center, radii, boil, seed, line * 0.5, rot), INK)
 	ci.draw_colored_polygon(ellipse_points(center, radii, boil, seed, -line * 0.5, rot), fill)
+
+
+## A pear with an ink outline: wider at the bottom by [param egg].
+static func pear(ci: CanvasItem, center: Vector2, radii: Vector2, egg: float, fill: Color,
+		boil: int, seed := 0, line := LINE) -> void:
+	ci.draw_colored_polygon(ellipse_points(center, radii, boil, seed, line * 0.5, 0.0, 1.2, 2.0, egg), INK)
+	ci.draw_colored_polygon(ellipse_points(center, radii, boil, seed, -line * 0.5, 0.0, 1.2, 2.0, egg), fill)
+
+
+## Several ellipses filled as one shape with one outline round the lot: all
+## the ink first, then all the fill. Each part is [center, radii].
+static func union(ci: CanvasItem, parts: Array, fill: Color, boil: int, seed := 0,
+		line := LINE) -> void:
+	for i in parts.size():
+		var part: Array = parts[i]
+		ci.draw_colored_polygon(ellipse_points(part[0], part[1], boil, seed + i, line * 0.5), INK)
+	for i in parts.size():
+		var part: Array = parts[i]
+		ci.draw_colored_polygon(ellipse_points(part[0], part[1], boil, seed + i, -line * 0.5), fill)
+
+
+## The part of a convex shape below the line y = [param y]: trousers on a
+## body, a mouth under a snout.
+static func clip_below(points: PackedVector2Array, y: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n := points.size()
+	for i in n:
+		var a := points[i]
+		var b := points[(i + 1) % n]
+		if a.y >= y:
+			out.append(a)
+		if (a.y >= y) != (b.y >= y):
+			var t := (y - a.y) / (b.y - a.y)
+			out.append(a.lerp(b, t))
+	return out
 
 
 ## A rounded box with an ink outline: a bottle, a label.
@@ -117,9 +156,9 @@ static func pie(ci: CanvasItem, center: Vector2, radii: Vector2, cut_at: float, 
 ## of it, the "pie cut" that stood in for a highlight. [param look] (-1..1 on
 ## each axis) slides the pupil towards the edge of the white.
 static func pie_eye(ci: CanvasItem, center: Vector2, radii: Vector2, look: Vector2, boil: int,
-		seed := 0, line := 3.5) -> void:
+		seed := 0, line := 3.5, pupil_size := 1.0) -> void:
 	blob(ci, center, radii, WHITE, boil, seed, line)
-	var pupil := radii * Vector2(0.64, 0.7)
+	var pupil := radii * Vector2(0.64, 0.7) * pupil_size
 	var at := center + look.limit_length(1.0) * (radii - pupil - Vector2(line, line) * 0.4)
 	pie(ci, at, pupil, -PI * 0.3, 0.95, INK)
 

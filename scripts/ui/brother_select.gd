@@ -70,7 +70,7 @@ func _ready() -> void:
 		about.position = Vector2((SPOTS[i] as Vector2).x - 320, 800)
 		add_child(about)
 	var hint := Ui.label("←  →  выбрать     ·     Пробел — в бой", Ui.text(34), 1920)
-	hint.position = Vector2(0, 962)
+	hint.position = Vector2(0, 972)
 	add_child(hint)
 	_show()
 
@@ -120,7 +120,7 @@ func _draw() -> void:
 		for b in BARS.size():
 			var row: Array = BARS[b]
 			var value := float(character.get(row[1], 0.0)) / float(row[2])
-			var y := 870.0 + b * 26.0
+			var y := 858.0 + b * 23.0
 			draw_string(Ui.font(), Vector2(x, y + 9), str(row[0]), HORIZONTAL_ALIGNMENT_LEFT, 150, 20,
 					Color("3a2418"))
 			var bar := Rect2(x + 160, y - 6, 250, 16)
