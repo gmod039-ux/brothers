@@ -32,9 +32,12 @@ func draw_body(boil: int, flash: bool) -> void:
 	for i in 2:
 		var sx := -1.0 if i == 0 else 1.0
 		var lift := -6.0 if step == i else 0.0
-		Toon.blob(self, Vector2(sx * 14.0, -4.0 + lift), Vector2(12.0, 8.0), paint(FEET, flash), boil, _seed + i, 4.0)
+		Toon.ball(self, Vector2(sx * 14.0, -4.0 + lift), Vector2(12.0, 8.0), paint(FEET, flash), boil, _seed + i, 4.0)
 	var at := Vector2(0, -34.0 + bob)
-	Toon.blob(self, at, Vector2(31.0, 27.0), paint(BODY, flash), boil, _seed + 2)
+	Toon.ball(self, at, Vector2(31.0, 27.0), paint(BODY, flash), boil, _seed + 2)
+	# Warts.
+	for w: Vector2 in [Vector2(-20, -10), Vector2(18, 6), Vector2(-6, -22)]:
+		Toon.blob(self, at + w, Vector2(3.5, 3.0), paint(BODY.darkened(0.15), flash), boil, _seed + 9, 2.0)
 	# Belly patch.
 	Toon.spot(self, at + Vector2(0, 10.0), Vector2(17.0, 10.0), Color(1, 1, 0.85, 0.28), boil, _seed + 3)
 	var look := gaze()

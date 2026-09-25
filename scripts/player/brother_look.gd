@@ -231,15 +231,18 @@ func _legs(hip: Vector2, stride: float, side: bool, dx: float, boil: int) -> voi
 		var toe := Vector2(dx * 8.0 * s, 0) if side else Vector2.ZERO
 		var radii := Vector2(19.0, 9.5) * s if side else Vector2(15.5, 10.5) * s
 		var shoe := feet[i] + toe + Vector2(0, -2.0 * s)
-		Toon.blob(self, shoe, radii, shoes, boil, _seed + 10 + i, 4.5 * s)
-		if shoes == Toon.INK:
-			# A shine on a black shoe.
-			Toon.spot(self, shoe + Vector2(-4.0 * s, -4.0 * s), Vector2(5.0, 2.5) * s,
-					Color(1, 1, 1, 0.55), 0, 0, -0.3)
-		else:
-			# The line of the sole on a white one.
+		Toon.ball(self, shoe, radii, shoes, boil, _seed + 10 + i, 4.5 * s, 0.0, 0.16)
+		if shoes != Toon.INK:
+			# The line of the sole and a lace on a white one.
 			Toon.stroke(self, Toon.bent(shoe + Vector2(-radii.x * 0.8, 4.0 * s),
 					shoe + Vector2(radii.x * 0.8, 4.0 * s), 2.0 * s), 2.6 * s)
+			var lace := shoe + Vector2(0, -radii.y * 0.45)
+			Toon.stroke(self, PackedVector2Array([lace + Vector2(-4, -2) * s, lace + Vector2(4, 2) * s]), 1.8 * s)
+			Toon.stroke(self, PackedVector2Array([lace + Vector2(-4, 2) * s, lace + Vector2(4, -2) * s]), 1.8 * s)
+		else:
+			# A welt round the toe of a black one.
+			Toon.stroke(self, Toon.bent(shoe + Vector2(-radii.x * 0.55, radii.y * 0.1),
+					shoe + Vector2(radii.x * 0.55, radii.y * 0.1), -radii.y * 0.5), 1.6 * s, Color(1, 1, 1, 0.25))
 
 
 func _body(at: Vector2, side: bool, dx: float, back: bool, boil: int) -> void:
@@ -254,8 +257,25 @@ func _body(at: Vector2, side: bool, dx: float, back: bool, boil: int) -> void:
 	var legs := Toon.clip_below(fill, waist)
 	if legs.size() >= 3:
 		draw_colored_polygon(legs, pants)
+	# The shadow side, in the darker shade of whichever cloth it falls on;
+	# black needs none.
+	var shadow := Toon.crescent(at, r, boil, _seed + 1, 5.0 * s, 0.0, _egg)
+	if shirt.v > 0.2:
+		Toon.polygon(self, Toon.clip_above(shadow, waist), shirt.darkened(0.22))
+		Toon.shine(self, at + Vector2(0, -r.y * 0.35), r * 0.6, 0.5)
+	if pants.v > 0.2:
+		Toon.polygon(self, Toon.clip_below(shadow, waist), pants.darkened(0.22))
+	if legs.size() >= 3:
 		var ends := _span(legs, waist)
 		Toon.stroke(self, PackedVector2Array([Vector2(ends.x, waist), Vector2(ends.y, waist)]), 3.0 * s)
+		if not back and wear == "bow":
+			# A belt buckle.
+			Toon.box(self, Vector2(at.x + (dx * 4.0 * s if side else 0.0), waist), Vector2(5.0, 3.5) * s,
+					Color("e8b83a"), boil, _seed + 61, 2.0 * s)
+		if not back and wear == "straps" and not side:
+			# A pocket on the shorts.
+			Toon.stroke(self, Toon.bent(Vector2(at.x + r.x * 0.15, waist + r.y * 0.35),
+					Vector2(at.x + r.x * 0.62, waist + r.y * 0.3), -3.0 * s), 2.0 * s)
 	if wear == "straps":
 		# Overall straps up over the shoulders, a button where each meets
 		# the trousers.
@@ -270,10 +290,15 @@ func _body(at: Vector2, side: bool, dx: float, back: bool, boil: int) -> void:
 			if not back:
 				Toon.blob(self, from + Vector2(0, 4.0 * s), Vector2(3.8, 3.8) * s, accent, boil, _seed + 60, 2.5 * s)
 	elif not back and wear == "bow":
-		# Shirt buttons.
+		# Shirt buttons, and the points of the collar either side of the bow.
 		for k in 2:
 			var y := at.y - r.y * 0.4 + k * r.y * 0.26
 			Toon.spot(self, Vector2(at.x + (dx * 4.0 * s if side else 0.0), y), Vector2(2.6, 2.6) * s, Toon.INK)
+		if not side:
+			for sx: float in [-1.0, 1.0]:
+				var neck := Vector2(at.x + sx * 5.0 * s, at.y - r.y * 0.92)
+				Toon.shape(self, PackedVector2Array([neck, neck + Vector2(sx * 11.0, -2.0) * s,
+						neck + Vector2(sx * 5.0, 8.0) * s]), shirt, 2.4 * s)
 
 
 ## The leftmost and rightmost x of [param points] on the line y = [param y].
@@ -334,11 +359,11 @@ func _arm(i: int, body: Vector2, shoulder_y: float, shoot: Vector2, stride: floa
 func _glove(at: Vector2, toward: Vector2, pointing: bool, shoot: Vector2, boil: int, i: int) -> void:
 	var s := size
 	var angle := toward.angle()
-	Toon.blob(self, at - toward * 10.0 * s, Vector2(5.0, 8.5) * s, WHITE, boil, _seed + 20 + i, 3.5 * s, angle)
+	Toon.ball(self, at - toward * 10.0 * s, Vector2(5.0, 8.5) * s, WHITE, boil, _seed + 20 + i, 3.5 * s, angle, 0.14)
 	if pointing:
 		Toon.blob(self, at + shoot * 13.0 * s, Vector2(9.0, 4.2) * s, WHITE, boil, _seed + 24 + i, 3.5 * s,
 				shoot.angle())
-	Toon.blob(self, at, Vector2(11.0, 10.0) * s, WHITE, boil, _seed + 22 + i, 3.5 * s, angle)
+	Toon.ball(self, at, Vector2(11.0, 10.0) * s, WHITE, boil, _seed + 22 + i, 3.5 * s, angle, 0.14)
 	var thumb := at + toward.orthogonal() * (7.0 if i == 0 else -7.0) * s - toward * 2.0 * s
 	Toon.blob(self, thumb, Vector2(4.5, 6.0) * s, WHITE, boil, _seed + 26 + i, 3.0 * s, angle)
 	for k in 3:
@@ -392,6 +417,8 @@ func _head(at: Vector2, face: Vector2, shoot: Vector2, side: bool, dx: float, ba
 				[at + Vector2(-0.27 * r, eye_y + 0.04 * r), Vector2(0.36, 0.46) * r],
 				[at + Vector2(0.27 * r, eye_y + 0.04 * r), Vector2(0.36, 0.46) * r]]
 	Toon.union(self, parts, WHITE, boil, _seed + 6, 4.0 * s)
+	var jaw: Array = parts[0]
+	Toon.shade(self, jaw[0], jaw[1], WHITE, boil, _seed + 6, 4.0 * s, 0.1)
 
 	# Mouth under the snout.
 	if shocked:
@@ -426,7 +453,7 @@ func _head(at: Vector2, face: Vector2, shoot: Vector2, side: bool, dx: float, ba
 	# thing on the face.
 	var snout := at + (Vector2(dx * 0.8 * r, 0.14 * r) if side else Vector2(0, 0.2 * r))
 	var snout_r := (Vector2(0.5, 0.24) if side else Vector2(0.3, 0.2)) * r
-	Toon.blob(self, snout, snout_r, WHITE, boil, _seed + 8, 4.0 * s)
+	Toon.ball(self, snout, snout_r, WHITE, boil, _seed + 8, 4.0 * s, 0.0, 0.12)
 	var nose := at + (Vector2(dx * 1.24 * r, 0.05 * r) if side else Vector2(0, 0.08 * r))
 	var nose_r := (Vector2(0.21, 0.17) if side else Vector2(0.26, 0.18)) * r
 	Toon.blob(self, nose, nose_r, Toon.INK, boil, _seed + 9, 3.0 * s)

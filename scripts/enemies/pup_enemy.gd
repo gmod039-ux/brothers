@@ -71,7 +71,7 @@ func draw_body(boil: int, flash: bool) -> void:
 	var head := Vector2(wiggle * 1.5 + lean * 20.0, -44 + bob)
 	for sx: float in [-1.0, 1.0]:
 		Toon.blob(self, head + Vector2(sx * 17.0, -2.0), Vector2(7, 11), skin.darkened(0.35), boil, _seed + 3 + int(sx), 3.0, sx * 0.4)
-	Toon.blob(self, head, Vector2(19, 16), skin, boil, _seed + 5)
+	Toon.ball(self, head, Vector2(19, 16), skin, boil, _seed + 5)
 	Toon.blob(self, head + Vector2(0, 7), Vector2(11, 7), paint(Color("e6c89a"), flash), boil, _seed + 6, 3.0)
 	Toon.blob(self, head + Vector2(0, 2), Vector2(6, 4.5), Toon.INK, boil, _seed + 7, 2.0)
 	# A little fang sticking up out of the underbite.

@@ -65,12 +65,15 @@ func draw_body(boil: int, flash: bool) -> void:
 	Toon.hose(self, Vector2(-10 + wiggle, -16), tail_tip, 8.0, 3.5, fur)
 	for sx: float in [-1.0, 1.0]:
 		Toon.blob(self, Vector2(sx * 8.0 + wiggle * 0.5, -3.0), Vector2(6, 4), paint(BrotherLook.WHITE, flash), boil, _seed + int(sx), 2.5)
-	Toon.blob(self, Vector2(wiggle, -16), Vector2(13, 10), fur, boil, _seed + 2, 3.5)
+	Toon.ball(self, Vector2(wiggle, -16), Vector2(13, 10), fur, boil, _seed + 2, 3.5)
 	var head := Vector2(0, -34)
 	for sx: float in [-1.0, 1.0]:
 		Toon.shape(self, PackedVector2Array([head + Vector2(sx * 15, -2), head + Vector2(sx * 5, -12),
 				head + Vector2(sx * 15, -22)]), fur, 3.0)
-	Toon.blob(self, head, Vector2(17, 14), fur, boil, _seed + 3)
+	Toon.ball(self, head, Vector2(17, 14), fur, boil, _seed + 3)
+	for j in 2:
+		Toon.stroke(self, PackedVector2Array([head + Vector2(-5 + j * 10, -14), head + Vector2(-4 + j * 8, -8)]), 2.5,
+				fur.darkened(0.3))
 	Toon.blob(self, head + Vector2(0, 5), Vector2(10, 6), paint(BaronBoss.MUZZLE, flash), boil, _seed + 4, 2.5)
 	var look := gaze()
 	for sx: float in [-1.0, 1.0]:

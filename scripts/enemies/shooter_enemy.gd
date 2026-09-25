@@ -58,7 +58,10 @@ func draw_body(boil: int, flash: bool) -> void:
 		var sx := -1.0 if i == 0 else 1.0
 		Toon.blob(self, Vector2(sx * 13.0, -4.0), Vector2(10.0, 7.0), paint(Color("5a3a2a"), flash), boil, _seed + i, 4.0)
 	var at := Vector2(0, -38.0)
-	Toon.blob(self, at, Vector2(30.0, 31.0) * puff, paint(BODY, flash), boil, _seed + 2)
+	Toon.ball(self, at, Vector2(30.0, 31.0) * puff, paint(BODY, flash), boil, _seed + 2)
+	# Spots on its hide.
+	for w: Vector2 in [Vector2(-18, 8), Vector2(20, -4), Vector2(12, 16)]:
+		Toon.spot(self, at + w * puff, Vector2(5, 4), paint(BODY.darkened(0.2), flash), boil, _seed + 11)
 	var look := gaze()
 	for i in 2:
 		var sx := -1.0 if i == 0 else 1.0

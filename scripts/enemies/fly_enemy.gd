@@ -30,7 +30,10 @@ func draw_body(boil: int, flash: bool) -> void:
 		var rot := sx * (0.9 if up else 0.25)
 		var wing_at := at + Vector2(sx * 12.0, -10.0 if up else -4.0) * k
 		Toon.blob(self, wing_at, Vector2(12.0, 7.0) * k, paint(WING, flash), boil, _seed + int(sx) + 3, 3.5, rot)
-	Toon.blob(self, at, Vector2(16.0, 14.0) * k, paint(BODY, flash), boil, _seed)
+	Toon.ball(self, at, Vector2(16.0, 14.0) * k, paint(BODY, flash), boil, _seed)
+	# Fuzz on its back, and the veins of the wings.
+	for j in 3:
+		Toon.stroke(self, PackedVector2Array([at + Vector2(-6 + j * 6, -12) * k, at + Vector2(-7 + j * 7, -17) * k]), 1.8)
 	var look := gaze()
 	Toon.pie_eye(self, at + Vector2(-6.0, -2.0) * k, Vector2(5.5, 7.0) * k, look, boil, _seed + 5, 2.5)
 	Toon.pie_eye(self, at + Vector2(6.0, -2.0) * k, Vector2(5.5, 7.0) * k, look, boil, _seed + 6, 2.5)

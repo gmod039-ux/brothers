@@ -7,6 +7,13 @@ extends Node2D
 
 const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten"]
 
+var room: Room
+
+
+func _exit_tree() -> void:
+	if room != null:
+		room.free()
+
 
 func _ready() -> void:
 	var paper := Polygon2D.new()
@@ -23,7 +30,7 @@ func _ready() -> void:
 	title.position = Vector2(0, 10)
 	add_child(title)
 	# A room that is never built: enemies want one to look for brothers in.
-	var room := Room.new()
+	room = Room.new()
 	var rng := RandomNumberGenerator.new()
 	for i in SMALL.size():
 		var kind: String = SMALL[i]
@@ -35,8 +42,8 @@ func _ready() -> void:
 	for i in bosses.size():
 		var boss := bosses[i]
 		boss.setup_boss(room, rng, 0)
-		boss.set_physics_process(false)
 		add_child(boss)
+		boss.set_physics_process(false)
 		boss.scale = Vector2(1.1, 1.1)
 		boss.position = Vector2(400 + i * 560.0, 900)
 		_caption(boss.title, Vector2(400 + i * 560.0, 930), 40)
@@ -59,8 +66,10 @@ func _make(kind: String, room: Room, rng: RandomNumberGenerator) -> Enemy:
 			enemy = KittenEnemy.new()
 	enemy.setup(kind, room, rng)
 	enemy._spawn = 0.0
-	enemy.set_physics_process(false)
 	add_child(enemy)
+	# After it is in: a node with _physics_process switches it on as it
+	# enters the tree.
+	enemy.set_physics_process(false)
 	return enemy
 
 

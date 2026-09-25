@@ -293,6 +293,7 @@ func _draw_baron(boil: int, flash: bool) -> void:
 	# The body: a round belly in a tailcoat over a white shirt front.
 	var body := Vector2(0, -92)
 	Toon.pear(self, body, Vector2(56, 50), 0.25, coat, boil, 6)
+	Toon.shade(self, body, Vector2(56, 50), coat, boil, 6, Toon.LINE, 0.25, 0.0, 0.25)
 	Toon.shape(self, PackedVector2Array([body + Vector2(-20, -44), body + Vector2(20, -44),
 			body + Vector2(0, 36)]), white, 3.0)
 	for k in 3:
@@ -323,7 +324,7 @@ func _draw_baron(boil: int, flash: bool) -> void:
 	Toon.stroke(self, PackedVector2Array([cane_hand + Vector2(4, -30), cane_hand + Vector2(10, 60)]), 7.0)
 	Toon.blob(self, cane_hand + Vector2(4, -34), Vector2(8, 8), paint(GOLD, flash), boil, 8, 3.0)
 	for hand: Vector2 in [free_hand, cane_hand]:
-		Toon.blob(self, hand, Vector2(15, 14), white, boil, 9 + int(hand.x), 4.0)
+		Toon.ball(self, hand, Vector2(15, 14), white, boil, 9 + int(hand.x), 4.0, 0.0, 0.14)
 	if state == "sweep_windup" or state == "sweep":
 		# The confetti cannon: a striped barrel held in both hands.
 		var mouth := Vector2(0, -80) + _aim * 110.0
@@ -336,7 +337,7 @@ func _draw_baron(boil: int, flash: bool) -> void:
 		var ear := PackedVector2Array([head + Vector2(sx * 50, -2), head + Vector2(sx * 18, -34),
 				head + Vector2(sx * 50, -58 + (14.0 if angry else 0.0))])
 		Toon.shape(self, ear, fur, 5.0)
-	Toon.blob(self, head, Vector2(54, 44), fur, boil, 12)
+	Toon.ball(self, head, Vector2(54, 44), fur, boil, 12)
 	for k in 3:
 		Toon.stroke(self, Toon.bent(head + Vector2(-14 + k * 14, -44), head + Vector2(-12 + k * 12, -28), 3.0),
 				5.0, dark)

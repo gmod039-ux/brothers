@@ -314,7 +314,7 @@ func _draw_bruno(boil: int, flash: bool) -> void:
 		var shoulder := Vector2(sx * 46.0, -110.0)
 		var fist: Vector2 = fists[i]
 		Toon.hose(self, shoulder, fist + (shoulder - fist).normalized() * 16.0, sx * -10.0, 14.0)
-		Toon.blob(self, fist, Vector2(21, 19), white, boil, _seed + 10 + i, 4.5)
+		Toon.ball(self, fist, Vector2(21, 19), white, boil, _seed + 10 + i, 4.5, 0.0, 0.14)
 		for k in 3:
 			var x := fist.x + (k - 1) * 6.0
 			Toon.stroke(self, PackedVector2Array([Vector2(x, fist.y - 8.0), Vector2(x, fist.y - 1.0)]), 2.2)
@@ -323,9 +323,16 @@ func _draw_bruno(boil: int, flash: bool) -> void:
 	for sx: float in [-1.0, 1.0]:
 		Toon.blob(self, head + Vector2(sx * 52.0, -14.0), Vector2(15, 26), skin.darkened(0.35), boil,
 				_seed + 20 + int(sx), 4.5, sx * 0.5)
-	Toon.blob(self, head, Vector2(56, 46), skin, boil, _seed + 22)
+	Toon.ball(self, head, Vector2(56, 46), skin, boil, _seed + 22)
+	# Stubble and a scar over the brow.
+	for j in 5:
+		Toon.spot(self, head + Vector2(-20 + j * 10, 30 + (j % 2) * 4), Vector2(1.6, 1.6), Color(0, 0, 0, 0.4))
+	Toon.stroke(self, PackedVector2Array([head + Vector2(26, -34), head + Vector2(36, -18)]), 2.5, skin.darkened(0.4))
+	for j in 3:
+		var y := -30.0 + j * 7.0
+		Toon.stroke(self, PackedVector2Array([head + Vector2(28, y), head + Vector2(35, y - 2)]), 2.0, skin.darkened(0.4))
 	for sx: float in [-1.0, 1.0]:
-		Toon.blob(self, head + Vector2(sx * 32.0, 20.0), Vector2(30, 22), light, boil, _seed + 24 + int(sx), 4.5)
+		Toon.ball(self, head + Vector2(sx * 32.0, 20.0), Vector2(30, 22), light, boil, _seed + 24 + int(sx), 4.5, 0.0, 0.12)
 	# The underbite: a dark jaw with two fangs sticking up.
 	Toon.blob(self, head + Vector2(0, 34.0), Vector2(36, 13), Color("2a1712"), boil, _seed + 26, 4.0)
 	for sx: float in [-1.0, 1.0]:

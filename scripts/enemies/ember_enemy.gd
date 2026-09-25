@@ -63,7 +63,7 @@ func draw_body(boil: int, flash: bool) -> void:
 		var up := (1.0 - y) * 0.5
 		flame.append(body + Vector2(sin(t) * sin(t * 0.5) * 11.0 + flick * up * up, -12.0 - up * 26.0 * swell))
 	Toon.shape(self, flame, StoveBoss.FIRE, 3.0)
-	Toon.blob(self, body, Vector2(18, 15) * swell, paint(Color("c8452c") if hot else COAL, flash), boil, _seed + 2, 3.5)
+	Toon.ball(self, body, Vector2(18, 15) * swell, paint(Color("c8452c") if hot else COAL, flash), boil, _seed + 2, 3.5)
 	# Glowing cracks.
 	Toon.stroke(self, PackedVector2Array([body + Vector2(-10, 4), body + Vector2(-3, 0), body + Vector2(2, 7)]), 2.0,
 			StoveBoss.FIRE)

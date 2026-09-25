@@ -218,10 +218,15 @@ func _draw_stove(boil: int, flash: bool) -> void:
 		var shoulder := Vector2(sx * 56.0, -112.0)
 		var hand: Vector2 = hands[i]
 		Toon.hose(self, shoulder, hand + (shoulder - hand).normalized() * 14.0, sx * -12.0, 11.0)
-		Toon.blob(self, hand, Vector2(17, 15), white, boil, 10 + i, 4.0)
+		Toon.ball(self, hand, Vector2(17, 15), white, boil, 10 + i, 4.0, 0.0, 0.14)
 	# The body: a riveted iron box.
 	var body := Vector2(0, -98)
 	Toon.box(self, body, Vector2(64, 72), iron, boil, 12, 6.0)
+	# The shadowed side of the iron, and a sheen down the lit one.
+	draw_rect(Rect2(body + Vector2(34, -60), Vector2(26, 124)), iron.darkened(0.25))
+	draw_rect(Rect2(body + Vector2(-54, -56), Vector2(8, 110)), Color(1, 1, 1, 0.12))
+	# The maker's plate.
+	Toon.box(self, body + Vector2(0, 54), Vector2(22, 7), paint(Color("b8863a"), flash), boil, 27, 2.5)
 	Toon.box(self, body + Vector2(0, -70), Vector2(70, 9), light, boil, 13, 4.0)
 	for k in 5:
 		var x := -48.0 + k * 24.0

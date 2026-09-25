@@ -78,6 +78,16 @@ static func blob(ci: CanvasItem, center: Vector2, radii: Vector2, fill: Color, b
 	ci.draw_colored_polygon(ellipse_points(center, radii, boil, seed, -line * 0.5, rot), fill)
 
 
+## [method blob] with cel shading and a shine: for the round, solid things
+## a figure is made of.
+static func ball(ci: CanvasItem, center: Vector2, radii: Vector2, fill: Color, boil: int,
+		seed := 0, line := LINE, rot := 0.0, amount := 0.2) -> void:
+	blob(ci, center, radii, fill, boil, seed, line, rot)
+	if fill.v > 0.15:
+		shade(ci, center, radii, fill, boil, seed, line, amount, rot)
+	shine(ci, center, radii, 0.5 if fill.v > 0.15 else 0.35, rot)
+
+
 ## A pear with an ink outline: wider at the bottom by [param egg].
 static func pear(ci: CanvasItem, center: Vector2, radii: Vector2, egg: float, fill: Color,
 		boil: int, seed := 0, line := LINE) -> void:
@@ -150,6 +160,66 @@ static func grown(points: PackedVector2Array, by: float) -> PackedVector2Array:
 	for p in points:
 		out.append(p + (p - middle).normalized() * by)
 	return out
+
+
+## Cel shading on a shape already drawn with [method blob]: a crescent of
+## shadow on its lower right, away from a light up and to the left, the way
+## a painted cel is shaded with one darker flat colour. [param amount] is
+## how much darker.
+static func shade(ci: CanvasItem, center: Vector2, radii: Vector2, fill: Color, boil: int,
+		seed := 0, line := LINE, amount := 0.2, rot := 0.0, egg := 0.0) -> void:
+	polygon(ci, crescent(center, radii, boil, seed, line, rot, egg), fill.darkened(amount))
+
+
+## The shadow crescent of [method shade], for drawing it in parts (a body
+## half shirt, half trousers).
+static func crescent(center: Vector2, radii: Vector2, boil: int, seed := 0, line := LINE,
+		rot := 0.0, egg := 0.0) -> PackedVector2Array:
+	var outer := ellipse_points(center, radii, boil, seed, -line * 0.5, rot, 1.2, 2.0, egg)
+	var n := outer.size()
+	var shift := Vector2(-radii.x * 0.1, -radii.y * 0.24)
+	var inner_radii := (radii - Vector2(line, line) * 0.5) * 0.95
+	# The rim's own points from a little above the right, round the bottom,
+	# to a little above the left -- then back along a smaller copy of the
+	# rim nudged towards the light.
+	var first := int(ceil(float(n) * (1.0 - 20.0 / 360.0)))
+	var last := int(floor(float(n) * 160.0 / 360.0))
+	var picked: Array[int] = []
+	var i := first
+	while true:
+		picked.append(i % n)
+		if i % n == last:
+			break
+		i += 1
+	var points := PackedVector2Array()
+	for k in picked:
+		points.append(outer[k])
+	for j in range(picked.size() - 1, -1, -1):
+		var a := TAU * picked[j] / n
+		var p := Vector2(cos(a) * inner_radii.x * (1.0 + egg * sin(a)), sin(a) * inner_radii.y) + shift
+		points.append(center + p.rotated(rot))
+	return points
+
+
+## Fills a polygon, quietly skipping one that has collapsed to nothing or
+## crosses itself -- cutting shadows out of small or clipped shapes makes
+## the odd one of those, and Godot prints an error for each.
+static func polygon(ci: CanvasItem, points: PackedVector2Array, color: Color) -> void:
+	var clean := PackedVector2Array()
+	for p in points:
+		if clean.is_empty() or clean[clean.size() - 1].distance_squared_to(p) > 0.01:
+			clean.append(p)
+	if clean.size() > 3 and clean[0].distance_squared_to(clean[clean.size() - 1]) <= 0.01:
+		clean.remove_at(clean.size() - 1)
+	if clean.size() < 3 or Geometry2D.triangulate_polygon(clean).is_empty():
+		return
+	ci.draw_colored_polygon(clean, color)
+
+
+## A small shine on the lit side of a round shape.
+static func shine(ci: CanvasItem, center: Vector2, radii: Vector2, alpha := 0.55, rot := 0.0) -> void:
+	var at := center + Vector2(-radii.x * 0.42, -radii.y * 0.45).rotated(rot)
+	spot(ci, at, Vector2(radii.x * 0.22, radii.y * 0.13), Color(1, 1, 1, alpha), 0, 0, rot - 0.6)
 
 
 ## A filled ellipse without an outline: shadows, cheeks, highlights.
