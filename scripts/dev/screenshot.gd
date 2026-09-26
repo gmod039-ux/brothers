@@ -71,6 +71,12 @@ func _tour(words: PackedStringArray) -> void:
 				event.pressed = true
 				Input.parse_input_event(event)
 				await _frames(1)
+				# And let go: a press without a release leaves the action held.
+				var release := InputEventAction.new()
+				release.action = value
+				release.pressed = false
+				Input.parse_input_event(release)
+				await _frames(1)
 				i += 2
 			"hurt", "die":
 				var brother := main.get("brother") as Brother

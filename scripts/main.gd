@@ -96,10 +96,13 @@ func _ready() -> void:
 	shooter.name = "Screenshot"
 	add_child(shooter)
 
+	# The dev sheets: pictures only, no game behind them. Esc closes them.
 	if _args.has("concepts"):
+		state = "sheet"
 		_select_layer.add_child(preload("res://scripts/dev/concept_sheet.gd").new())
 		return
 	if _args.has("bestiary"):
+		state = "sheet"
 		_select_layer.add_child(preload("res://scripts/dev/bestiary.gd").new())
 		return
 	if _args.has("textures"):
@@ -394,6 +397,10 @@ func _on_died() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if state == "sheet":
+		if event.is_action_pressed("pause"):
+			get_tree().quit()
+		return
 	if _busy or state == "select":
 		return
 	if event.is_action_pressed("restart"):
