@@ -135,6 +135,9 @@ func _enter(to: Vector2i, through: String) -> void:
 	var doors := plan.doors(to)
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
+	# The controls in chalk on the floor where the run begins.
+	if info.kind == "start" and floor_index == 0:
+		next.decals.add_child(ChalkHints.new())
 	for side: String in doors:
 		var beyond := plan.info(to + FloorPlan.SIDES[side])
 		if beyond.locked:
