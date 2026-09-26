@@ -28,17 +28,45 @@ const DOOR_GAP := 124.0
 ## walk before he is in the next room.
 const EXIT_DEPTH := 34.0
 
-## The look of each floor: the basement in brick red-brown and warm stone,
-## the boiler room in slate and pale concrete, the catacombs in mossy
-## green-grey.
+## The look of each floor: the basement in red brick and warm sandstone
+## tiles, the boiler room in riveted steel and concrete slabs, the catacombs
+## in rough stone and mossy flagstones. "floor_pattern" and "wall_pattern"
+## pick the shader's patterns (see shaders/room_paint.gdshader); "joint" is
+## the grout between floor stones, "mortar" between wall ones; "grout" the
+## ink of cracks drawn over the floor.
 const STYLES := [
-	{"wall": Color("a0563a"), "wall_stain": Color("6e3524"), "floor": Color("e9d6ac"),
-			"floor_stain": Color("c6a26c"), "grout": Color(0.42, 0.29, 0.18, 0.55)},
-	{"wall": Color("6c707e"), "wall_stain": Color("3c404c"), "floor": Color("dcd3c3"),
-			"floor_stain": Color("a3968a"), "grout": Color(0.25, 0.24, 0.26, 0.55)},
-	{"wall": Color("6f7d5c"), "wall_stain": Color("3f4a32"), "floor": Color("d4d6bb"),
-			"floor_stain": Color("98a078"), "grout": Color(0.24, 0.29, 0.2, 0.55)},
+	{"wall": Color("a8573b"), "wall_stain": Color("74382a"), "mortar": Color("4a271b"),
+			"cap": Color("c9a57e"), "floor": Color("e6cc9c"), "floor_stain": Color("c79c68"),
+			"joint": Color("8a6646"), "grout": Color(0.42, 0.29, 0.18, 0.5),
+			"floor_pattern": 0, "wall_pattern": 0, "ambient": 0.8,
+			"light": Color(1.0, 0.8, 0.5)},
+	{"wall": Color("6d7a8a"), "wall_stain": Color("414a57"), "mortar": Color("242a31"),
+			"cap": Color("9ca3aa"), "floor": Color("d6cfbf"), "floor_stain": Color("a2988a"),
+			"joint": Color("6b6660"), "grout": Color(0.25, 0.24, 0.26, 0.5),
+			"floor_pattern": 1, "wall_pattern": 1, "ambient": 0.78,
+			"light": Color(1.0, 0.68, 0.38)},
+	{"wall": Color("7f8569"), "wall_stain": Color("4c5340"), "mortar": Color("2a2e22"),
+			"cap": Color("aeb094"), "floor": Color("cacbac"), "floor_stain": Color("8f9672"),
+			"joint": Color("545b44"), "grout": Color(0.24, 0.29, 0.2, 0.5),
+			"floor_pattern": 2, "wall_pattern": 2, "ambient": 0.74,
+			"light": Color(1.0, 0.78, 0.5)},
 ]
+## Painted textures for the floors and walls of each style (see
+## textures/LICENSE.txt), two to choose between for each: [path, pixels to
+## one repeat] for a floor, [path, courses of stone in the picture, courses
+## on a wall] for a wall. [member texture_variant] picks which.
+const TEXTURES := [
+	{"floor": [["res://textures/terracotta_tiles_002.png", 448.0], ["res://textures/stone_floor_010.png", 820.0]],
+			"wall": [["res://textures/bricks_003.png", 9.0, 4.0], ["res://textures/bricks_001.png", 13.0, 5.0]]},
+	{"floor": [["res://textures/stone_floor_011.png", 700.0], ["res://textures/stone_floor_012.png", 1100.0]],
+			"wall": [["res://textures/metal_pattern_001.png", 6.0, 2.0], ["res://textures/metal_pattern_001.png", 6.0, 2.0]]},
+	{"floor": [["res://textures/stone_floor_003.png", 900.0], ["res://textures/stone_floor_003.png", 700.0]],
+			"wall": [["res://textures/stone_wall_004.png", 8.0, 4.0], ["res://textures/stone_wall_003.png", 6.0, 3.0]]},
+]
+## Which of each pair in [constant TEXTURES] the rooms are painted with;
+## -1 paints them with the drawn patterns instead. `-- textures N`.
+static var texture_variant := 0
+
 const ROCK := Color("a79a86")
 const ROCK_DARK := Color("7d705f")
 
@@ -294,32 +322,119 @@ func _paint_floor_and_walls() -> void:
 	dark.polygon = PackedVector2Array([Vector2.ZERO, Vector2(SIZE.x, 0), SIZE, Vector2(0, SIZE.y)])
 	dark.color = Toon.INK
 	_paint.add_child(dark)
-	var shades := {"top": 1.0, "right": 0.86, "bottom": 0.72, "left": 0.86}
+	# The back wall faces the lamps; the side walls are turned from them, and
+	# the front one is seen from behind its lit side.
+	var shades := {"top": 1.0, "right": 0.84, "bottom": 0.7, "left": 0.84}
 	var quads := faces()
+	var look := palette()
 	for side in DOORS:
 		var face := Polygon2D.new()
 		face.polygon = PackedVector2Array(quads[side])
 		var shade: float = shades[side]
 		face.color = Color(shade, shade, shade)
-		face.material = _paper(palette()["wall"], palette()["wall_stain"], 180.0, 0.55)
+		var material := _painted(1, int(look.get("wall_pattern", 0)), look["wall"], look["wall_stain"],
+				look.get("mortar", Toon.INK))
+		var quad: Array = quads[side]
+		for i in 4:
+			material.set_shader_parameter("q%d" % i, quad[i])
+		material.set_shader_parameter("rows", 4.0 if side == "top" or side == "bottom" else 5.0)
+		var wall_texture := _texture("wall")
+		if not wall_texture.is_empty():
+			material.set_shader_parameter("textured", true)
+			material.set_shader_parameter("albedo", load(wall_texture[0]))
+			material.set_shader_parameter("tex_rows", float(wall_texture[1]))
+			var courses: float = wall_texture[2]
+			material.set_shader_parameter("rows", courses if side == "top" or side == "bottom" else courses * 1.25)
+		face.material = material
 		_paint.add_child(face)
 	var ground := Polygon2D.new()
 	var f := FLOOR
 	ground.polygon = PackedVector2Array([f.position, Vector2(f.end.x, f.position.y), f.end,
 			Vector2(f.position.x, f.end.y)])
-	ground.material = _paper(palette()["floor"], palette()["floor_stain"], 260.0, 0.7)
+	ground.material = _painted(0, int(look.get("floor_pattern", 0)), look["floor"], look["floor_stain"],
+			look.get("joint", Toon.INK))
+	var floor_texture := _texture("floor")
+	if not floor_texture.is_empty():
+		var material := ground.material as ShaderMaterial
+		material.set_shader_parameter("textured", true)
+		material.set_shader_parameter("albedo", load(floor_texture[0]))
+		material.set_shader_parameter("tex_world", float(floor_texture[1]))
+		material.set_shader_parameter("tex_gain", 1.28)
+		material.set_shader_parameter("tex_tint", 0.38)
 	_paint.add_child(ground)
 
 
-func _paper(base: Color, stain: Color, blotch: float, amount: float) -> ShaderMaterial:
+## The painted texture for this room's "floor" or "wall", or [] to draw the
+## pattern: boss arenas keep their own.
+func _texture(part: String) -> Array:
+	if arena != "" or texture_variant < 0:
+		return []
+	var choices: Array = TEXTURES[clampi(style, 0, TEXTURES.size() - 1)][part]
+	return choices[clampi(texture_variant, 0, choices.size() - 1)]
+
+
+## The shader that paints a floor ([param part] 0) or a wall (1), lit by the
+## room's lights.
+func _painted(part: int, pattern: int, base: Color, stain: Color, joint: Color) -> ShaderMaterial:
+	var look := palette()
 	var material := ShaderMaterial.new()
-	material.shader = preload("res://shaders/paper.gdshader")
+	material.shader = preload("res://shaders/room_paint.gdshader")
+	material.set_shader_parameter("part", part)
+	material.set_shader_parameter("pattern", pattern)
 	material.set_shader_parameter("base", base)
 	material.set_shader_parameter("stain", stain)
-	material.set_shader_parameter("blotch", blotch)
-	material.set_shader_parameter("amount", amount)
+	material.set_shader_parameter("grout", joint)
+	material.set_shader_parameter("cap", look.get("cap", base.lightened(0.2)))
+	material.set_shader_parameter("trim", look.get("trim", Color("e0b23a")))
 	material.set_shader_parameter("seed", float(_layout_seed % 97))
+	material.set_shader_parameter("tile", TILE)
+	material.set_shader_parameter("floor_origin", FLOOR.position)
+	material.set_shader_parameter("floor_size", FLOOR.size)
+	material.set_shader_parameter("ambient", float(look.get("ambient", 0.8)))
+	var lights := PackedVector3Array()
+	var colors := PackedColorArray()
+	for light: Array in lights_of_room():
+		var at: Vector2 = light[0]
+		lights.append(Vector3(at.x, at.y, float(light[1])))
+		colors.append(light[2])
+	material.set_shader_parameter("light_count", lights.size())
+	# Uniform arrays want their full length.
+	while lights.size() < 8:
+		lights.append(Vector3.ZERO)
+		colors.append(Color(0, 0, 0, 0))
+	material.set_shader_parameter("lights", lights)
+	material.set_shader_parameter("light_colors", colors)
 	return material
+
+
+## The lights that paint this room: [where, radius, Color(rgb, strength)]
+## each. One broad light over the middle of every room, and the lamps the
+## decor or the arena hangs.
+func lights_of_room() -> Array:
+	var f := FLOOR
+	var middle := f.get_center()
+	var warm: Color = palette().get("light", Color(1, 0.85, 0.6))
+	var list: Array = [[middle + Vector2(0, 30), 980.0, Color(warm, 0.3)]]
+	match arena:
+		"ring":
+			list = [[middle + Vector2(0, 20), 720.0, Color(1, 0.96, 0.82, 0.55)]]
+		"boiler":
+			list.append([Vector2(f.position.x + 40, f.end.y - 40), 520.0, Color(1.0, 0.4, 0.15, 0.4)])
+			list.append([Vector2(f.end.x - 40, f.end.y - 40), 520.0, Color(1.0, 0.4, 0.15, 0.4)])
+			list.append([Vector2(middle.x, f.position.y - 40), 600.0, Color(1.0, 0.5, 0.2, 0.3)])
+		"cabaret":
+			list.append([Vector2(middle.x, f.position.y + 10), 700.0, Color(1.0, 0.85, 0.5, 0.35)])
+		_:
+			for i in 2:
+				var x := f.position.x + f.size.x * (0.22 + 0.56 * i)
+				list.append([Vector2(x, 100), 430.0, Color(warm, 0.45)])
+			if style == 2:
+				# Candles along the foot of the side walls.
+				for i in 3:
+					var at := Vector2(f.position.x - 12 if i % 2 == 0 else f.end.x + 12,
+							f.position.y + 100 + i * 230.0)
+					list.append([at, 210.0, Color(1.0, 0.75, 0.4, 0.4)])
+	return list
 
 
 ## Walls are slabs round the floor, with a gap where a door is. A shut door

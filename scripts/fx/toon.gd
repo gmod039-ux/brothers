@@ -361,3 +361,27 @@ static func hand_line(ci: CanvasItem, from: Vector2, to: Vector2, width: float, 
 		var w := wander * (0.7 * sin(t * 5.0 + p1) + 0.5 * sin(t * 11.0 + p2)) * sin(t * PI)
 		points.append(from.lerp(to, t) + side * w)
 	stroke(ci, points, width, color)
+
+
+## A soft glow: [param color] at the middle fading to nothing at the rim of
+## the ellipse. Light from a lamp, a shaft of sun, a warm pool on the floor.
+static func glow(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color, rings := 3) -> void:
+	# A fan of triangles from the middle, the colour eased out in rings so
+	# the fall-off is smooth rather than a straight ramp.
+	var n := clampi(int(maxf(radii.x, radii.y) * 0.25), 20, 64)
+	for r in rings:
+		var t0 := float(r) / rings
+		var t1 := float(r + 1) / rings
+		var a0 := color.a * pow(1.0 - t0, 2.0)
+		var a1 := color.a * pow(1.0 - t1, 2.0)
+		for i in n:
+			var u := TAU * i / n
+			var v := TAU * (i + 1) / n
+			var d0 := Vector2(cos(u), sin(u)) * radii
+			var d1 := Vector2(cos(v), sin(v)) * radii
+			if r == 0:
+				ci.draw_polygon(PackedVector2Array([center, center + d0 * t1, center + d1 * t1]),
+						PackedColorArray([Color(color, a0), Color(color, a1), Color(color, a1)]))
+			else:
+				ci.draw_polygon(PackedVector2Array([center + d0 * t0, center + d0 * t1, center + d1 * t1, center + d1 * t0]),
+						PackedColorArray([Color(color, a0), Color(color, a1), Color(color, a1), Color(color, a0)]))

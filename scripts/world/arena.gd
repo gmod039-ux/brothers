@@ -13,12 +13,18 @@ extends Node2D
 
 ## Floor and wall colours for each, over the floor's usual ones.
 const PALETTES := {
-	"ring": {"wall": Color("7a4a3a"), "wall_stain": Color("3e231b"), "floor": Color("d8dcd6"),
-			"floor_stain": Color("a9b0a8"), "grout": Color(0, 0, 0, 0)},
-	"boiler": {"wall": Color("5a5550"), "wall_stain": Color("2e2a28"), "floor": Color("8e8f96"),
-			"floor_stain": Color("5e5f66"), "grout": Color(0, 0, 0, 0)},
-	"cabaret": {"wall": Color("7a1e22"), "wall_stain": Color("4a0e12"), "floor": Color("a3262a"),
-			"floor_stain": Color("741a1e"), "grout": Color(0, 0, 0, 0)},
+	"ring": {"wall": Color("7e4a3a"), "wall_stain": Color("4e2b21"), "mortar": Color("2e1a14"),
+			"cap": Color("a67c68"), "floor": Color("e2e0d4"), "floor_stain": Color("a3aab0"),
+			"joint": Color("3a3a3a"), "grout": Color(0, 0, 0, 0), "floor_pattern": 3,
+			"wall_pattern": 0, "ambient": 0.68},
+	"boiler": {"wall": Color("5e6672"), "wall_stain": Color("353b44"), "mortar": Color("1e2228"),
+			"cap": Color("8a9098"), "floor": Color("9a9ca4"), "floor_stain": Color("5e6068"),
+			"joint": Color("26282c"), "grout": Color(0, 0, 0, 0), "floor_pattern": 4,
+			"wall_pattern": 1, "ambient": 0.72},
+	"cabaret": {"wall": Color("8e2328"), "wall_stain": Color("5c1519"), "mortar": Color("2e0a0c"),
+			"cap": Color("c9a050"), "floor": Color("a8282c"), "floor_stain": Color("6e1519"),
+			"joint": Color("2e0a0c"), "trim": Color("e8b83a"), "grout": Color(0, 0, 0, 0),
+			"floor_pattern": 5, "wall_pattern": 3, "ambient": 0.72},
 }
 const GOLD := Color("e8b83a")
 
@@ -74,11 +80,18 @@ func _ring() -> void:
 		Toon.box(self, at, Vector2(120, 44), Color("e9d6ac"), 0, 40 + i, 4.0, (i - 0.5) * 0.08)
 		var text := "БРУНО" if i == 0 else "ЧЕМПИОН"
 		draw_string(Ui.font(), at + Vector2(-110, 12), text, HORIZONTAL_ALIGNMENT_CENTER, 220, 34 if text.length() > 5 else 40, Color("b8322a"))
-	# The mat's edge, a shade darker.
 	var mat := f.grow(-18.0)
-	draw_rect(mat, Color(0.35, 0.4, 0.45, 0.12), false, 30.0)
-	# A spotlight on the middle from the lamp.
-	Toon.spot(self, f.get_center() + Vector2(0, 20), Vector2(420, 190), Color(1, 0.97, 0.8, 0.14))
+	# The ring's emblem painted on the mat: a laurel round a big Б.
+	var emblem := f.get_center() + Vector2(0, 20)
+	draw_arc(emblem, 150.0, 0.0, TAU, 64, Color(0.55, 0.12, 0.1, 0.35), 10.0, true)
+	draw_arc(emblem, 128.0, 0.0, TAU, 64, Color(0.55, 0.12, 0.1, 0.25), 3.0, true)
+	for side: float in [-1.0, 1.0]:
+		for k in 7:
+			var a := PI * 0.5 + side * (0.5 + k * 0.28)
+			var at := emblem + Vector2(cos(a), sin(a)) * 108.0
+			Toon.spot(self, at, Vector2(12, 5), Color(0.55, 0.12, 0.1, 0.3), 0, k, a + side * 0.9)
+	draw_string(Ui.font(), emblem + Vector2(-60, 44), "Б", HORIZONTAL_ALIGNMENT_CENTER, 120, 130,
+			Color(0.55, 0.12, 0.1, 0.35))
 	# Ropes: red, white, blue, round the mat, with a post in each corner.
 	var corners := [mat.position, Vector2(mat.end.x, mat.position.y), mat.end, Vector2(mat.position.x, mat.end.y)]
 	var colors := [Color("c8392b"), BrotherLook.WHITE, Color("3f6fb5")]
@@ -101,22 +114,6 @@ func _ring() -> void:
 func _boiler() -> void:
 	var f := Room.FLOOR
 	var d := int(_clock * Toon.FPS)
-	# Diamond plate: rows of little raised slashes.
-	for row in 16:
-		for col in 30:
-			var at := f.position + Vector2(col * 50.0 + (25.0 if row % 2 == 1 else 0.0) + 12.0, row * 50.0 + 14.0)
-			if not f.has_point(at):
-				continue
-			var s := 1.0 if (row + col) % 2 == 0 else -1.0
-			draw_line(at + Vector2(-7, -4 * s), at + Vector2(7, 4 * s), Color(1, 1, 1, 0.16), 3.0)
-			draw_line(at + Vector2(-7, -4 * s) + Vector2(0, 2), at + Vector2(7, 4 * s) + Vector2(0, 2),
-					Color(0, 0, 0, 0.2), 2.0)
-	# A red glow from the furnaces, stronger at the edges.
-	var glow := Color(0.9, 0.3, 0.1, 0.16 + 0.04 * float(d % 2))
-	for side in 4:
-		var rect: Rect2 = [Rect2(f.position, Vector2(f.size.x, 60)), Rect2(Vector2(f.position.x, f.end.y - 60), Vector2(f.size.x, 60)),
-				Rect2(f.position, Vector2(60, f.size.y)), Rect2(Vector2(f.end.x - 60, f.position.y), Vector2(60, f.size.y))][side]
-		draw_rect(rect, glow)
 	# Pipes along the back wall, with a gauge and a valve wheel on each.
 	for p in 2:
 		var y := 58.0 + p * 44.0
@@ -156,16 +153,6 @@ func _boiler() -> void:
 func _cabaret() -> void:
 	var f := Room.FLOOR
 	var d := int(_clock * Toon.FPS)
-	# A gold diamond pattern woven into the carpet.
-	for row in 8:
-		for col in 14:
-			var at := f.position + Vector2(col, row) * Room.TILE + Vector2(Room.TILE, Room.TILE) * 0.5
-			if not f.has_point(at):
-				continue
-			var s := 18.0
-			var diamond := PackedVector2Array([at + Vector2(0, -s), at + Vector2(s, 0), at + Vector2(0, s), at + Vector2(-s, 0)])
-			diamond.append(diamond[0])
-			draw_polyline(diamond, Color(GOLD, 0.35), 3.0, true)
 	# Velvet curtains along the back wall, with a scalloped valance.
 	for k in 22:
 		var x := 40.0 + k * 84.0
@@ -184,13 +171,13 @@ func _cabaret() -> void:
 		var at := Vector2(f.position.x + 40 + k * 106.0, f.position.y + 12)
 		var lit := Toon.hash01(d / 3 + k, 3) > 0.12
 		if lit:
-			Toon.spot(self, at + Vector2(0, 16), Vector2(50, 22), Color(1, 0.9, 0.5, 0.2))
+			Toon.glow(self, at + Vector2(0, 16), Vector2(70, 34), Color(1, 0.9, 0.5, 0.35))
 		Toon.blob(self, at, Vector2(9, 9), Color("fff1a8") if lit else Color("8a7a5a"), 0, 100 + k, 3.0)
 	# Spotlights roaming over the floor.
 	for i in 2:
 		var t := _clock * 0.35 + i * PI
 		var at := f.get_center() + Vector2(cos(t) * f.size.x * 0.33, sin(t * 1.3) * f.size.y * 0.3)
-		Toon.spot(self, at, Vector2(170, 80), Color(1, 0.96, 0.8, 0.16))
+		Toon.glow(self, at, Vector2(230, 110), Color(1, 0.96, 0.8, 0.3))
 	# The chandelier's shadow, cast on the carpet from above.
 	var c := f.get_center() + Vector2(0, -40)
 	for k in 8:

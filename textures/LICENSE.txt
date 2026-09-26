@@ -1,0 +1,14 @@
+Textures in this folder: Stylized Textures (stylizedtextures.com, also 3dtextures.me),
+released under CC0 1.0 (public domain): https://creativecommons.org/publicdomain/zero/1.0/
+Base colour maps only, scaled down from 4096 to 1024 px.
+
+bricks_001.png            Stylized Bricks 001
+bricks_003.png            Stylized Bricks 003
+metal_pattern_001.png     Stylized Metal Pattern 001
+stone_floor_003.png       Stylized Stone Floor 003
+stone_floor_010.png       Stylized Stone Floor 010
+stone_floor_011.png       Stylized Stone Floor 011
+stone_floor_012.png       Stylized Stone Floor 012
+stone_wall_003.png        Stylized Stone Wall 003
+stone_wall_004.png        Stylized Stone Wall 004
+terracotta_tiles_002.png  Stylized Terracotta Tiles 002

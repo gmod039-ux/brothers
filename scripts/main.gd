@@ -93,6 +93,8 @@ func _ready() -> void:
 	if _args.has("bestiary"):
 		_select_layer.add_child(preload("res://scripts/dev/bestiary.gd").new())
 		return
+	if _args.has("textures"):
+		Room.texture_variant = int(_arg("textures", "0"))
 	demo = _args.has("demo")
 	god = _args.has("god") or demo
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
