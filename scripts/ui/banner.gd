@@ -114,6 +114,12 @@ func clear() -> void:
 	if _tween != null:
 		_tween.kill()
 	visible = false
+	# The caption too: an item's name left over from the last floor sat
+	# over the title of the next.
+	if _caption_tween != null:
+		_caption_tween.kill()
+	if _caption != null:
+		_caption.visible = false
 
 
 ## A ribbon, a band or a starburst behind the big title.

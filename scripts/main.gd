@@ -348,6 +348,7 @@ func _descend() -> void:
 		_busy = false
 		_finish()
 		return
+	banner.clear()
 	run.descend()
 	room = run.room
 	iris.open(brother.global_position + Vector2(0, -60))
