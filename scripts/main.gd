@@ -17,6 +17,7 @@ var world: Node2D
 var camera: Camera2D
 var hud: Hud
 var banner: Banner
+var intertitle: Intertitle
 var iris: Iris
 var film: Film
 var select: BrotherSelect
@@ -69,6 +70,11 @@ func _ready() -> void:
 	add_child(ui_layer)
 	banner = Banner.new()
 	ui_layer.add_child(banner)
+	var card_layer := CanvasLayer.new()
+	card_layer.layer = 30
+	add_child(card_layer)
+	intertitle = Intertitle.new()
+	card_layer.add_child(intertitle)
 	var flash_layer := CanvasLayer.new()
 	flash_layer.layer = 18
 	add_child(flash_layer)
@@ -169,6 +175,7 @@ func show_select() -> void:
 	state = "select"
 	get_tree().paused = false
 	banner.clear()
+	intertitle.hide_card()
 	_clear_world()
 	hud.visible = false
 	select = BrotherSelect.new()
@@ -193,6 +200,7 @@ func start_run(seed_value: int) -> void:
 	rng.seed = seed_value
 	get_tree().paused = false
 	banner.clear()
+	intertitle.hide_card()
 	_clear_world()
 	brother = Brother.new()
 	var input: PlayerInput = BotInput.new() if demo else DeviceInput.new("p1_")
@@ -267,7 +275,7 @@ func _on_bosses(bosses: Array[Boss]) -> void:
 		boss.stomped.connect(func() -> void: _shake = 0.3)
 		names.append(boss.title)
 	var sub := bosses[0].subtitle if bosses.size() == 1 else "оба разом!"
-	banner.say(" и ".join(names), sub, Run.BOSS_INTRO - 0.5)
+	banner.say(" и ".join(names), sub, Run.BOSS_INTRO - 0.25, "boss")
 
 
 func _on_boss_beaten(_boss: Enemy) -> void:
@@ -276,7 +284,7 @@ func _on_boss_beaten(_boss: Enemy) -> void:
 	Sfx.play("item", 0.0, 0.0)
 	_shake = 0.4
 	var sub := "люк открыт — вниз!" if not run.is_last_floor() else "люк открыт — на волю!"
-	banner.say("Победа!", sub, 2.0)
+	banner.say("НОКАУТ!", sub, 2.2, "knockout")
 	print("boss beaten on floor %d at %.0f s" % [run.floor_index + 1, _play_time])
 
 
@@ -302,9 +310,32 @@ func _finish() -> void:
 	state = "over"
 	get_tree().paused = true
 	var seconds := _play_time
-	banner.say("Выбрались!", "за %d:%02d   ·   R — ещё раз   ·   Esc — выбрать брата"
-			% [int(seconds) / 60, int(seconds) % 60], 0.0)
+	intertitle.show_card("won", "Выбрались!", _run_lines(),
+			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
 	print("finished in %.1f s" % seconds)
+
+
+## The numbers of the run for the card at its end.
+func _run_lines() -> PackedStringArray:
+	var seconds := int(_play_time)
+	var lines := PackedStringArray()
+	if run != null:
+		lines.append("%s, этаж %d из %d   ·   комнат пройдено: %d" % [run.floor_name(), run.floor_index + 1,
+				Run.FLOORS, run.rooms_cleared])
+		lines.append("нокаутов: %d   ·   боссов: %d   ·   время %d:%02d" % [run.kills, run.bosses_beaten,
+				seconds / 60, seconds % 60])
+	elif waves != null:
+		lines.append("волна %d   ·   время %d:%02d" % [waves.current, seconds / 60, seconds % 60])
+	lines.append("забег №%d" % run_seed)
+	return lines
+
+
+func _look() -> Dictionary:
+	return GameData.character(chosen).get("look", {})
+
+
+func _items() -> Array[String]:
+	return brother.items if brother != null else ([] as Array[String])
 
 
 func _clear_world() -> void:
@@ -347,9 +378,8 @@ func _on_died() -> void:
 		return
 	await iris.close(at, 0.8)
 	get_tree().paused = true
-	var where := "волна %d" % waves.current if waves != null else \
-			"%s, комнат пройдено: %d" % [run.floor_name(), run.rooms_cleared] if run != null else ""
-	banner.say("Эх, братец…", where + "   ·   R — ещё раз   ·   Esc — выбрать брата", 0.0)
+	intertitle.show_card("dead", "Эх, братец…", _run_lines(),
+			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -362,10 +392,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_restart(true)
 		elif get_tree().paused:
 			get_tree().paused = false
-			banner.clear()
+			intertitle.hide_card()
 		else:
 			get_tree().paused = true
-			banner.say("Пауза", "Esc — дальше   ·   Enter — выбрать брата", 0.0)
+			intertitle.show_card("pause", "Пауза", PackedStringArray(["Esc — дальше", "R — заново",
+					"Enter — выбрать брата"]), "", {}, _items())
 	elif event.is_action_pressed("confirm") and get_tree().paused and state == "play":
 		_restart(true)
 
@@ -375,6 +406,7 @@ func _restart(to_select: bool) -> void:
 	_busy = true
 	get_tree().paused = false
 	banner.clear()
+	intertitle.hide_card()
 	if not iris.is_closed():
 		var at := brother.global_position + Vector2(0, -60) if brother != null else camera.position + Vector2.ZERO
 		await iris.close(at, 0.5)

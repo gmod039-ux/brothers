@@ -17,6 +17,8 @@ extends Node
 ##   coins N       give him N coins
 ##   floor N       go down to floor N (1 is the first)
 ##   god on|off    whether hits cost anything
+##   finish        end the run as if out of the last trapdoor
+##   ko            knock out the bosses in the room
 ##   *.png         save the screen there
 ##
 ## Without `shot` or `tour` on the command line this node does nothing.
@@ -100,6 +102,16 @@ func _tour(words: PackedStringArray) -> void:
 					rich.coins = int(value)
 					rich.inventory_changed.emit()
 				i += 2
+			"ko":
+				var boss_run := main.get("run") as Run
+				if boss_run != null:
+					for boss: Boss in boss_run.bosses:
+						if is_instance_valid(boss):
+							boss.hurt(boss.hp + 1.0, Vector2.ZERO)
+				i += 1
+			"finish":
+				main.call("_finish")
+				i += 1
 			"god":
 				var brother := main.get("brother") as Brother
 				if brother != null:
