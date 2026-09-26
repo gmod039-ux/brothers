@@ -184,6 +184,10 @@ func show_select() -> void:
 	banner.clear()
 	intertitle.hide_card()
 	_clear_world()
+	# Back where it stood at the start: the poster is drawn on the screen, and
+	# the iris closes on the brother chosen by where he stands on it, which is
+	# the same point in the world only with the camera here.
+	camera.position = Room.SIZE * 0.5
 	hud.visible = false
 	select = BrotherSelect.new()
 	_select_layer.add_child(select)

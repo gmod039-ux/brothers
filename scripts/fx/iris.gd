@@ -50,6 +50,12 @@ func _run(at: Vector2, from: float, to: float, seconds: float,
 		easing: Tween.EaseType) -> Signal:
 	if _tween != null:
 		_tween.kill()
+	# A camera moved this frame (to the first room of a floor) tells the
+	# viewport only on the next one: the circle would open round the room it
+	# left, off the screen, and the new room pop out of black all at once.
+	var camera := get_viewport().get_camera_2d()
+	if camera != null:
+		camera.force_update_scroll()
 	var size := get_viewport().get_visible_rect().size
 	var on_screen := get_viewport().get_canvas_transform() * at
 	_material.set_shader_parameter("center", on_screen / size)
