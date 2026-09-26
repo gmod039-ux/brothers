@@ -57,11 +57,11 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 	var pause := kind == "pause"
 	_title.label_settings.font_size = Ui.fit(title, 104 if pause else 116, 620.0 if pause else 1300.0)
 	_title.size = Vector2(1920, 180)
-	_title.position = Vector2(0, 250 if pause else 76)
+	_title.position = Vector2(0, 230 if pause else 76)
 	_lines.size = Vector2(1920, 300)
-	_lines.position = Vector2(0, 430 if pause else 660)
+	_lines.position = Vector2(0, 410 if pause else 660)
 	_lines.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_hint.position = Vector2(0, 704 if pause else 958)
+	_hint.position = Vector2(0, 582 if pause else 958)
 	if not pause and not look.is_empty():
 		_figure = BrotherLook.new()
 		_figure.configure(look)
@@ -81,6 +81,12 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 			_title.scale = Vector2(step, step)
 			queue_redraw())
 		tween.tween_interval(1.0 / Toon.FPS)
+
+
+## Changes the hint under the card while it is up: the loudness on the pause
+## card after M or N.
+func set_hint(hint: String) -> void:
+	_hint.text = hint
 
 
 func hide_card() -> void:
@@ -139,13 +145,15 @@ func _draw() -> void:
 
 func _draw_pause() -> void:
 	draw_rect(Rect2(0, 0, 1920, 1080), Color(0.06, 0.04, 0.03, 0.62))
-	var card := Rect2(560, 240, 800, 470)
+	var card := Rect2(560, 220, 800, 540)
 	Frames.card(self, card.grow(6), SEPIA, 0.96)
 	_frame_rect(card.grow(-22))
 	var width := Ui.title_font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			_title.label_settings.font_size).x
-	Frames.ribbon(self, Vector2(960, 340), (width + 120.0) * _pop, 130.0 * _pop)
-	_item_row(Vector2(960, 620))
+	Frames.ribbon(self, Vector2(960, 320), (width + 120.0) * _pop, 130.0 * _pop)
+	# A thin rule between the ways on and the loudness.
+	draw_line(Vector2(700, 566), Vector2(1220, 566), Color(CREAM, 0.35), 2.0)
+	_item_row(Vector2(960, 684))
 
 
 ## Pictures of the items he had, in a row under the numbers.

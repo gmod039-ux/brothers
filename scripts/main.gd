@@ -45,6 +45,7 @@ var _args := PackedStringArray()
 
 func _ready() -> void:
 	Controls.setup()
+	Settings.load_saved()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_args = OS.get_cmdline_user_args()
 	_fit_window()
@@ -136,6 +137,9 @@ func _fit_window() -> void:
 	var size := Vector2i(width, int(width * 9.0 / 16.0))
 	DisplayServer.window_set_size(size)
 	DisplayServer.window_set_position(area.position + (area.size - size) / 2)
+	# Whole screen again if it was left that way (F11).
+	if Settings.fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 ## The whole screen flashes a colour for a moment: a boss losing his temper.
@@ -147,17 +151,45 @@ func _screen_flash(color: Color, seconds: float) -> void:
 
 func _toggle_fullscreen() -> void:
 	var mode := DisplayServer.window_get_mode()
-	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+	Settings.fullscreen = not (mode == DisplayServer.WINDOW_MODE_FULLSCREEN
+			or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	Settings.save()
+	if Settings.fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		_fit_window()
+
+
+## M and N: the music and the sounds a step quieter, round to loudest after
+## silence. Said on the pause card when it is up, in a caption otherwise.
+func _turn_down(music: bool) -> void:
+	if music:
+		Settings.music = Settings.next_step(Settings.music)
+		Settings.apply_to_bus(Music.BUS, Settings.music)
 	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		Settings.sounds = Settings.next_step(Settings.sounds)
+		Settings.apply_to_bus(Sfx.BUS, Settings.sounds)
+	Settings.save()
+	Sfx.play("select", -6.0, 0.0)
+	if get_tree().paused and state == "play":
+		intertitle.set_hint(_volume_hint())
+	elif not intertitle.visible:
+		banner.caption("Музыка: %s" % Settings.shown(Settings.music) if music
+				else "Звук: %s" % Settings.shown(Settings.sounds), "", 0.8)
+
+
+func _volume_hint() -> String:
+	return "M — музыка: %s   ·   N — звук: %s" % [Settings.shown(Settings.music), Settings.shown(Settings.sounds)]
 
 
 func _input(event: InputEvent) -> void:
 	# Before anything else gets it, in every state, the menu included.
 	if event.is_action_pressed("fullscreen"):
 		_toggle_fullscreen()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("music") or event.is_action_pressed("sounds"):
+		_turn_down(event.is_action_pressed("music"))
 		get_viewport().set_input_as_handled()
 
 
@@ -418,7 +450,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			get_tree().paused = true
 			intertitle.show_card("pause", "Пауза", PackedStringArray(["Esc — дальше", "R — заново",
-					"Enter — выбрать брата"]), "", {}, _items())
+					"Enter — выбрать брата"]), _volume_hint(), {}, _items())
 	elif event.is_action_pressed("confirm") and get_tree().paused and state == "play":
 		_restart(true)
 

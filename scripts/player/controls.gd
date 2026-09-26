@@ -18,6 +18,8 @@ static func setup() -> void:
 	_action("pause", [KEY_ESCAPE], [JOY_BUTTON_START])
 	_action("confirm", [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE], [JOY_BUTTON_A])
 	_action("fullscreen", [KEY_F11], [])
+	_action("music", [KEY_M], [])
+	_action("sounds", [KEY_N], [])
 
 
 ## Actions for one brother: `<prefix>left` … for walking, `<prefix>shoot_left`

@@ -11,6 +11,8 @@ extends Node
 
 const RATE := 22050
 const VOICES := 10
+## Their own bus, so N can turn them down without touching the music.
+const BUS := "Sounds"
 
 static var bank: Sfx
 
@@ -33,8 +35,14 @@ static func play(sound: String, volume_db := 0.0, jitter := 0.06) -> void:
 func _ready() -> void:
 	bank = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if AudioServer.get_bus_index(BUS) < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, BUS)
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+	Settings.apply_to_bus(BUS, Settings.sounds)
 	for i in VOICES:
 		var player := AudioStreamPlayer.new()
+		player.bus = BUS
 		add_child(player)
 		_players.append(player)
 	_make()

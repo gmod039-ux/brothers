@@ -48,6 +48,7 @@ func _ready() -> void:
 	deck = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_make_bus()
+	Settings.apply_to_bus(BUS, Settings.music)
 	_player = AudioStreamPlayer.new()
 	_player.bus = BUS
 	_player.volume_db = -80.0
