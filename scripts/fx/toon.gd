@@ -298,9 +298,13 @@ static func glove(ci: CanvasItem, center: Vector2, r: float, boil: int, seed := 
 
 
 ## A five-pointed star with an ink edge.
+## Too small to have points (a sparkle fading out) it is left out: its
+## inner corners would cross over and the polygon would not fill.
 static func star(ci: CanvasItem, center: Vector2, r: float, rot: float, fill: Color) -> void:
+	if r < 3.0:
+		return
 	ci.draw_colored_polygon(_star_points(center, r + 3.0, r * 0.46 + 2.5, rot), INK)
-	ci.draw_colored_polygon(_star_points(center, r - 1.0, r * 0.46 - 0.8, rot), fill)
+	ci.draw_colored_polygon(_star_points(center, r - 1.0, maxf(r * 0.46 - 0.8, r * 0.25), rot), fill)
 
 
 static func _star_points(center: Vector2, outer: float, inner: float,
