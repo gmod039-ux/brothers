@@ -1,0 +1,13 @@
+Ragtime by Scott Joplin (compositions in the public domain), recordings from
+Wikimedia Commons released into the public domain by their performers:
+
+entertainer.ogg   "The Entertainer" (1902), recorded by User:IE, 2007
+                  https://commons.wikimedia.org/wiki/File:The_Entertainer_-_Scott_Joplin.ogg
+maple_leaf.ogg    "Maple Leaf Rag" (1899), by Gnissah
+                  https://commons.wikimedia.org/wiki/File:Scott_Joplin_-_Maple_Leaf_Rag_(1899).ogg
+pine_apple.ogg    "Pine Apple Rag" (1908), by Gnissah
+                  https://commons.wikimedia.org/wiki/File:Scott_Joplin_-_Pine_Apple_Rag_(1908).ogg
+magnetic.ogg      "Magnetic Rag" (1914), by Gnissah
+                  https://commons.wikimedia.org/wiki/File:Scott_Joplin_-_Magnetic_Rag_(1914).ogg
+stop_time.ogg     "Stop Time Rag" (1910), by Gnissah
+                  https://commons.wikimedia.org/wiki/File:Scott_Joplin_-_Stop_Time_Rag_(1910).ogg

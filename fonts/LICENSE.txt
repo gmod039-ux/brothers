@@ -1,0 +1,5 @@
+Fonts from Google Fonts (github.com/google/fonts), SIL Open Font License 1.1:
+https://openfontlicense.org
+
+Oi-Regular.ttf          Oi, by Kostas Bartsokas -- titles
+YesevaOne-Regular.ttf   Yeseva One, by Jovanny Lemonad -- text

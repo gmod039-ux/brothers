@@ -55,7 +55,7 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 		_figure.queue_free()
 		_figure = null
 	var pause := kind == "pause"
-	_title.label_settings.font_size = 110 if pause else 120
+	_title.label_settings.font_size = Ui.fit(title, 104 if pause else 116, 620.0 if pause else 1300.0)
 	_title.size = Vector2(1920, 180)
 	_title.position = Vector2(0, 250 if pause else 76)
 	_lines.size = Vector2(1920, 300)
@@ -122,7 +122,8 @@ func _draw() -> void:
 	Toon.glow(self, center, Vector2(560, 360), Color(1, 0.9, 0.7, 0.12), 3)
 	_frame(Vector2(1920, 1080), 40.0)
 	# A ribbon behind the title.
-	var width := Ui.font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 120).x
+	var width := Ui.title_font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_title.label_settings.font_size).x
 	Frames.ribbon(self, Vector2(960, 170), (width + 140.0) * _pop, 150.0 * _pop,
 			RED if _kind == "dead" else Color("a8781f"))
 	# The floor under the figure.
@@ -141,7 +142,8 @@ func _draw_pause() -> void:
 	var card := Rect2(560, 240, 800, 470)
 	Frames.card(self, card.grow(6), SEPIA, 0.96)
 	_frame_rect(card.grow(-22))
-	var width := Ui.font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 110).x
+	var width := Ui.title_font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_title.label_settings.font_size).x
 	Frames.ribbon(self, Vector2(960, 340), (width + 120.0) * _pop, 130.0 * _pop)
 	_item_row(Vector2(960, 620))
 

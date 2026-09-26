@@ -50,6 +50,7 @@ func _ready() -> void:
 ## just picked up and what it does, the way Isaac shows it.
 func caption(text: String, sub := "", seconds := 2.2) -> void:
 	_caption_title.text = text
+	_caption_title.label_settings.font_size = Ui.fit(text, 60, 1100.0)
 	_caption_sub.text = sub
 	_caption.visible = true
 	_caption.queue_redraw()
@@ -70,6 +71,7 @@ func caption(text: String, sub := "", seconds := 2.2) -> void:
 func say(text: String, sub := "", seconds := 1.4, style := "ribbon") -> void:
 	_style = style
 	_title.text = text
+	_title.label_settings.font_size = Ui.fit(text, 128, 1500.0 if style == "boss" else 1300.0)
 	_sub.text = sub
 	_title.position = Vector2(0, 360)
 	_sub.position = Vector2(0, 548)
@@ -118,7 +120,8 @@ func clear() -> void:
 func _draw() -> void:
 	if _title == null or _title.text == "":
 		return
-	var width := Ui.font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 128).x
+	var width := Ui.title_font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_title.label_settings.font_size).x
 	match _style:
 		"boss":
 			_boss_band(width)
@@ -181,6 +184,7 @@ func _burst(center: Vector2, width: float) -> void:
 func _draw_caption() -> void:
 	if _caption_title.text == "":
 		return
-	var width := maxf(Ui.font().get_string_size(_caption_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x,
+	var width := maxf(Ui.title_font().get_string_size(_caption_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_caption_title.label_settings.font_size).x,
 			Ui.font().get_string_size(_caption_sub.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x)
 	Frames.scroll(_caption, Vector2(960, 190), width + 120.0, 170.0)

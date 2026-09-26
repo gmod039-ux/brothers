@@ -43,7 +43,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	var title := Ui.label("БРАТЬЯ", Ui.title(150))
+	var title := Ui.label("БРАТЬЯ", Ui.title(Ui.fit("БРАТЬЯ", 150, 700.0)))
 	title.position = Vector2(0, 72)
 	add_child(title)
 	var sub_style := Ui.text(38, CREAM)
@@ -59,7 +59,8 @@ func _ready() -> void:
 		add_child(look)
 		_looks.append(look)
 		var x: float = (SPOTS[i] as Vector2).x
-		var name_label := Ui.label(str(character.get("name", IDS[i])), Ui.title(60), 520)
+		var name_text := str(character.get("name", IDS[i]))
+		var name_label := Ui.label(name_text, Ui.title(58, Color("f6e7c1"), false), 520)
 		name_label.position = Vector2(x - 260, 742)
 		add_child(name_label)
 		_names.append(name_label)

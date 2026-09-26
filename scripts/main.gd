@@ -89,6 +89,9 @@ func _ready() -> void:
 	film.strength = float(_arg("film", "1.0"))
 	add_child(film)
 	add_child(Sfx.new())
+	var music := Music.new()
+	music.enabled = not _args.has("mute") and DisplayServer.get_name() != "headless"
+	add_child(music)
 	var shooter := preload("res://scripts/dev/screenshot.gd").new()
 	shooter.name = "Screenshot"
 	add_child(shooter)
@@ -184,6 +187,7 @@ func show_select() -> void:
 	select.select(maxi(index, 0))
 	select.chosen.connect(_on_chosen)
 	iris.open(camera.position, 0.6)
+	Music.play("menu")
 
 
 func _on_chosen(id: String) -> void:
@@ -259,16 +263,19 @@ func _start_arena() -> void:
 	waves.wave_started.connect(_on_wave)
 	waves.cleared.connect(_on_cleared)
 	waves.begin(room, rng, GameData.waves("arena"))
+	Music.play("floor0")
 	hud.set_wave(0, waves.list.size())
 
 
 func _on_floor(index: int) -> void:
 	room = run.room
+	Music.play("floor%d" % clampi(index, 0, 2))
 	banner.say(run.floor_name(), "этаж %d из %d" % [index + 1, Run.FLOORS])
 
 
 func _on_bosses(bosses: Array[Boss]) -> void:
 	hud.bosses = bosses
+	Music.play("boss")
 	Sfx.play("roar", 0.0, 0.0)
 	var names: Array[String] = []
 	for boss in bosses:
@@ -280,6 +287,7 @@ func _on_bosses(bosses: Array[Boss]) -> void:
 
 func _on_boss_beaten(_boss: Enemy) -> void:
 	hud.bosses = []
+	Music.play("floor%d" % clampi(run.floor_index, 0, 2))
 	Sfx.play("blast", -2.0)
 	Sfx.play("item", 0.0, 0.0)
 	_shake = 0.4
@@ -308,6 +316,7 @@ func _descend() -> void:
 
 func _finish() -> void:
 	state = "over"
+	Music.play("menu")
 	get_tree().paused = true
 	var seconds := _play_time
 	intertitle.show_card("won", "Выбрались!", _run_lines(),
@@ -378,6 +387,7 @@ func _on_died() -> void:
 		return
 	await iris.close(at, 0.8)
 	get_tree().paused = true
+	Music.stop()
 	intertitle.show_card("dead", "Эх, братец…", _run_lines(),
 			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
 

@@ -1,32 +1,51 @@
 class_name Ui
 extends RefCounted
-## Type for the interface. Until a proper 1930s face is chosen, a system
-## serif in bold italic: Georgia is on every Mac and every Windows machine
-## and has Cyrillic.
+## Type for the interface: Oi for titles, fat and round like the lettering
+## on the title cards of 1930s cartoons, and Yeseva One for everything
+## smaller, a serif that reads at any size. Both from Google Fonts, under
+## the Open Font License (fonts/LICENSE.txt).
 
 static var _font: Font
+static var _title_font: Font
 
 
-## Lets go of the font before quitting (see Main._exit_tree).
+## Lets go of the fonts before quitting (see Main._exit_tree).
 static func release() -> void:
 	_font = null
+	_title_font = null
 
 
+## The text face: numbers, hints, lines under titles.
 static func font() -> Font:
 	if _font == null:
-		var system := SystemFont.new()
-		system.font_names = PackedStringArray(["Georgia", "Times New Roman", "DejaVu Serif", "serif"])
-		system.font_weight = 800
-		system.font_italic = true
-		_font = system
+		_font = load("res://fonts/YesevaOne-Regular.ttf")
 	return _font
+
+
+## The title face.
+static func title_font() -> Font:
+	if _title_font == null:
+		_title_font = load("res://fonts/Oi-Regular.ttf")
+	return _title_font
+
+
+## The size, at most [param size], at which [param text] in the title face
+## fits in [param width] pixels.
+static func fit(text: String, size: int, width: float) -> int:
+	var at := title_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	if at <= width or at <= 0.0:
+		return size
+	return maxi(int(size * width / at), 12)
 
 
 ## Title lettering: cream letters, a thick ink edge and a drop shadow, the
 ## way the cards between cartoon scenes were lettered.
-static func title(size: int, color := Color("f6e7c1")) -> LabelSettings:
+## [param display] false letters it in the text face instead: for names
+## that must read at a glance, where the title face's letters are too
+## fanciful.
+static func title(size: int, color := Color("f6e7c1"), display := true) -> LabelSettings:
 	var settings := LabelSettings.new()
-	settings.font = font()
+	settings.font = title_font() if display else font()
 	settings.font_size = size
 	settings.font_color = color
 	settings.outline_size = maxi(int(size * 0.16), 6)
