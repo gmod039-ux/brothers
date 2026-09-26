@@ -143,6 +143,8 @@ func _end(how: String) -> void:
 	var at := global_position + (Vector2(0, -height) if how != "floor" else Vector2.ZERO)
 	room.effects.add_child(splat)
 	splat.global_position = at
+	if how == "floor" and room.stains != null and randf() < 0.5:
+		room.stains.add(global_position, radius * 0.7, Color(_fill(), 0.32))
 	queue_free()
 
 
@@ -160,6 +162,12 @@ func _draw() -> void:
 		Toon.box(self, at, Vector2(r * 0.8, r * 1.1), BrotherLook.WHITE, boil, 3, 3.5, spin)
 		Toon.heart(self, at, r * 0.9, 2, Color("c8392b"), Color("c8392b"))
 		return
+	# A trail of smaller drops behind, the way a fast thing is drawn.
+	var back := -velocity.normalized()
+	for k in 3:
+		var t := (k + 1) / 4.0
+		var trail := at + back * r * (1.1 + k * 0.9)
+		Toon.spot(self, trail, Vector2(r, r * 0.8) * (0.62 - t * 0.35), Color(fill, 0.55 - t * 0.4), 0, k)
 	Toon.blob(self, at, Vector2(r * 1.1, r * 0.92), fill, boil, get_instance_id() % 89, 4.0, angle)
 	Toon.spot(self, at + Vector2(-r * 0.32, -r * 0.34), Vector2(r * 0.3, r * 0.2),
 			Color(1, 1, 1, 0.85), 0, 0, -0.6)

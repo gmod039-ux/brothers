@@ -81,6 +81,8 @@ var actors: Node2D
 var effects: Node2D
 ## Things lying flat on the floor, under everyone: the trapdoor.
 var decals: Node2D
+## Ink left on the floor by the fighting.
+var stains: Stains
 ## The doors: side -> the kind of room beyond it ("normal", "boss",
 ## "treasure", "start"). Sides without a door are plain wall.
 var doors := {}
@@ -148,6 +150,9 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 		dressing.kind = arena
 		dressing.room = self
 		decals.add_child(dressing)
+	stains = Stains.new()
+	stains.name = "Stains"
+	decals.add_child(stains)
 	actors = Node2D.new()
 	actors.name = "Actors"
 	actors.y_sort_enabled = true

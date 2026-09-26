@@ -126,6 +126,11 @@ func knock_out() -> void:
 	puff.radius = radius
 	room.effects.add_child(puff)
 	puff.global_position = global_position
+	if room.stains != null and not flying:
+		room.stains.add(global_position + Vector2(0, 4), radius * 1.1, Stains.INK, true)
+	elif room.stains != null:
+		room.stains.add(global_position + Vector2(0, 30), radius * 0.8, Stains.INK, true)
+	Fx.shake(0.08)
 	knocked_out.emit(self)
 	queue_free()
 
