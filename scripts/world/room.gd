@@ -530,6 +530,7 @@ func _add_rock(cell: Vector2i) -> void:
 	_solid[cell.y * COLS + cell.x] = 1
 	var rock := Rock.new()
 	rock.seed_value = _layout_seed * 131 + cell.x * 17 + cell.y * 5
+	rock.style = style
 	rock.position = tile_center(cell) - global_position
 	actors.add_child(rock)
 	var body := StaticBody2D.new()

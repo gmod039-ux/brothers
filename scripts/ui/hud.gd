@@ -1,19 +1,25 @@
 class_name Hud
 extends Node2D
-## What is on the screen over the room: hearts in the top-left corner, as in
-## Isaac, the map of the floor in the top-right with the floor's name under
+## What is on the screen over the room, kept out of the way the way Isaac
+## keeps it: hearts in the top-left corner over the dark of the wall, the
+## pockets under them, the map of the floor in the top-right on a little
+## plate just big enough for the rooms found so far, the floor's name under
 ## it, and the boss's health across the bottom while there is a boss.
+## Lettered like a title card: cream with a thick ink edge.
 
 const RED := Color("d8412f")
 const EMPTY := Color("4a2c22")
-const HEART := 40.0
+const HEART := 46.0
+const CREAM := Color("f6e7c1")
 ## The map: one little card per room, laid out like the floor.
-const MAP_CELL := Vector2(40, 26)
+const MAP_CELL := Vector2(38, 24)
 const MAP_GAP := 6.0
-const MAP_CENTER := Vector2(1920 - 200, 120)
+## The map's top-right corner: it grows down and to the left from here.
+const MAP_CORNER := Vector2(1920 - 36, 30)
+const MAP_MOST := Vector2(330, 170)
 const MAP_VISITED := Color("c9b08a")
-const MAP_HERE := Color("f7f0e1")
-const MAP_UNKNOWN := Color("5a463a")
+const MAP_HERE := Color("fbf6ea")
+const MAP_UNKNOWN := Color("6a5446")
 
 var brother: Brother:
 	set(value):
@@ -39,15 +45,13 @@ var _boss_name: Label
 
 
 func _ready() -> void:
-	var floor_style := Ui.text(26, Toon.INK)
-	floor_style.outline_size = 0
-	_floor = Ui.label("", floor_style, 360)
-	_floor.position = MAP_CENTER + Vector2(-180, 104)
+	var floor_style := Ui.text(28, CREAM)
+	_floor = Ui.label("", floor_style, 420)
+	_floor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_floor)
-	var name_style := Ui.title(30, Color("b8322a"))
-	_name = Ui.label("", name_style, 260)
+	_name = Ui.label("", Ui.title(30, Color("e0584a")), 300)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_name.position = Vector2(62, 262)
+	_name.visible = false
 	add_child(_name)
 	_boss_name = Ui.label("", Ui.text(38), 900)
 	_boss_name.position = Vector2(510, 952)
@@ -76,29 +80,49 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	if brother != null:
-		# A card for the hearts and pockets, like a ticket.
-		var rows_of_hearts := 1 + (brother.stats.max_hp() / 2 - 1) / 6
-		var width := 76.0 + mini(brother.stats.max_hp() / 2, 6) * 58.0
-		Frames.card(self, Rect2(40, 24, maxf(width, 250.0), 90.0 + rows_of_hearts * 52.0 + 150.0), Frames.CREAM, 0.92)
-		var hearts := brother.stats.max_hp() / 2
-		for i in hearts:
-			var fill := clampi(brother.hp - i * 2, 0, 2)
-			var row := i / 6
-			Toon.heart(self, Vector2(88 + (i % 6) * 58, 66 + row * 52), HEART, fill, RED, EMPTY)
-	if brother != null:
-		# Coins, bombs and keys under the hearts, as in Isaac.
-		var rows := 1 + (brother.stats.max_hp() / 2 - 1) / 6
-		var y := 66.0 + rows * 52.0 + 30.0
-		var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
-		for i in counts.size():
-			var at := Vector2(88, y + i * 40.0)
-			ItemIcon.draw(self, counts[i][0], at, 34.0, 0)
-			draw_string(Ui.font(), at + Vector2(26, 12), "× %02d" % int(counts[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
-					30, Toon.INK)
+		_draw_hearts()
+		_draw_pockets()
 	if run != null and run.plan != null:
 		_draw_map()
+	elif _floor.text != "":
+		_floor.position = Vector2(MAP_CORNER.x - 420, MAP_CORNER.y)
 	if not bosses.is_empty():
 		_draw_boss_bar()
+
+
+## A soft dark pool behind the corner, so hearts and numbers read on any
+## wall.
+func _shade(at: Vector2, radii: Vector2) -> void:
+	Toon.glow(self, at, radii, Color(0.05, 0.03, 0.02, 0.55), 3)
+
+
+func _draw_hearts() -> void:
+	var hearts := brother.stats.max_hp() / 2
+	var rows := 1 + (hearts - 1) / 6
+	_shade(Vector2(150, 110), Vector2(300, 150 + rows * 20))
+	for i in hearts:
+		var fill := clampi(brother.hp - i * 2, 0, 2)
+		var row := i / 6
+		var at := Vector2(78 + (i % 6) * 62, 66 + row * 56)
+		Toon.heart(self, at, HEART, fill, RED, EMPTY)
+
+
+## Coins, bombs and keys under the hearts, as in Isaac: an icon and a count
+## each.
+func _draw_pockets() -> void:
+	var rows := 1 + (brother.stats.max_hp() / 2 - 1) / 6
+	var y := 66.0 + rows * 56.0 + 22.0
+	var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
+	for i in counts.size():
+		var at := Vector2(78, y + i * 50.0)
+		# Each on a little cream medallion, so a black bomb reads on a dark
+		# wall.
+		Toon.blob(self, at, Vector2(21, 21), Color(CREAM, 0.95), 0, 7 + i, 4.0)
+		ItemIcon.draw(self, counts[i][0], at, 30.0, 0)
+		var text := "%02d" % int(counts[i][1])
+		var base := at + Vector2(32, 13)
+		draw_string_outline(Ui.font(), base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, 9, Toon.INK)
+		draw_string(Ui.font(), base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, CREAM)
 
 
 func _draw_map() -> void:
@@ -109,44 +133,69 @@ func _draw_map() -> void:
 			cells.append(cell)
 	if cells.is_empty():
 		return
-	# Centred on the room the brothers are in, like Isaac's, on a dark card
-	# just big enough for the rooms known so far.
+	# The rooms round the one the brothers are in, as many as fit.
 	var step := MAP_CELL + Vector2(MAP_GAP, MAP_GAP)
-	var limit := Rect2(MAP_CENTER - Vector2(180, 92), Vector2(360, 184))
-	var used := Rect2()
+	var span := Vector2i(int(MAP_MOST.x / step.x), int(MAP_MOST.y / step.y))
+	var shown: Array[Vector2i] = []
+	var low := run.cell
+	var high := run.cell
 	for cell in cells:
-		var at := MAP_CENTER + Vector2(cell - run.cell) * step
-		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
-		used = rect if used.size == Vector2.ZERO else used.merge(rect)
-	# The map sits on a card of its own, the floor's name under it.
-	Frames.card(self, Rect2(limit.position - Vector2(14, 14), limit.size + Vector2(28, 76)), Frames.CREAM, 0.92)
-	draw_rect(limit, Color("2a1d16", 0.85))
-	for cell in cells:
-		var info := plan.info(cell)
-		var at := MAP_CENTER + Vector2(cell - run.cell) * step
-		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
-		if not limit.encloses(rect):
-			continue
-		var fill := MAP_HERE if cell == run.cell else (MAP_VISITED if info.visited else MAP_UNKNOWN)
-		draw_rect(rect.grow(2.5), Toon.INK)
-		draw_rect(rect, fill)
-		match info.kind:
-			"boss":
-				Toon.spot(self, at, Vector2(7, 7), Color("b8322a"))
-				Toon.spot(self, at + Vector2(-3, -2), Vector2(1.6, 1.6), Toon.INK)
-				Toon.spot(self, at + Vector2(3, -2), Vector2(1.6, 1.6), Toon.INK)
-			"treasure":
-				Toon.star(self, at, 7.0, 0.0, Color("e0b23a"))
-	# Doors between known rooms: small ticks in the gaps.
-	for cell in cells:
+		var d := cell - run.cell
+		if absi(d.x) <= span.x / 2 and absi(d.y) <= span.y / 2:
+			shown.append(cell)
+			low = Vector2i(mini(low.x, cell.x), mini(low.y, cell.y))
+			high = Vector2i(maxi(high.x, cell.x), maxi(high.y, cell.y))
+	var size := Vector2(high - low + Vector2i.ONE) * step - Vector2(MAP_GAP, MAP_GAP)
+	var plate := Rect2(MAP_CORNER - Vector2(size.x + 36, 0), size + Vector2(36, 36))
+	var origin := plate.position + Vector2(18, 18) + MAP_CELL * 0.5
+	_shade(plate.get_center() + Vector2(0, 20), plate.size * 0.9 + Vector2(80, 60))
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.1, 0.07, 0.05, 0.82)
+	box.border_color = Color(CREAM, 0.9)
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(10)
+	box.anti_aliasing = true
+	draw_style_box(box, plate)
+	var inner := StyleBoxFlat.new()
+	inner.bg_color = Color(0, 0, 0, 0)
+	inner.border_color = Color(CREAM, 0.35)
+	inner.set_border_width_all(1)
+	inner.set_corner_radius_all(6)
+	draw_style_box(inner, plate.grow(-6))
+	# Doors between known rooms: short bars in the gaps.
+	for cell in shown:
 		for side: String in ["right", "bottom"]:
 			var next: Vector2i = cell + FloorPlan.SIDES[side]
-			if cells.has(next):
-				var a := MAP_CENTER + Vector2(cell - run.cell) * step
-				var b := MAP_CENTER + Vector2(next - run.cell) * step
+			if shown.has(next):
+				var a := origin + Vector2(cell - low) * step
+				var b := origin + Vector2(next - low) * step
 				var mid := (a + b) * 0.5
-				if limit.has_point(mid):
-					draw_rect(Rect2(mid - Vector2(3, 3), Vector2(6, 6)), Toon.INK)
+				var bar := Vector2(MAP_GAP + 4, 8) if side == "right" else Vector2(10, MAP_GAP + 4)
+				draw_rect(Rect2(mid - bar * 0.5, bar), Color(CREAM, 0.6))
+	for cell in shown:
+		var info := plan.info(cell)
+		var at := origin + Vector2(cell - low) * step
+		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
+		var here := cell == run.cell
+		var fill := MAP_HERE if here else (MAP_VISITED if info.visited else MAP_UNKNOWN)
+		var room_box := StyleBoxFlat.new()
+		room_box.bg_color = fill
+		room_box.border_color = Toon.INK
+		room_box.set_border_width_all(2)
+		room_box.set_corner_radius_all(4)
+		if here:
+			Toon.glow(self, at, MAP_CELL * 1.1, Color(1, 0.95, 0.75, 0.45), 2)
+		draw_style_box(room_box, rect)
+		match info.kind:
+			"boss":
+				Toon.spot(self, at, Vector2(7, 6.5), Color("b8322a"))
+				Toon.spot(self, at + Vector2(-2.6, -1.5), Vector2(1.7, 1.9), Toon.INK)
+				Toon.spot(self, at + Vector2(2.6, -1.5), Vector2(1.7, 1.9), Toon.INK)
+			"treasure":
+				Toon.star(self, at, 7.0, 0.0, Color("e0b23a"))
+			"shop":
+				ItemIcon.draw(self, "coin", at, 18.0, 0)
+	_floor.position = Vector2(MAP_CORNER.x - 420, plate.end.y + 4)
 
 
 func _draw_boss_bar() -> void:
