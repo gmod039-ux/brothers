@@ -121,6 +121,30 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 			Toon.blob(ci, at + Vector2(2, -4) * k, Vector2(22, 19) * k, RED, boil, 25)
 			Toon.blob(ci, at + Vector2(-17, 4) * k, Vector2(8, 10) * k, RED, boil, 26, 4.0, 0.4)
 			Toon.spot(ci, at + Vector2(4, -14) * k, Vector2(9, 4) * k, Color(1, 1, 1, 0.55))
+		"dynamite":
+			# Three red sticks bound with a band, a fuse on the middle one.
+			for i in 3:
+				var c := at + Vector2(-13 + i * 13, 4 + absf(i - 1) * 2.0) * k
+				Toon.box(ci, c, Vector2(6, 19) * k, RED, boil, 33 + i, 3.5)
+				Toon.spot(ci, c + Vector2(-2, -8) * k, Vector2(1.5, 6) * k, Color(1, 1, 1, 0.45))
+			Toon.box(ci, at + Vector2(0, 4) * k, Vector2(22, 4) * k, CREAM, boil, 36, 3.0)
+			Toon.stroke(ci, Toon.bent(at + Vector2(0, -16) * k, at + Vector2(10, -30) * k, 5.0 * k), 3.0 * k, BROWN)
+			Toon.star(ci, at + Vector2(11, -32) * k, 7.0 * k, boil * 0.8, GOLD)
+		"sandwich":
+			# Bread, a lettuce frill, ham, cheese, bread.
+			Toon.box(ci, at + Vector2(0, 14) * k, Vector2(24, 6) * k, Color("e3a85a"), boil, 37, 3.5)
+			Toon.box(ci, at + Vector2(0, 5) * k, Vector2(25, 4) * k, Color("f0c43a"), boil, 38, 3.0, 0.05)
+			Toon.box(ci, at + Vector2(0, -2) * k, Vector2(23, 4) * k, Color("e07a86"), boil, 39, 3.0, -0.04)
+			Toon.blob(ci, at + Vector2(0, -8) * k, Vector2(26, 4) * k, GREEN, boil, 40, 3.0)
+			Toon.blob(ci, at + Vector2(0, -16) * k, Vector2(24, 10) * k, Color("e3a85a"), boil, 41, 3.5)
+			Toon.spot(ci, at + Vector2(-8, -20) * k, Vector2(7, 2.5) * k, Color(1, 1, 1, 0.45))
+		"hat":
+			# A magician's topper, and a star coming out of it.
+			Toon.blob(ci, at + Vector2(0, 20) * k, Vector2(28, 7) * k, Toon.INK, boil, 42, 3.0)
+			Toon.box(ci, at + Vector2(0, 2) * k, Vector2(17, 17) * k, Toon.INK, boil, 43, 3.0)
+			Toon.box(ci, at + Vector2(0, 12) * k, Vector2(17, 4) * k, RED, boil, 44, 2.5)
+			Toon.spot(ci, at + Vector2(-9, -2) * k, Vector2(3, 10) * k, Color(1, 1, 1, 0.3))
+			Toon.star(ci, at + Vector2(10, -24) * k, 9.0 * k, boil * 0.5, GOLD)
 		"coin":
 			# Spins: its width goes in and out drawing by drawing.
 			var turn: float = [1.0, 0.7, 0.3, 0.7][boil % 4]

@@ -32,3 +32,4 @@ func update(_brother: Brother, _delta: float) -> void:
 			_held.erase(direction)
 	shoot = DIRECTIONS[_held.back()] if not _held.is_empty() else Vector2.ZERO
 	bomb = Input.is_action_just_pressed(prefix + "bomb")
+	use_item = Input.is_action_just_pressed(prefix + "item")

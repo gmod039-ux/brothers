@@ -15,6 +15,7 @@ extends Node
 ##   bomb          drop a bomb at his feet
 ##   goto KIND     jump to the floor's shop, treasure room, boss room …
 ##   coins N       give him N coins
+##   item ID       give him an item (data/items.json)
 ##   floor N       go down to floor N (1 is the first)
 ##   god on|off    whether hits cost anything
 ##   finish        end the run as if out of the last trapdoor
@@ -114,6 +115,11 @@ func _tour(words: PackedStringArray) -> void:
 				if rich != null:
 					rich.coins = int(value)
 					rich.inventory_changed.emit()
+				i += 2
+			"item":
+				var holder := main.get("brother") as Brother
+				if holder != null:
+					holder.take_item(value)
 				i += 2
 			"ko":
 				var boss_run := main.get("run") as Run

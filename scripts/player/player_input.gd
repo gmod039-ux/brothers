@@ -13,6 +13,8 @@ var move := Vector2.ZERO
 var shoot := Vector2.ZERO
 ## True for the one frame a bomb is asked for.
 var bomb := false
+## True for the one frame the item in hand (Space) is asked for.
+var use_item := false
 
 
 func update(_brother: Brother, _delta: float) -> void:

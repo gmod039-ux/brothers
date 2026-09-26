@@ -125,6 +125,33 @@ func _draw_pockets() -> void:
 		var base := at + Vector2(32, 13)
 		draw_string_outline(Ui.font(), base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, 9, Toon.INK)
 		draw_string(Ui.font(), base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, CREAM)
+	if brother.active != "":
+		_draw_active(Vector2(84, y + counts.size() * 50.0 + 34.0))
+
+
+## The item in hand under the pockets: its picture on a bigger medallion and
+## a bar of its charge, a notch a room, gold when it is ready for Space.
+func _draw_active(at: Vector2) -> void:
+	var full := maxi(brother.full_charge(), 1)
+	var ready := brother.charge >= full
+	if ready:
+		Toon.glow(self, at, Vector2(46, 46), Color(1, 0.85, 0.4, 0.5), 2)
+	Toon.blob(self, at, Vector2(30, 30), Color(CREAM, 0.95), 0, 11, 4.0)
+	ItemIcon.draw(self, brother.active, at, 44.0, 0)
+	var bar := Rect2(at + Vector2(40, -24), Vector2(16, 48))
+	draw_rect(bar.grow(3), Toon.INK)
+	draw_rect(bar, Color(0.2, 0.14, 0.1))
+	var notch := bar.size.y / full
+	for i in brother.charge:
+		var cell := Rect2(bar.position.x, bar.end.y - (i + 1) * notch, bar.size.x, notch)
+		draw_rect(cell.grow(-2), Color("e8b83a") if ready else Color("c8392b"))
+	for i in range(1, full):
+		draw_line(Vector2(bar.position.x, bar.end.y - i * notch), Vector2(bar.end.x, bar.end.y - i * notch),
+				Toon.INK, 3.0)
+	if ready:
+		var base := at + Vector2(66, 12)
+		draw_string_outline(Ui.font(), base, "Пробел", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Toon.INK)
+		draw_string(Ui.font(), base, "Пробел", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, CREAM)
 
 
 func _draw_map() -> void:

@@ -25,6 +25,9 @@ const SHOT_HEIGHT := 46.0
 ## while strafing curves the stream a little, as it does in Isaac.
 const CARRY := 0.35
 const LAYER := 2
+## What the dynamite does to every enemy in the room: the small ones
+## outright, a good bite out of a boss.
+const DYNAMITE := 20.0
 
 var id := ""
 var display_name := ""
@@ -46,6 +49,10 @@ var bombs := 1
 var keys := 0
 ## Items taken, in order.
 var items: Array[String] = []
+## The item in hand, set off with Space ("" for none), and how many cleared
+## rooms of charge it has: it goes off only when full.
+var active := ""
+var charge := 0
 
 var _walk := Vector2.ZERO
 var _knock := Vector2.ZERO
@@ -94,6 +101,8 @@ func _physics_process(delta: float) -> void:
 	_shoot(delta)
 	if input.bomb and bombs > 0:
 		place_bomb()
+	if input.use_item:
+		use_active()
 	_touch_enemies()
 	_update_look()
 
@@ -156,11 +165,69 @@ func take_item(id: String) -> void:
 	var old_max := stats.max_hp()
 	stats.apply(item)
 	items.append(id)
+	if item.has("active"):
+		# One in hand at a time: a new one takes the old one's place, charged.
+		active = id
+		charge = full_charge()
 	if stats.max_hp() > old_max:
 		hp = mini(hp + stats.max_hp() - old_max, stats.max_hp())
 	health_changed.emit(hp, stats.max_hp())
 	inventory_changed.emit()
 	item_taken.emit(id)
+
+
+## Rooms of charge the item in hand needs.
+func full_charge() -> int:
+	return int(GameData.items().get(active, {}).get("active", 0))
+
+
+## A room cleared: a room more of charge.
+func add_charge() -> void:
+	if active != "" and charge < full_charge():
+		charge += 1
+		if charge == full_charge():
+			Sfx.play("select", -4.0, 0.0)
+		inventory_changed.emit()
+
+
+## Sets off the item in hand if it is charged and has something to do.
+## Returns whether it went off.
+func use_active() -> bool:
+	if active == "" or charge < full_charge():
+		return false
+	match active:
+		"dynamite":
+			# Every enemy in the room takes a blast, bosses too.
+			if room.enemies.is_empty():
+				return false
+			for enemy: Enemy in room.enemies.duplicate():
+				Fx.burst(room, enemy.global_position + Vector2(0, -20), "sparks", 10, 1.2)
+				enemy.hurt(DYNAMITE, (enemy.global_position - global_position).normalized(), 2.0)
+			Fx.flash(Color(1, 0.85, 0.5), 0.25)
+			Fx.shake(0.4)
+			Sfx.play("blast", -2.0)
+		"sandwich":
+			if hp >= stats.max_hp():
+				return false
+			heal(2)
+			Fx.burst(room, global_position + Vector2(0, -50), "confetti", 8, 0.6)
+		"hat":
+			# Three odds and ends out of the hat, on free tiles round him.
+			if room.run == null:
+				return false
+			var tiles := room.free_tiles()
+			var here := room.tile_at(global_position)
+			tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+				return Vector2(a - here).length() < Vector2(b - here).length())
+			var odds := ["coin", "coin", "coin", "coin", "bomb", "key", "half_heart", "heart"]
+			for i in mini(3, tiles.size()):
+				var at := room.tile_center(tiles[mini(i + 1, tiles.size() - 1)])
+				room.run.call("_drop", odds[room.run.rng.randi() % odds.size()], at)
+				Fx.burst(room, at, "stars", 4, 0.5)
+			Sfx.play("item", -4.0, 0.0)
+	charge = 0
+	inventory_changed.emit()
+	return true
 
 
 ## Contact damage, the way it is in Isaac: touching an enemy hurts, and

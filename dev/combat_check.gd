@@ -180,6 +180,26 @@ func _items() -> void:
 	shot = await _fire(brother, Vector2.RIGHT)
 	await _finish(shot, 120)
 	_expect(walker.hp < walker.max_hp, "ghost ink flies over the rock")
+	# Dynamite, an item for Space: charged when taken, a blast on everyone
+	# in the room, then a cleared room a notch until it is full again.
+	await _fresh_room(EMPTY)
+	brother = _brother(Vector2i(1, 3))
+	brother.take_item("dynamite")
+	var far := _enemy("walker", Vector2i(10, 1))
+	var near := _enemy("fly", Vector2i(3, 5))
+	_expect(brother.use_active(), "the dynamite goes off when charged")
+	_expect((far.dead or far.hp < far.max_hp) and (near.dead or near.hp < near.max_hp),
+			"it hits every enemy in the room")
+	_expect(not brother.use_active() and brother.charge == 0, "then it needs charging")
+	for i in brother.full_charge():
+		brother.add_charge()
+	_expect(brother.charge == brother.full_charge(), "a cleared room a notch fills it (%d)" % brother.charge)
+	# The sandwich takes its place, and is kept for when a heart is missing.
+	brother.take_item("sandwich")
+	_expect(brother.active == "sandwich", "a new item in hand takes the old one's place")
+	_expect(not brother.use_active(), "no sandwich on full hearts")
+	brother.hp -= 2
+	_expect(brother.use_active() and brother.hp == brother.stats.max_hp(), "the sandwich fills a heart")
 
 
 func _bomb() -> void:

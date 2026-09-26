@@ -271,6 +271,7 @@ func start_run(seed_value: int) -> void:
 		run.boss_beaten.connect(_on_boss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
+		run.room_cleared.connect(func(_info: FloorPlan.RoomInfo) -> void: brother.add_charge())
 		var brothers: Array[Brother] = [brother]
 		if _args.has("verbose"):
 			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:
