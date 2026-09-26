@@ -359,13 +359,14 @@ func _finish() -> void:
 	Music.play("menu")
 	get_tree().paused = true
 	var seconds := _play_time
-	intertitle.show_card("won", "Выбрались!", _run_lines(),
+	intertitle.show_card("won", "Выбрались!", _run_lines(_record(true)),
 			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
 	print("finished in %.1f s" % seconds)
 
 
-## The numbers of the run for the card at its end.
-func _run_lines() -> PackedStringArray:
+## The numbers of the run for the card at its end, [param record] on the
+## last line.
+func _run_lines(record := "") -> PackedStringArray:
 	var seconds := int(_play_time)
 	var lines := PackedStringArray()
 	if run != null:
@@ -375,8 +376,16 @@ func _run_lines() -> PackedStringArray:
 				seconds / 60, seconds % 60])
 	elif waves != null:
 		lines.append("волна %d   ·   время %d:%02d" % [waves.current, seconds / 60, seconds % 60])
-	lines.append("забег №%d" % run_seed)
+	lines.append("забег №%d" % run_seed + ("   ·   " + record if record != "" else ""))
 	return lines
+
+
+## Writes the run into the brother's records and says how it stands against
+## them. Not for the bot, the arena, or runs driven by a tour of screenshots.
+func _record(won: bool) -> String:
+	if demo or run == null or _args.has("tour") or _args.has("shot"):
+		return ""
+	return Records.note(chosen, won, run.floor_index + 1, _play_time)
 
 
 func _look() -> Dictionary:
@@ -428,7 +437,7 @@ func _on_died() -> void:
 	await iris.close(at, 0.8)
 	get_tree().paused = true
 	Music.stop()
-	intertitle.show_card("dead", "Эх, братец…", _run_lines(),
+	intertitle.show_card("dead", "Эх, братец…", _run_lines(_record(false)),
 			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
 
 
