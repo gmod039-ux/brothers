@@ -134,8 +134,10 @@ func _block() -> void:
 		front.append(body + p.rotated(tilt))
 	var whole := PackedVector2Array([top[0], top[1], front[2], front[3]])
 	draw_colored_polygon(Toon.grown(whole, 4.0), Toon.INK)
-	_textured(top, STONE[0], TINTS[2], 300.0)
-	_textured(front, STONE[0], TINTS[2].darkened(0.3), 300.0)
+	# The masonry of these walls, its colour taken out: grey like the floor.
+	var stone := RoomProps.tex("res://textures/stone_wall_004.png", 0.1, 1.3)
+	_textured(top, stone, TINTS[2], 300.0)
+	_textured(front, stone, TINTS[2].darkened(0.3), 300.0)
 	Toon.stroke(self, PackedVector2Array([front[0], front[1]]), 3.0)
 	# Chipped corners.
 	Toon.stroke(self, PackedVector2Array([top[0] + Vector2(10, 0), top[0] + Vector2(4, 8), top[0] + Vector2(0, 14)]), 2.2)

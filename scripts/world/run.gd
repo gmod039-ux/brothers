@@ -246,6 +246,8 @@ func _toughen(enemy: Enemy) -> void:
 		return
 	enemy.max_hp *= 1.0 + 0.25 * floor_index
 	enemy.hp = enemy.max_hp
+	enemy.speed *= 1.0 + 0.06 * floor_index
+	enemy.floor_look = floor_index
 	enemy.knocked_out.connect(func(_e: Enemy) -> void: kills += 1)
 
 

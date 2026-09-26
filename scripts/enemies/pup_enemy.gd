@@ -79,5 +79,5 @@ func draw_body(boil: int, flash: bool) -> void:
 			BrotherLook.WHITE, 2.0)
 	var look := gaze()
 	for sx: float in [-1.0, 1.0]:
-		Toon.pie_eye(self, head + Vector2(sx * 7.0, -6.0), Vector2(5, 6.5), look, boil, _seed + 8 + int(sx), 2.5)
+		eye(head + Vector2(sx * 7.0, -6.0), Vector2(5, 6.5), look, boil, _seed + 8 + int(sx), 2.5)
 		brow(head + Vector2(sx * 7.0, -14.0), 10.0, sx < 0.0, 3.0)

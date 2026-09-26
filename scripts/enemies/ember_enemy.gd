@@ -69,6 +69,6 @@ func draw_body(boil: int, flash: bool) -> void:
 			StoveBoss.FIRE)
 	var look := gaze()
 	for sx: float in [-1.0, 1.0]:
-		Toon.pie_eye(self, body + Vector2(sx * 6.0, -3.0), Vector2(4.5, 5.5), look, boil, _seed + 3 + int(sx), 2.0)
+		eye(body + Vector2(sx * 6.0, -3.0), Vector2(4.5, 5.5), look, boil, _seed + 3 + int(sx), 2.0)
 	Toon.stroke(self, PackedVector2Array([body + Vector2(-9, -11), body + Vector2(-2, -8)]), 2.5, StoveBoss.FIRE)
 	Toon.stroke(self, PackedVector2Array([body + Vector2(9, -11), body + Vector2(2, -8)]), 2.5, StoveBoss.FIRE)

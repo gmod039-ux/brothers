@@ -4,6 +4,9 @@ extends Node2D
 ## game:
 ##
 ##     godot --path . -- bestiary shot dev/out/bestiary.png 40
+##
+## `-- bestiary creeps` instead shows the three everyday enemies floor by
+## floor, each at rest, in its warning pose, and knocked out.
 
 const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten"]
 
@@ -32,6 +35,10 @@ func _ready() -> void:
 	# A room that is never built: enemies want one to look for brothers in.
 	room = Room.new()
 	var rng := RandomNumberGenerator.new()
+	if OS.get_cmdline_user_args().has("creeps"):
+		title.text = "Мелочь по этажам"
+		_creeps(rng)
+		return
 	for i in SMALL.size():
 		var kind: String = SMALL[i]
 		var enemy := _make(kind, room, rng)
@@ -47,6 +54,35 @@ func _ready() -> void:
 		boss.scale = Vector2(1.1, 1.1)
 		boss.position = Vector2(400 + i * 560.0, 900)
 		_caption(boss.title, Vector2(400 + i * 560.0, 930), 40)
+
+
+## Rows: basement, boiler room, catacombs. Columns: each creep at rest and
+## in its warning pose; the last column knocked out.
+func _creeps(rng: RandomNumberGenerator) -> void:
+	var floors := ["Подвал", "Котельная", "Катакомбы"]
+	var columns := [["fly", ""], ["fly", "buzz"], ["walker", ""], ["walker", "leap"], ["shooter", ""],
+			["shooter", "windup"], ["walker", "ko"]]
+	for row in 3:
+		_caption(floors[row], Vector2(110, 250 + row * 290.0), 30)
+		for col in columns.size():
+			var kind: String = columns[col][0]
+			var pose: String = columns[col][1]
+			var enemy := _make(kind, room, rng)
+			enemy.floor_look = row
+			enemy.scale = Vector2(1.6, 1.6)
+			enemy.position = Vector2(330 + col * 235.0, 330 + row * 290.0)
+			match pose:
+				"buzz":
+					(enemy as FlyEnemy).state = "buzz"
+				"leap":
+					(enemy as WalkerEnemy).state = "leap"
+					(enemy as WalkerEnemy)._t = 0.18
+				"windup":
+					(enemy as ShooterEnemy)._windup = 0.1
+				"ko":
+					enemy._ko = 0.12
+					enemy.set_process(false)
+					enemy.queue_redraw()
 
 
 func _make(kind: String, room: Room, rng: RandomNumberGenerator) -> Enemy:

@@ -119,7 +119,7 @@ func _spit_hurts() -> void:
 	var full := brother.hp
 	var shooter := _enemy("shooter", Vector2i(9, 3)) as ShooterEnemy
 	shooter._aim = (brother.global_position - shooter.global_position).normalized()
-	shooter._spit()
+	shooter._spit(shooter._aim)
 	await _steps(120)
 	_expect(brother.hp == full - 1, "spit costs half a heart (hp %d → %d)" % [full, brother.hp])
 

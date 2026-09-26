@@ -77,7 +77,7 @@ func draw_body(boil: int, flash: bool) -> void:
 	Toon.blob(self, head + Vector2(0, 5), Vector2(10, 6), paint(BaronBoss.MUZZLE, flash), boil, _seed + 4, 2.5)
 	var look := gaze()
 	for sx: float in [-1.0, 1.0]:
-		Toon.pie_eye(self, head + Vector2(sx * 6.5, -3.0), Vector2(5.5, 7), look, boil, _seed + 5 + int(sx), 2.5)
+		eye(head + Vector2(sx * 6.5, -3.0), Vector2(5.5, 7), look, boil, _seed + 5 + int(sx), 2.5)
 	Toon.spot(self, head + Vector2(0, 3), Vector2(3, 2), Color("c86a6a"))
 	# A tiny top hat, cocked.
 	Toon.box(self, head + Vector2(3, -14), Vector2(12, 3), Toon.INK, boil, _seed + 7, 2.0, -0.2)
