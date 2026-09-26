@@ -34,7 +34,7 @@ func _ready() -> void:
 	for row in ids.size():
 		var character := GameData.character(ids[row])
 		var y := 470.0 + row * 440.0
-		var name_label := Ui.label(str(character.get("name", ids[row])), Ui.title(44), 300)
+		var name_label := Ui.label(str(character.get("name", ids[row])), Ui.title(44, Color("f6e7c1"), false), 300)
 		name_label.position = Vector2(80, y - 300)
 		add_child(name_label)
 		for col in POSES.size():

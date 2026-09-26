@@ -74,6 +74,6 @@ func _make(kind: String, room: Room, rng: RandomNumberGenerator) -> Enemy:
 
 
 func _caption(text: String, at: Vector2, size: int) -> void:
-	var label := Ui.label(text, Ui.title(size), 400)
+	var label := Ui.label(text, Ui.title(size, Color("f6e7c1"), false), 400)
 	label.position = at - Vector2(200, 0)
 	add_child(label)
