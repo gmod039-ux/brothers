@@ -6,7 +6,9 @@ extends Node2D
 ##     godot --path . -- bestiary shot dev/out/bestiary.png 40
 ##
 ## `-- bestiary creeps` instead shows the three everyday enemies floor by
-## floor, each at rest, in its warning pose, and knocked out.
+## floor, each at rest, in its warning pose, and knocked out;
+## `-- bestiary bosses` the bosses: coming on, beaten up in phase 2,
+## winding up in phase 3, and knocked out.
 
 const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten"]
 
@@ -38,6 +40,11 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("creeps"):
 		title.text = "Мелочь по этажам"
 		_creeps(rng)
+		return
+	if OS.get_cmdline_user_args().has("bosses"):
+		title.text = "Боссы: выход, фаза 2, ярость, нокаут"
+		title.label_settings.font_size = 56
+		_bosses(rng)
 		return
 	for i in SMALL.size():
 		var kind: String = SMALL[i]
@@ -83,6 +90,40 @@ func _creeps(rng: RandomNumberGenerator) -> void:
 					enemy._ko = 0.12
 					enemy.set_process(false)
 					enemy.queue_redraw()
+
+
+func _bosses(rng: RandomNumberGenerator) -> void:
+	var furious := ["charge_windup", "ring_windup", "ring_windup"]
+	for row in 3:
+		for col in 4:
+			var boss: Boss
+			match row:
+				0:
+					boss = Boss.new()
+				1:
+					boss = StoveBoss.new()
+				_:
+					boss = BaronBoss.new()
+			boss.setup_boss(room, rng, row)
+			add_child(boss)
+			boss.set_physics_process(false)
+			boss.scale = Vector2(0.72, 0.72)
+			boss.position = Vector2(300 + col * 440.0, 330 + row * 305.0)
+			match col:
+				1:
+					boss.phase = 2
+					boss.state = "walk"
+				2:
+					boss.phase = 3
+					boss.state = furious[row]
+					boss._t = 0.5
+				3:
+					boss.phase = 3
+					boss.state = "walk"
+					boss._ko = Boss.SHAKE_TIME + Boss.FALL_TIME + 0.5
+					boss.set_process(false)
+					boss.queue_redraw()
+		_caption(["Бруно", "Пыхтун", "Барон"][row], Vector2(90, 280 + row * 305.0), 30)
 
 
 func _make(kind: String, room: Room, rng: RandomNumberGenerator) -> Enemy:

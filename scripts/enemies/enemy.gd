@@ -98,6 +98,16 @@ func _physics_process(delta: float) -> void:
 	_knock = _knock.move_toward(Vector2.ZERO, 1500.0 * delta)
 
 
+## How long it takes its bow when knocked out before going poof.
+func ko_time() -> float:
+	return KO_TIME
+
+
+## True for the moment it blinks. Only bosses bother.
+func blink_now() -> bool:
+	return false
+
+
 ## Where it wants to go this tick, as a velocity.
 func think(_delta: float) -> Vector2:
 	return Vector2.ZERO
@@ -141,8 +151,7 @@ func knock_out() -> void:
 	knocked_out.emit(self)
 	collision_layer = 0
 	collision_mask = 0
-	# Bosses draw themselves and have their own ends; the rest take a bow.
-	if self is Boss or not is_inside_tree():
+	if not is_inside_tree():
 		_vanish()
 		return
 	_ko = 0.0
@@ -187,7 +196,7 @@ func _process(delta: float) -> void:
 	_wince = maxf(_wince - delta, 0.0)
 	if _ko >= 0.0:
 		_ko += delta
-		if _ko >= KO_TIME:
+		if _ko >= ko_time():
 			_vanish()
 	queue_redraw()
 
@@ -260,6 +269,8 @@ func eye(center: Vector2, radii: Vector2, look: Vector2, boil: int, seed_: int, 
 		var r := radii * 0.5
 		Toon.stroke(self, PackedVector2Array([center - r, center + r]), line)
 		Toon.stroke(self, PackedVector2Array([center + Vector2(-r.x, r.y), center + Vector2(r.x, -r.y)]), line)
+	elif blink_now():
+		Toon.shut_eye(self, center + Vector2(0, radii.y * 0.2), radii.x * 2.0, line)
 	elif _wince > 0.0:
 		# Squeezed shut: a zigzag where the eye was.
 		var w := radii.x
@@ -272,7 +283,7 @@ func eye(center: Vector2, radii: Vector2, look: Vector2, boil: int, seed_: int, 
 ## True while it cannot see: squeezing its eyes shut or knocked out. What
 ## sits over the eyes (lids, brows) is left off then.
 func eyes_shut() -> bool:
-	return _ko >= 0.0 or _wince > 0.0
+	return _ko >= 0.0 or _wince > 0.0 or blink_now()
 
 
 ## Smudges of soot on the boiler room's lot.

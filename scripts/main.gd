@@ -293,7 +293,7 @@ func _on_boss_beaten(_boss: Enemy) -> void:
 	Sfx.play("item", 0.0, 0.0)
 	_shake = 0.4
 	var sub := "люк открыт — вниз!" if not run.is_last_floor() else "люк открыт — на волю!"
-	banner.say("НОКАУТ!", sub, 2.2, "knockout")
+	banner.say("НОКАУТ!", sub, 1.1, "knockout")
 	print("boss beaten on floor %d at %.0f s" % [run.floor_index + 1, _play_time])
 
 

@@ -8,7 +8,10 @@ extends Boss
 ##      a lit bomb lobbed your way, or a pair of flies
 ##   2  vanishes in a puff and turns up somewhere else; throws his money
 ##      about (sacks that fall where their shadows are, and burst into coins)
-##   3  furious: sweeps the room with a confetti cannon, and vanishes more
+##   3  furious: sweeps the room with a confetti cannon, and vanishes more;
+##      spins a ring of cards round himself and lets it fly, a gap in it
+## His look goes as he loses: the monocle cracks in phase 2, and in phase 3
+## his hat has a hole shot through it and his fur stands on end.
 
 const FUR := Color("d9913f")
 const FUR_DARK := Color("a2622a")
@@ -91,6 +94,10 @@ func _physics_process(delta: float) -> void:
 			if _t > 0.6:
 				_card_rain()
 				_go("recover")
+		"ring_windup":
+			if _t > 0.9:
+				_card_ring()
+				_go("recover")
 		"vanish":
 			if _t > 0.2 and not _hidden:
 				_hidden = true
@@ -128,9 +135,9 @@ func _choose() -> void:
 		1:
 			options = ["cards", "cards", "hat"]
 		2:
-			options = ["cards", "hat", "bags", "vanish"]
+			options = ["cards", "hat", "bags", "vanish", "ring"]
 		_:
-			options = ["sweep", "sweep", "vanish", "hat", "cardrain"]
+			options = ["sweep", "sweep", "vanish", "hat", "cardrain", "ring"]
 	var pick := options[rng.randi() % options.size()]
 	if pick == "vanish":
 		Fx.burst(room, global_position + Vector2(0, -100), "confetti", 16, 1.0)
@@ -152,6 +159,21 @@ func _cards() -> void:
 		shot.look = "card"
 	Sfx.play("select", 0.0, 0.2)
 	Sfx.play("spit", -6.0)
+
+
+## The ring of cards he has been spinning round himself flies outward, all
+## at once, but for a gap of four on a random side.
+func _card_ring() -> void:
+	var n := 22
+	var gap := rng.randi() % n
+	for i in n:
+		if (i - gap + n) % n < 4:
+			continue
+		var shot := _shoot(Vector2.from_angle(TAU * i / n + _clock), 320.0, 10.0, 14.0, 70.0, BrotherLook.WHITE)
+		shot.look = "card"
+	Sfx.play("select", 0.0, 0.2)
+	Sfx.play("spit", -4.0)
+	Fx.burst(room, global_position + Vector2(0, -100), "confetti", 16, 1.0)
 
 
 ## Kittens out of the hat, two or three, in a burst of confetti.
@@ -250,28 +272,56 @@ func _reappear() -> void:
 	Sfx.play("poof", 0.0, 0.0)
 
 
-func _draw() -> void:
-	if _hidden:
-		return
-	var boil := int(_clock * Toon.FPS)
-	Toon.spot(self, Vector2(0, 4), Vector2(74, 20), Color(Toon.INK, 0.3))
+func _shown() -> bool:
+	return not _hidden
+
+
+func _shadow_size() -> Vector2:
+	return Vector2(74, 20)
+
+
+func _height_of_head() -> float:
+	return 170.0
+
+
+func _pose(boil: int) -> Array:
 	var squash := 0.0
 	match state:
-		"cards_windup", "hat_windup", "bags_windup", "sweep_windup", "cardrain_windup":
+		"cards_windup", "hat_windup", "bags_windup", "sweep_windup", "cardrain_windup", "ring_windup":
 			squash = 0.08
 		"roar":
 			squash = -0.08 if boil % 2 == 0 else 0.04
 		"vanish":
 			squash = -0.3
+		"wait":
+			# A bow to the audience.
+			squash = 0.06 if (boil / 3) % 2 == 0 else 0.0
 	if _squash > 0.0:
 		squash = 0.14
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0 + squash, 1.0 - squash))
-	_draw_baron(boil, _flash > 0.0)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return [Vector2.ZERO, 0.0, Vector2(1.0 + squash, 1.0 - squash)]
+
+
+func _figure(boil: int, flash: bool) -> void:
+	_draw_baron(boil, flash)
+
+
+## The ring of cards he spins up before letting it fly: round him on the
+## floor, drawn over him where it passes in front.
+func _over(boil: int) -> void:
+	super._over(boil)
+	if state != "ring_windup":
+		return
+	var n := 12
+	var k := minf(_t / 0.9, 1.0)
+	for i in n:
+		var a := TAU * i / n + _clock * 5.0
+		var at := Vector2(cos(a) * 110.0 * (0.4 + 0.6 * k), -90.0 + sin(a) * 40.0 * (0.4 + 0.6 * k))
+		Toon.box(self, at, Vector2(8, 11), BrotherLook.WHITE, boil, i, 2.5, a)
+		Toon.heart(self, at, 8.0, 2, Color("c8392b"), Color("c8392b"))
 
 
 func _draw_baron(boil: int, flash: bool) -> void:
-	var angry := phase == 3
+	var angry := phase == 3 and _ko < 0.0
 	var fur := paint(FUR.lerp(Color("c8452c"), 0.3) if angry else FUR, flash)
 	var dark := paint(FUR_DARK, flash)
 	var coat := paint(COAT, flash)
@@ -279,7 +329,7 @@ func _draw_baron(boil: int, flash: bool) -> void:
 	var ink := Toon.INK
 	# Legs in black trousers, and spats.
 	var step := 0.0
-	if state == "walk":
+	if state == "walk" and _ko < 0.0:
 		step = [1.0, 0.0, -1.0, 0.0][boil % 4]
 	for sx: float in [-1.0, 1.0]:
 		var foot := Vector2(sx * 26.0, -(8.0 if step * sx > 0.0 else 0.0))
@@ -315,14 +365,35 @@ func _draw_baron(boil: int, flash: bool) -> void:
 		"sweep_windup", "sweep":
 			free_hand = Vector2(-30, -80) + _aim * 50.0
 			cane_hand = Vector2(30, -80) + _aim * 50.0
+		"ring_windup":
+			# Twirling the cane over his head.
+			cane_hand = Vector2(40, -220)
+			free_hand = Vector2(-80, -120)
+		"wait":
+			# Hat raised to the audience.
+			free_hand = Vector2(-40, -250)
+	if _ko >= 0.0:
+		free_hand = Vector2(-90, -200) if _ko < SHAKE_TIME else Vector2(-80, -20)
+		cane_hand = Vector2(90, -200) if _ko < SHAKE_TIME else Vector2(84, -24)
 	for i in 2:
 		var sx := -1.0 if i == 0 else 1.0
 		var shoulder := Vector2(sx * 44.0, -120.0)
 		var hand: Vector2 = free_hand if i == 0 else cane_hand
 		Toon.hose(self, shoulder, hand + (shoulder - hand).normalized() * 14.0, sx * -10.0, 11.0)
-	# The cane, knob up.
-	Toon.stroke(self, PackedVector2Array([cane_hand + Vector2(4, -30), cane_hand + Vector2(10, 60)]), 7.0)
-	Toon.blob(self, cane_hand + Vector2(4, -34), Vector2(8, 8), paint(GOLD, flash), boil, 8, 3.0)
+	# The cane, knob up -- spinning like a baton while he winds up the ring.
+	var cane_turn := _clock * 14.0 if state == "ring_windup" else 0.0
+	var cane_a := cane_hand + Vector2(4, -30).rotated(cane_turn)
+	var cane_b := cane_hand + Vector2(10, 60).rotated(cane_turn)
+	Toon.stroke(self, PackedVector2Array([cane_a, cane_b]), 7.0)
+	Toon.blob(self, cane_a + (cane_a - cane_b).normalized() * 4.0, Vector2(8, 8), paint(GOLD, flash), boil, 8, 3.0)
+	if state == "cards_windup":
+		# A fan of cards in his free hand: what is coming.
+		var count := 5 if phase == 1 else 7
+		for i in count:
+			var a := -PI * 0.5 + (i - (count - 1) * 0.5) * 0.22
+			var at := free_hand + Vector2(cos(a), sin(a)) * 26.0
+			Toon.box(self, at, Vector2(9, 13), BrotherLook.WHITE, boil, 30 + i, 2.5, a + PI * 0.5)
+			Toon.spot(self, at, Vector2(3, 3), Color("c8392b"))
 	for hand: Vector2 in [free_hand, cane_hand]:
 		Toon.ball(self, hand, Vector2(15, 14), white, boil, 9 + int(hand.x), 4.0, 0.0, 0.14)
 	if state == "sweep_windup" or state == "sweep":
@@ -338,6 +409,14 @@ func _draw_baron(boil: int, flash: bool) -> void:
 				head + Vector2(sx * 50, -58 + (14.0 if angry else 0.0))])
 		Toon.shape(self, ear, fur, 5.0)
 	Toon.ball(self, head, Vector2(54, 44), fur, boil, 12)
+	if angry:
+		# Fur on end: tufts all round the head.
+		for k in 9:
+			var a := PI * 0.1 + PI * 0.8 * k / 8.0
+			var root := head + Vector2(cos(a + PI) * 50.0, sin(a + PI) * 40.0)
+			var tip := head + Vector2(cos(a + PI) * 64.0, sin(a + PI) * 54.0)
+			Toon.shape(self, PackedVector2Array([root + (tip - root).orthogonal().normalized() * 6.0, tip,
+					root - (tip - root).orthogonal().normalized() * 6.0]), fur, 3.0)
 	for k in 3:
 		Toon.stroke(self, Toon.bent(head + Vector2(-14 + k * 14, -44), head + Vector2(-12 + k * 12, -28), 3.0),
 				5.0, dark)
@@ -358,16 +437,26 @@ func _draw_baron(boil: int, flash: bool) -> void:
 	# Eyes: half shut, pleased with himself; the monocle over the right.
 	var look := gaze()
 	for sx: float in [-1.0, 1.0]:
-		var eye := head + Vector2(sx * 20.0, -14.0)
-		Toon.pie_eye(self, eye, Vector2(10, 12), look, boil, 16 + int(sx), 3.0)
+		var e := head + Vector2(sx * 20.0, -14.0)
+		eye(e, Vector2(10, 12), look, boil, 16 + int(sx), 3.0)
+		if eyes_shut():
+			continue
 		var lid := PackedVector2Array()
 		for k in 9:
 			var a := PI + PI * k / 8.0
-			lid.append(eye + Vector2(cos(a) * 12.0, sin(a) * 14.0 + (4.0 if not angry else -2.0)))
+			lid.append(e + Vector2(cos(a) * 12.0, sin(a) * 14.0 + (4.0 if not angry else -2.0)))
 		draw_colored_polygon(lid, fur)
 		Toon.stroke(self, PackedVector2Array([lid[0], lid[lid.size() - 1]]), 3.5)
+	# The monocle: on its chain, cracked from phase 2, dangling when he is
+	# out.
 	var monocle := head + Vector2(20.0, -14.0)
+	if _ko >= SHAKE_TIME:
+		monocle = head + Vector2(40.0, 36.0)
+	Toon.spot(self, monocle, Vector2(13, 13), Color(0.8, 0.9, 1.0, 0.2))
 	Toon.stroke(self, _ring(monocle, 15.0), 4.0, paint(GOLD, flash))
+	if phase >= 2:
+		Toon.stroke(self, PackedVector2Array([monocle + Vector2(-9, -10), monocle + Vector2(-1, -2),
+				monocle + Vector2(-4, 4), monocle + Vector2(8, 11)]), 1.6, Color(1, 1, 1, 0.8))
 	Toon.stroke(self, Toon.bent(monocle + Vector2(12, 10), head + Vector2(46, 40), -10.0), 2.0, paint(GOLD, flash))
 	# The top hat: in his hand for the hat trick, on his head otherwise.
 	var hat := head + Vector2(6, -58)
@@ -375,9 +464,25 @@ func _draw_baron(boil: int, flash: bool) -> void:
 	if state == "hat_windup":
 		hat = free_hand + Vector2(0, -42)
 		tilt = PI
+	elif state == "wait":
+		hat = free_hand + Vector2(0, -30)
+		tilt = -0.4
+	if _ko >= SHAKE_TIME:
+		hat = head + Vector2(-40, -105)
+		tilt = -1.0
 	Toon.box(self, hat + Vector2(0, 30).rotated(tilt), Vector2(46, 8), ink, boil, 18, 3.0, tilt)
 	Toon.box(self, hat, Vector2(30, 34), ink, boil, 19, 3.0, tilt)
 	Toon.box(self, hat + Vector2(0, 20).rotated(tilt), Vector2(31, 6), paint(Color("c8392b"), flash), boil, 20, 0.0, tilt)
+	Toon.stroke(self, PackedVector2Array([hat + Vector2(-20, -28).rotated(tilt), hat + Vector2(-20, 14).rotated(tilt)]),
+			3.0, Color(1, 1, 1, 0.22))
+	if phase >= 3:
+		# A hole shot clean through it, light showing.
+		var hole := hat + Vector2(10, -8).rotated(tilt)
+		Toon.blob(self, hole, Vector2(6, 5), Color("f3e6c8"), boil, 21, 2.5)
+		for k in 5:
+			var a := TAU * k / 5.0
+			Toon.stroke(self, PackedVector2Array([hole + Vector2(cos(a), sin(a)) * 6.0,
+					hole + Vector2(cos(a), sin(a)) * 10.0]), 2.0, Color("3a3438"))
 
 
 static func _ring(center: Vector2, r: float) -> PackedVector2Array:
