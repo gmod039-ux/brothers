@@ -12,3 +12,10 @@ stone_floor_012.png       Stylized Stone Floor 012
 stone_wall_003.png        Stylized Stone Wall 003
 stone_wall_004.png        Stylized Stone Wall 004
 terracotta_tiles_002.png  Stylized Terracotta Tiles 002
+coins_001.png             Stylized Coins 001
+crate_001.png             Stylized Crate 001
+lava_001.png              Stylized Lava 001 (2048 to 1024 px)
+metal_gate_001.png        Stylized Metal Gate 001
+metal_plates_001.png      Stylized Metal Plates 001
+stone_column_001.png      Stylized Stone Column 001
+wood_planks_004.png       Stylized Wood Planks 004

@@ -4,7 +4,7 @@ extends Node2D
 ## and under everyone: lamps on the back wall and the light they throw,
 ## cracks and cobwebs, and the clutter of each floor --
 ##   0 basement:  a barred window and its shaft of daylight, puddles, straw,
-##                barrels and crates against the walls, a mouse hole
+##                a mouse hole (barrels and crates are RoomProps')
 ##   1 boiler:    caged bulbs, gauges, copper pipes down the side walls, a
 ##                leaking joint, oil, a drain grate, coal
 ##   2 catacombs: niches with skulls, chains, moss, candles, bones
@@ -213,29 +213,6 @@ func _basement() -> void:
 			var l := 18.0 + _h(130 + i * 7 + k) * 16.0
 			Toon.stroke(self, Toon.bent(base, base + Vector2(cos(a), sin(a) * 0.6) * l, 3.0), 3.0, Color("b89238"))
 			Toon.stroke(self, Toon.bent(base, base + Vector2(cos(a), sin(a) * 0.6) * l * 0.9, 3.0), 1.4, Color("e8c860"))
-	# A barrel against one side wall, crates against the other.
-	var left := _h(150) < 0.5
-	var barrel := Vector2(f.position.x - 20 if left else f.end.x + 20, _beside_door(151))
-	Toon.spot(self, barrel + Vector2(0, 34), Vector2(34, 10), Color(0, 0, 0, 0.3))
-	Toon.ball(self, barrel, Vector2(30, 38), WOOD, 0, 7, 4.5)
-	for k in 3:
-		Toon.stroke(self, Toon.bent(barrel + Vector2(-12 + k * 12, -35), barrel + Vector2(-12 + k * 12, 35), -3.0 + k * 3.0),
-				1.6, Color(0, 0, 0, 0.3))
-	for k in 2:
-		Toon.stroke(self, Toon.bent(barrel + Vector2(-29, -18 + k * 36), barrel + Vector2(29, -18 + k * 36), -5.0), 5.0, IRON)
-	Toon.blob(self, barrel + Vector2(0, -30), Vector2(22, 7), WOOD_DARK, 0, 8, 3.0)
-	var crate := Vector2(f.end.x + 16 if left else f.position.x - 16, _beside_door(161))
-	for c in 2:
-		var at := crate + Vector2(0, -c * 50.0) + Vector2(c * 6.0, 0)
-		var half := 30.0 - c * 6.0
-		if c == 0:
-			Toon.spot(self, at + Vector2(0, half + 4), Vector2(half + 6, 9), Color(0, 0, 0, 0.3))
-		Toon.box(self, at, Vector2(half, half), Color("a8763f"), 0, 8 + c, 4.5)
-		for k in 2:
-			Toon.stroke(self, PackedVector2Array([at + Vector2(-half + 4, (k - 0.5) * half * 0.66),
-					at + Vector2(half - 4, (k - 0.5) * half * 0.66)]), 1.6, Color(0, 0, 0, 0.3))
-		Toon.stroke(self, PackedVector2Array([at + Vector2(-half + 6, -half + 6), at + Vector2(half - 6, half - 6)]), 4.0, WOOD_DARK)
-		Toon.spot(self, at + Vector2(-half * 0.5, -half * 0.6), Vector2(half * 0.3, 3), Color(1, 1, 1, 0.3))
 
 
 func _boiler() -> void:

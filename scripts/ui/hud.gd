@@ -88,6 +88,8 @@ func _draw() -> void:
 		_floor.position = Vector2(MAP_CORNER.x - 420, MAP_CORNER.y)
 	if not bosses.is_empty():
 		_draw_boss_bar()
+	elif _boss_name.text != "":
+		_boss_name.text = ""
 
 
 ## A soft dark pool behind the corner, so hearts and numbers read on any
@@ -207,6 +209,8 @@ func _draw_boss_bar() -> void:
 			hp += maxf(boss.hp, 0.0) if not boss.dead else 0.0
 			most += boss.max_hp
 	if most <= 0.0 or hp <= 0.0:
+		# Nobody left to show: the name goes with the bar.
+		_boss_name.text = ""
 		return
 	var share := clampf(hp / most, 0.0, 1.0)
 	# A card behind name and bar, a skull at one end.

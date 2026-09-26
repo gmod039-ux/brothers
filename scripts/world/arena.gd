@@ -67,7 +67,8 @@ func _ring() -> void:
 	var d := int(_clock * Toon.FPS)
 	# The crowd: eyes in the dark along the side walls, blinking now and then.
 	for side: float in [-1.0, 1.0]:
-		for k in 7:
+		# Down to where the posters hang.
+		for k in 5:
 			var x := (70.0 + (k % 2) * 60.0) if side < 0.0 else (1920.0 - 70.0 - (k % 2) * 60.0)
 			var y := 250.0 + k * 100.0
 			Toon.spot(self, Vector2(x, y), Vector2(26, 22), Color(0.08, 0.05, 0.04, 0.85))

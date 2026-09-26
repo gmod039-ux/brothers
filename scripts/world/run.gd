@@ -129,6 +129,7 @@ func _enter(to: Vector2i, through: String) -> void:
 	add_child(next)
 	next.position = Vector2(to) * Room.SIZE
 	next.style = floor_index
+	next.kind = info.kind
 	if info.kind == "boss":
 		next.arena = ARENAS[mini(floor_index, ARENAS.size() - 1)]
 	var doors := plan.doors(to)

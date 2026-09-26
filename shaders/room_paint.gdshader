@@ -56,6 +56,9 @@ uniform float tex_tint = 0.3;
 uniform float tex_desat = 0.25;
 // Floors are lifted a little: black-and-white brothers must stand out on them.
 uniform float tex_gain = 1.0;
+// Below 1 flattens a busy picture towards its middle grey, so it stays a
+// background behind the characters.
+uniform float tex_contrast = 1.0;
 
 varying vec2 p;
 
@@ -392,7 +395,9 @@ vec3 tone(vec3 t) {
 	t = mix(t, vec3(l), tex_desat);
 	float lb = max(dot(base.rgb, vec3(0.299, 0.587, 0.114)), 0.01);
 	vec3 tinted = base.rgb * (l / lb);
-	return min(mix(t, tinted, tex_tint) * tex_gain, vec3(1.0));
+	vec3 c = mix(t, tinted, tex_tint);
+	c = mix(base.rgb * 0.85, c, tex_contrast);
+	return min(c * tex_gain, vec3(1.0));
 }
 
 // --- light --------------------------------------------------------------

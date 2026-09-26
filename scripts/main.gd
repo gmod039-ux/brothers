@@ -167,6 +167,7 @@ func _exit_tree() -> void:
 	Fx.on_flash = Callable()
 	Fx.on_shake = Callable()
 	Ui.release()
+	RoomProps.release()
 
 
 func _arg(key: String, fallback: String) -> String:

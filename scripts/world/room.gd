@@ -52,17 +52,35 @@ const STYLES := [
 			"light": Color(1.0, 0.78, 0.5)},
 ]
 ## Painted textures for the floors and walls of each style (see
-## textures/LICENSE.txt), two to choose between for each: [path, pixels to
-## one repeat] for a floor, [path, courses of stone in the picture, courses
-## on a wall] for a wall. [member texture_variant] picks which.
+## textures/LICENSE.txt), two to choose between for each. A floor's is
+## {path, repeat: pixels to one repeat}; a wall's is {path, rows: courses of
+## stone in the picture, courses: courses on the wall} -- or {fit: true} to
+## stretch one repeat over the whole height of every wall. Either may say
+## how far its colours are pulled towards the room's palette ("tint",
+## "desat") and brightened ("gain").
+## [member texture_variant] picks which of the two.
 const TEXTURES := [
-	{"floor": [["res://textures/terracotta_tiles_002.png", 448.0], ["res://textures/stone_floor_010.png", 820.0]],
-			"wall": [["res://textures/bricks_003.png", 9.0, 4.0], ["res://textures/bricks_001.png", 13.0, 5.0]]},
-	{"floor": [["res://textures/stone_floor_011.png", 700.0], ["res://textures/stone_floor_012.png", 1100.0]],
-			"wall": [["res://textures/metal_pattern_001.png", 6.0, 2.0], ["res://textures/metal_pattern_001.png", 6.0, 2.0]]},
-	{"floor": [["res://textures/stone_floor_003.png", 900.0], ["res://textures/stone_floor_003.png", 700.0]],
-			"wall": [["res://textures/stone_wall_004.png", 8.0, 4.0], ["res://textures/stone_wall_003.png", 6.0, 3.0]]},
+	{"floor": [{"path": "res://textures/terracotta_tiles_002.png", "repeat": 448.0},
+				{"path": "res://textures/stone_floor_010.png", "repeat": 820.0}],
+			"wall": [{"path": "res://textures/bricks_003.png", "rows": 9.0, "courses": 4.0},
+				{"path": "res://textures/bricks_001.png", "rows": 13.0, "courses": 5.0}]},
+	{"floor": [{"path": "res://textures/stone_floor_011.png", "repeat": 700.0},
+				{"path": "res://textures/stone_floor_012.png", "repeat": 1100.0}],
+			"wall": [{"path": "res://textures/metal_pattern_001.png", "rows": 6.0, "courses": 2.0},
+				{"path": "res://textures/metal_gate_001.png", "fit": true, "courses": 4.0}]},
+	{"floor": [{"path": "res://textures/stone_floor_003.png", "repeat": 900.0},
+				{"path": "res://textures/stone_floor_003.png", "repeat": 700.0}],
+			"wall": [{"path": "res://textures/stone_wall_004.png", "rows": 8.0, "courses": 4.0, "tint": 0.55,
+					"desat": 0.4},
+				{"path": "res://textures/stone_wall_003.png", "rows": 6.0, "courses": 3.0, "tint": 0.5}]},
 ]
+## The bosses' rooms: textures where the arena has none of its own drawn.
+const ARENA_TEXTURES := {
+	"ring": {"wall": {"path": "res://textures/bricks_003.png", "rows": 9.0, "courses": 4.0, "tint": 0.35}},
+	"boiler": {"wall": {"path": "res://textures/metal_gate_001.png", "fit": true, "courses": 4.0},
+			"floor": {"path": "res://textures/metal_plates_001.png", "repeat": 560.0, "tint": 0.6, "desat": 0.6,
+					"gain": 1.1, "contrast": 0.5}},
+}
 ## Which of each pair in [constant TEXTURES] the rooms are painted with;
 ## -1 paints them with the drawn patterns instead. `-- textures N`.
 static var texture_variant := 0
@@ -94,6 +112,9 @@ var cell := Vector2i.ZERO
 var run: Run
 ## Which of [constant STYLES] it is painted in; set before [method build].
 var style := 0
+## What the room is on the floor's plan ("normal", "start", "treasure",
+## "shop", "boss"): dresses it. Set before [method build].
+var kind := "normal"
 ## A boss's own room ("ring", "boiler", "cabaret"), or "" for a plain one.
 ## Set before [method build].
 var arena := ""
@@ -141,6 +162,11 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 		decor.seed_value = seed_value
 		decor.style = style
 		add_child(decor)
+	var props := RoomProps.new()
+	props.name = "Props"
+	props.room = self
+	props.seed_value = seed_value
+	add_child(props)
 	_add_walls()
 	decals = Node2D.new()
 	decals.name = "Decals"
@@ -345,11 +371,12 @@ func _paint_floor_and_walls() -> void:
 		material.set_shader_parameter("rows", 4.0 if side == "top" or side == "bottom" else 5.0)
 		var wall_texture := _texture("wall")
 		if not wall_texture.is_empty():
-			material.set_shader_parameter("textured", true)
-			material.set_shader_parameter("albedo", load(wall_texture[0]))
-			material.set_shader_parameter("tex_rows", float(wall_texture[1]))
-			var courses: float = wall_texture[2]
-			material.set_shader_parameter("rows", courses if side == "top" or side == "bottom" else courses * 1.25)
+			var courses: float = wall_texture.get("courses", 4.0)
+			var rows := courses if side == "top" or side == "bottom" else courses * 1.25
+			material.set_shader_parameter("rows", rows)
+			_apply_texture(material, wall_texture)
+			material.set_shader_parameter("tex_rows", rows if wall_texture.get("fit", false)
+					else float(wall_texture.get("rows", 9.0)))
 		face.material = material
 		_paint.add_child(face)
 	var ground := Polygon2D.new()
@@ -361,21 +388,30 @@ func _paint_floor_and_walls() -> void:
 	var floor_texture := _texture("floor")
 	if not floor_texture.is_empty():
 		var material := ground.material as ShaderMaterial
-		material.set_shader_parameter("textured", true)
-		material.set_shader_parameter("albedo", load(floor_texture[0]))
-		material.set_shader_parameter("tex_world", float(floor_texture[1]))
-		material.set_shader_parameter("tex_gain", 1.28)
-		material.set_shader_parameter("tex_tint", 0.38)
+		_apply_texture(material, floor_texture, 0.38, 0.25, 1.28)
+		material.set_shader_parameter("tex_world", float(floor_texture.get("repeat", 600.0)))
 	_paint.add_child(ground)
 
 
-## The painted texture for this room's "floor" or "wall", or [] to draw the
-## pattern: boss arenas keep their own.
-func _texture(part: String) -> Array:
-	if arena != "" or texture_variant < 0:
-		return []
+## The painted texture for this room's "floor" or "wall", or {} to draw the
+## pattern.
+func _texture(part: String) -> Dictionary:
+	if texture_variant < 0:
+		return {}
+	if arena != "":
+		return ARENA_TEXTURES.get(arena, {}).get(part, {})
 	var choices: Array = TEXTURES[clampi(style, 0, TEXTURES.size() - 1)][part]
 	return choices[clampi(texture_variant, 0, choices.size() - 1)]
+
+
+func _apply_texture(material: ShaderMaterial, texture: Dictionary, tint := 0.3, desat := 0.25,
+		gain := 1.0) -> void:
+	material.set_shader_parameter("textured", true)
+	material.set_shader_parameter("albedo", load(texture["path"]))
+	material.set_shader_parameter("tex_tint", float(texture.get("tint", tint)))
+	material.set_shader_parameter("tex_desat", float(texture.get("desat", desat)))
+	material.set_shader_parameter("tex_gain", float(texture.get("gain", gain)))
+	material.set_shader_parameter("tex_contrast", float(texture.get("contrast", 1.0)))
 
 
 ## The shader that paints a floor ([param part] 0) or a wall (1), lit by the
