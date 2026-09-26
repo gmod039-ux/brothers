@@ -39,7 +39,13 @@ func _ready() -> void:
 		return
 	at = args.find("tour")
 	if at >= 0:
-		_tour(args.slice(at + 1))
+		# Words handed over as one quoted string are split: whole, ending in
+		# .png, it was taken for one file name, and a picture landed in a
+		# folder called "wait 25 dev" at the top of the project.
+		var words := PackedStringArray()
+		for arg in args.slice(at + 1):
+			words.append_array(arg.split(" ", false))
+		_tour(words)
 
 
 func _single(path: String, frames: int) -> void:
