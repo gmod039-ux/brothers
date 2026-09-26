@@ -39,13 +39,15 @@ var _boss_name: Label
 
 
 func _ready() -> void:
-	_floor = Ui.label("", Ui.text(28), 460)
-	_floor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_floor.position = Vector2(1920 - 70 - 460, 196)
+	var floor_style := Ui.text(26, Toon.INK)
+	floor_style.outline_size = 0
+	_floor = Ui.label("", floor_style, 360)
+	_floor.position = MAP_CENTER + Vector2(-180, 104)
 	add_child(_floor)
-	_name = Ui.label("", Ui.text(26), 400)
-	_name.position = Vector2(1920 - 70 - 460 + 60, 236)
-	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var name_style := Ui.title(30, Color("b8322a"))
+	_name = Ui.label("", name_style, 260)
+	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_name.position = Vector2(62, 262)
 	add_child(_name)
 	_boss_name = Ui.label("", Ui.text(38), 900)
 	_boss_name.position = Vector2(510, 952)
@@ -65,7 +67,7 @@ func _process(_delta: float) -> void:
 	if brother != null and _name.text != brother.display_name:
 		_name.text = brother.display_name
 	if run != null:
-		var text := "%s · %d" % [run.floor_name(), run.floor_index + 1]
+		var text := "%s · этаж %d" % [run.floor_name(), run.floor_index + 1]
 		if _floor.text != text:
 			_floor.text = text
 	if not bosses.is_empty():
@@ -74,6 +76,10 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	if brother != null:
+		# A card for the hearts and pockets, like a ticket.
+		var rows_of_hearts := 1 + (brother.stats.max_hp() / 2 - 1) / 6
+		var width := 76.0 + mini(brother.stats.max_hp() / 2, 6) * 58.0
+		Frames.card(self, Rect2(40, 24, maxf(width, 250.0), 90.0 + rows_of_hearts * 52.0 + 150.0), Frames.CREAM, 0.92)
 		var hearts := brother.stats.max_hp() / 2
 		for i in hearts:
 			var fill := clampi(brother.hp - i * 2, 0, 2)
@@ -85,10 +91,10 @@ func _draw() -> void:
 		var y := 66.0 + rows * 52.0 + 30.0
 		var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
 		for i in counts.size():
-			var at := Vector2(80, y + i * 44.0)
+			var at := Vector2(88, y + i * 40.0)
 			ItemIcon.draw(self, counts[i][0], at, 34.0, 0)
-			draw_string(Ui.font(), at + Vector2(26, 12), "%02d" % int(counts[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
-					30, Color("f6e7c1"))
+			draw_string(Ui.font(), at + Vector2(26, 12), "× %02d" % int(counts[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
+					30, Toon.INK)
 	if run != null and run.plan != null:
 		_draw_map()
 	if not bosses.is_empty():
@@ -112,9 +118,9 @@ func _draw_map() -> void:
 		var at := MAP_CENTER + Vector2(cell - run.cell) * step
 		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)
 		used = rect if used.size == Vector2.ZERO else used.merge(rect)
-	var back := used.grow(12.0).intersection(limit)
-	draw_rect(back.grow(3.0), Color(Toon.INK, 0.6))
-	draw_rect(back, Color("2a1d16", 0.55))
+	# The map sits on a card of its own, the floor's name under it.
+	Frames.card(self, Rect2(limit.position - Vector2(14, 14), limit.size + Vector2(28, 76)), Frames.CREAM, 0.92)
+	draw_rect(limit, Color("2a1d16", 0.85))
 	for cell in cells:
 		var info := plan.info(cell)
 		var at := MAP_CENTER + Vector2(cell - run.cell) * step
@@ -154,9 +160,19 @@ func _draw_boss_bar() -> void:
 	if most <= 0.0 or hp <= 0.0:
 		return
 	var share := clampf(hp / most, 0.0, 1.0)
+	# A card behind name and bar, a skull at one end.
+	Frames.card(self, Rect2(bar.position.x - 70, bar.position.y - 70, bar.size.x + 110, bar.size.y + 92),
+			Color("2a1d16"), 0.85)
 	draw_rect(bar.grow(5), Toon.INK)
 	draw_rect(bar, Color("4a2c22"))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), RED)
+	draw_rect(Rect2(bar.position + Vector2(0, 3), Vector2(bar.size.x * share, 5)), Color(1, 1, 1, 0.25))
+	var skull := bar.position + Vector2(-34, 12)
+	Toon.ball(self, skull, Vector2(20, 18), Color("e9dfc8"), 0, 1, 4.0)
+	Toon.spot(self, skull + Vector2(-7, 0), Vector2(5, 6), Toon.INK)
+	Toon.spot(self, skull + Vector2(7, 0), Vector2(5, 6), Toon.INK)
+	for t in 3:
+		draw_line(skull + Vector2(-6 + t * 6, 12), skull + Vector2(-6 + t * 6, 17), Toon.INK, 2.0)
 	# Marks where the phases change.
 	for mark: float in [0.33, 0.66]:
 		var x := bar.position.x + bar.size.x * mark

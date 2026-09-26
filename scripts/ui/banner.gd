@@ -22,16 +22,19 @@ func _ready() -> void:
 	_title.position = Vector2(0, 360)
 	add_child(_title)
 	_sub = Ui.label("", Ui.text(42))
-	_sub.position = Vector2(0, 520)
+	_sub.position = Vector2(0, 548)
 	add_child(_sub)
 	visible = false
 	_caption = Node2D.new()
+	_caption.draw.connect(_draw_caption)
 	add_sibling.call_deferred(_caption)
-	_caption_title = Ui.label("", Ui.title(64))
-	_caption_title.position = Vector2(0, 120)
+	_caption_title = Ui.label("", Ui.title(64, Color("b8322a")))
+	_caption_title.position = Vector2(0, 112)
 	_caption.add_child(_caption_title)
-	_caption_sub = Ui.label("", Ui.text(32))
-	_caption_sub.position = Vector2(0, 204)
+	var sub_style := Ui.text(32, Toon.INK)
+	sub_style.outline_size = 0
+	_caption_sub = Ui.label("", sub_style)
+	_caption_sub.position = Vector2(0, 190)
 	_caption.add_child(_caption_sub)
 	_caption.visible = false
 
@@ -42,6 +45,7 @@ func caption(text: String, sub := "", seconds := 2.2) -> void:
 	_caption_title.text = text
 	_caption_sub.text = sub
 	_caption.visible = true
+	_caption.queue_redraw()
 	_caption.modulate.a = 1.0
 	if _caption_tween != null:
 		_caption_tween.kill()
@@ -60,6 +64,7 @@ func say(text: String, sub := "", seconds := 1.4) -> void:
 	_title.text = text
 	_sub.text = sub
 	visible = true
+	queue_redraw()
 	if _tween != null:
 		_tween.kill()
 	_title.scale = Vector2(0.3, 0.3)
@@ -79,3 +84,20 @@ func clear() -> void:
 	if _tween != null:
 		_tween.kill()
 	visible = false
+
+
+## A ribbon behind the big title.
+func _draw() -> void:
+	if _title == null or _title.text == "":
+		return
+	var width := Ui.font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 128).x
+	Frames.ribbon(self, Vector2(960, 462), width + 140.0, 150.0)
+
+
+## A scroll behind the name of an item.
+func _draw_caption() -> void:
+	if _caption_title.text == "":
+		return
+	var width := maxf(Ui.font().get_string_size(_caption_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x,
+			Ui.font().get_string_size(_caption_sub.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x)
+	Frames.scroll(_caption, Vector2(960, 190), width + 120.0, 170.0)
