@@ -509,6 +509,8 @@ func _on_died() -> void:
 			banner.caption("Братец в нокауте!", "расчисти комнату — и он встанет", 2.2)
 			return
 	state = "over"
+	# Written down now: R before the card comes up still counts the run.
+	_record(false)
 	if waves != null:
 		waves.stop()
 	var at := brother.global_position + Vector2(0, -40)
@@ -518,7 +520,6 @@ func _on_died() -> void:
 	await iris.close(at, 0.8)
 	get_tree().paused = true
 	Music.stop()
-	_record(false)
 	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", _run_lines(),
 			_over_hint(), _looks(), _items())
 
