@@ -20,6 +20,7 @@ extends Node
 ##   finish        end the run as if out of the last trapdoor
 ##   ko            knock out the bosses in the room
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
+##   story NAME    play the story's opening or ending over the game
 ##   *.png         save the screen there
 ##
 ## Without `shot` or `tour` on the command line this node does nothing.
@@ -129,6 +130,9 @@ func _tour(words: PackedStringArray) -> void:
 			"finish":
 				main.call("_finish")
 				i += 1
+			"story":
+				main.call("play_story", Story.ENDING if value == "ending" else Story.OPENING)
+				i += 2
 			"god":
 				var brother := main.get("brother") as Brother
 				if brother != null:

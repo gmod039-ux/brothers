@@ -6,6 +6,10 @@ extends Node2D
 ## of teeth; a pear of a body, hose arms and legs, flared gloves, big shoes.
 ## Mostly black and white, with a touch of colour to tell the brothers apart.
 ##
+## The same drawing makes their sweethearts, the way the girlfriends of the
+## cartoon stars were drawn: the same head with lashes on the eyes and a
+## bow or a flower on top, a polka-dot dress, little shoes.
+##
 ## Drawn from the feet up, with (0, 0) on the floor under him. Walking, the
 ## bounce and the boil of the outlines change at [constant Toon.FPS]
 ## drawings a second; the brother himself moves every frame.
@@ -16,16 +20,20 @@ const GREY := Color("6d6360")
 
 ## "lanky" (tall, narrow, long legs) or "chubby" (short, round, big head).
 var build := "lanky"
-## What sits on top of the head: "quiff" (a slicked-up curl of hair) or
-## "ears" (round bear ears).
+## What sits on top of the head: "quiff" (a slicked-up curl of hair),
+## "ears" (round bear ears), "bow" (a big polka-dot bow) or "flower" (a
+## little hat with a daisy in it).
 var top := "quiff"
 var size := 1.0
 var shirt := WHITE
 var pants := Toon.INK
 var shoes := Toon.INK
 var accent := Color("c8392b")
-## "bow" (a bow tie in the accent colour), "straps" (overall straps) or "none".
+## "bow" (a bow tie in the accent colour), "straps" (overall straps),
+## "dress" (a polka-dot dress in the shirt colour, flaring out) or "none".
 var wear := "bow"
+## Eyelashes over the eyes, and a smaller smile.
+var lashes := false
 
 ## One of the four directions: which way the head looks.
 var facing := Vector2.DOWN
@@ -71,6 +79,7 @@ func configure(look: Dictionary) -> void:
 	shoes = _color(look, "shoes", shoes)
 	accent = _color(look, "accent", accent)
 	wear = str(look.get("wear", wear))
+	lashes = bool(look.get("lashes", lashes))
 	if build == "chubby":
 		_head_r = 40.0
 		_head_y = -104.0
@@ -230,9 +239,15 @@ func _legs(hip: Vector2, stride: float, side: bool, dx: float, boil: int) -> voi
 		Toon.hose(self, hips[i], ankle, bend, 7.5 * s)
 		var toe := Vector2(dx * 8.0 * s, 0) if side else Vector2.ZERO
 		var radii := Vector2(19.0, 9.5) * s if side else Vector2(15.5, 10.5) * s
+		if wear == "dress":
+			radii *= 0.72
 		var shoe := feet[i] + toe + Vector2(0, -2.0 * s)
 		Toon.ball(self, shoe, radii, shoes, boil, _seed + 10 + i, 4.5 * s, 0.0, 0.16)
-		if shoes != Toon.INK:
+		if wear == "dress":
+			# A strap over the instep.
+			Toon.stroke(self, Toon.bent(shoe + Vector2(-radii.x * 0.5, -radii.y * 0.5),
+					shoe + Vector2(radii.x * 0.5, -radii.y * 0.5), -radii.y * 0.3), 2.2 * s)
+		elif shoes != Toon.INK:
 			# The line of the sole and a lace on a white one.
 			Toon.stroke(self, Toon.bent(shoe + Vector2(-radii.x * 0.8, 4.0 * s),
 					shoe + Vector2(radii.x * 0.8, 4.0 * s), 2.0 * s), 2.6 * s)
@@ -276,7 +291,9 @@ func _body(at: Vector2, side: bool, dx: float, back: bool, boil: int) -> void:
 			# A pocket on the shorts.
 			Toon.stroke(self, Toon.bent(Vector2(at.x + r.x * 0.15, waist + r.y * 0.35),
 					Vector2(at.x + r.x * 0.62, waist + r.y * 0.3), -3.0 * s), 2.0 * s)
-	if wear == "straps":
+	if wear == "dress":
+		_dress(at, r, waist, side, dx, back, boil)
+	elif wear == "straps":
 		# Overall straps up over the shoulders, a button where each meets
 		# the trousers.
 		for sx: float in [-1.0, 1.0]:
@@ -299,6 +316,46 @@ func _body(at: Vector2, side: bool, dx: float, back: bool, boil: int) -> void:
 				var neck := Vector2(at.x + sx * 5.0 * s, at.y - r.y * 0.92)
 				Toon.shape(self, PackedVector2Array([neck, neck + Vector2(sx * 11.0, -2.0) * s,
 						neck + Vector2(sx * 5.0, 8.0) * s]), shirt, 2.4 * s)
+
+
+## A dress: white polka dots on the bodice, a skirt flaring out from the
+## waist in a bell with a wavy hem, and a round white collar.
+func _dress(at: Vector2, r: Vector2, waist: float, side: bool, dx: float, back: bool, boil: int) -> void:
+	var s := size
+	for k in 5:
+		var dot := at + Vector2((Toon.hash01(k, 5) - 0.5) * r.x * 1.3, -r.y * 0.6 + k * r.y * 0.16)
+		if absf(dot.x - at.x) < r.x * 0.75:
+			Toon.spot(self, dot, Vector2(2.6, 2.6) * s, Color(WHITE, 0.9))
+	var hem_y := _hip_y * s + 18.0 * s
+	var top_w := r.x * (0.8 if side else 0.95)
+	var hem_w := r.x * (1.5 if side else 1.75)
+	var skirt := PackedVector2Array()
+	skirt.append(Vector2(at.x - top_w, waist))
+	skirt.append(Vector2(at.x + top_w, waist))
+	var waves := 5
+	for k in waves * 2 + 1:
+		var u := 1.0 - float(k) / (waves * 2)
+		var x := at.x - hem_w + u * hem_w * 2.0
+		var dip := (4.0 if k % 2 == 0 else -1.0) * s
+		skirt.append(Vector2(x, hem_y + dip + Toon.hash01(boil, k) * 1.5 * s))
+	Toon.shape(self, skirt, shirt, 4.0 * s)
+	# Pleats, and dots on the skirt.
+	for k in 3:
+		var x := (k - 1) * hem_w * 0.55
+		Toon.stroke(self, PackedVector2Array([Vector2(at.x + x * 0.45, waist + 4.0 * s),
+				Vector2(at.x + x, hem_y - 2.0 * s)]), 1.8 * s, shirt.darkened(0.35))
+	for k in 6:
+		var u := Toon.hash01(k, 9)
+		var v := 0.25 + Toon.hash01(k, 11) * 0.6
+		var y := lerpf(waist, hem_y, v)
+		var half := lerpf(top_w, hem_w, v) * 0.8
+		Toon.spot(self, Vector2(at.x - half + u * half * 2.0, y), Vector2(3.0, 2.6) * s, Color(WHITE, 0.9))
+	Toon.shine(self, Vector2(at.x - hem_w * 0.35, lerpf(waist, hem_y, 0.45)), Vector2(4.0, 9.0) * s, 0.35)
+	if not back:
+		# The collar: two round white flaps at the neck.
+		for sx: float in ([dx] if side else [-1.0, 1.0]):
+			var flap := Vector2(at.x + sx * 7.0 * s, at.y - r.y * 0.82)
+			Toon.blob(self, flap, Vector2(8.5, 5.5) * s, WHITE, boil, _seed + 64 + int(sx), 2.5 * s, sx * 0.3)
 
 
 ## The leftmost and rightmost x of [param points] on the line y = [param y].
@@ -402,6 +459,10 @@ func _head(at: Vector2, face: Vector2, shoot: Vector2, side: bool, dx: float, ba
 		var shine := root + Vector2(-0.06 * r, -0.36 * r)
 		Toon.stroke(self, Toon.bent(shine, shine + Vector2(0.12 * r, 0.22 * r), -0.05 * r), 2.6 * s,
 				Color(1, 1, 1, 0.6))
+	if top == "bow":
+		_head_bow(at + Vector2(turn * 0.2 * r, -0.86 * r), r, boil)
+	elif top == "flower":
+		_flower_hat(at + Vector2(turn * 0.15 * r, -0.8 * r), r, boil)
 	if back:
 		return
 
@@ -427,6 +488,8 @@ func _head(at: Vector2, face: Vector2, shoot: Vector2, side: bool, dx: float, ba
 		Toon.spot(self, o + Vector2(0, 0.08 * r), Vector2(0.09, 0.07) * r, TONGUE)
 	elif side:
 		_mouth(at + Vector2(dx * 0.22 * r, 0.4 * r), at + Vector2(dx * 1.02 * r, 0.3 * r), 0.4 * r, boil)
+	elif lashes:
+		_mouth(at + Vector2(-0.36 * r, 0.4 * r), at + Vector2(0.36 * r, 0.4 * r), 0.3 * r, boil)
 	else:
 		_mouth(at + Vector2(-0.54 * r, 0.36 * r), at + Vector2(0.54 * r, 0.36 * r), 0.46 * r, boil)
 
@@ -448,6 +511,14 @@ func _head(at: Vector2, face: Vector2, shoot: Vector2, side: bool, dx: float, ba
 			Toon.shut_eye(self, center + Vector2(0, radii.y * 0.25), radii.x * 2.1, 3.5 * s)
 		else:
 			Toon.pie_eye(self, center, radii, look, boil, _seed + 30 + k, 3.5 * s, 0.55 if shocked else 1.0)
+		if lashes:
+			# Three lashes fanning up and out from the top of each eye.
+			var out := -1.0 if center.x < at.x + turn * 0.3 * r else 1.0
+			for j in 3:
+				var a := -PI * 0.5 + out * (0.25 + j * 0.32)
+				var root := center + Vector2(cos(a) * radii.x * 0.95, sin(a) * radii.y * 0.95)
+				var tip := root + Vector2(cos(a), sin(a)) * 9.0 * s + Vector2(out * 2.0, -2.0) * s
+				Toon.stroke(self, Toon.bent(root, tip, out * 1.5 * s, 4), 2.6 * s)
 
 	# Snout and nose, over the bottom of the eyes: the nose is the nearest
 	# thing on the face.
@@ -493,6 +564,37 @@ func _mouth(a: Vector2, b: Vector2, depth: float, boil: int) -> void:
 		var out := signf(p.x - (a.x + b.x) * 0.5)
 		Toon.stroke(self, Toon.bent(p + Vector2(out * 2.0 * s, -6.0 * s), p + Vector2(out * 5.0 * s, 6.0 * s),
 				out * 3.0 * s), 2.6 * s)
+
+
+## A big bow on top of the head, in the accent colour with white dots: two
+## round loops and a knot.
+func _head_bow(at: Vector2, r: float, boil: int) -> void:
+	var s := size
+	for sx: float in [-1.0, 1.0]:
+		var loop := at + Vector2(sx * 0.42 * r, -0.08 * r)
+		Toon.ball(self, loop, Vector2(0.42, 0.34) * r, accent, boil, _seed + 70 + int(sx), 4.0 * s, sx * 0.35, 0.1)
+		for k in 3:
+			var dot := loop + Vector2(sx * (0.08 + 0.12 * k) * r, (Toon.hash01(k, 13) - 0.5) * 0.3 * r)
+			Toon.spot(self, dot, Vector2(0.05, 0.05) * r, Color(WHITE, 0.95))
+	Toon.blob(self, at, Vector2(0.15, 0.17) * r, accent.darkened(0.2), boil, _seed + 72, 3.5 * s)
+
+
+## A little round hat perched on the head, a daisy stuck in its band.
+func _flower_hat(at: Vector2, r: float, boil: int) -> void:
+	var s := size
+	Toon.ball(self, at + Vector2(0, 0.08 * r), Vector2(0.62, 0.14) * r, accent.darkened(0.15), boil, _seed + 74, 3.5 * s)
+	Toon.ball(self, at + Vector2(0, -0.12 * r), Vector2(0.4, 0.26) * r, accent, boil, _seed + 75, 3.5 * s, 0.0, -0.2)
+	Toon.stroke(self, Toon.bent(at + Vector2(-0.38 * r, -0.02 * r), at + Vector2(0.38 * r, -0.02 * r), 0.05 * r),
+			4.0 * s, WHITE)
+	var daisy := at + Vector2(0.32 * r, -0.12 * r)
+	var sway := sin(_drawing * 0.5) * 0.08 * r
+	var head := daisy + Vector2(0.18 * r + sway, -0.42 * r)
+	Toon.stroke(self, Toon.bent(daisy, head, -0.06 * r, 5), 2.5 * s, Color("5f9a45"))
+	for k in 6:
+		var a := TAU * k / 6.0 + 0.3
+		Toon.blob(self, head + Vector2(cos(a), sin(a)) * 0.12 * r, Vector2(0.08, 0.05) * r, WHITE, boil,
+				_seed + 80 + k, 2.0 * s, a)
+	Toon.blob(self, head, Vector2(0.07, 0.07) * r, Color("e8b83a"), boil, _seed + 79, 2.0 * s)
 
 
 ## A slicked-up curl of hair: round at the root, a point at the top leaning

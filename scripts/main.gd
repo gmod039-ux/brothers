@@ -37,6 +37,7 @@ var god := false
 
 var _select_layer: CanvasLayer
 var _menu_layer: CanvasLayer
+var _story_layer: CanvasLayer
 ## Runs go into the records: not the bot's, not a screenshot tour's.
 var _recording := true
 var _flash: ColorRect
@@ -82,6 +83,9 @@ func _ready() -> void:
 	add_child(card_layer)
 	intertitle = Intertitle.new()
 	card_layer.add_child(intertitle)
+	_story_layer = CanvasLayer.new()
+	_story_layer.layer = 35
+	add_child(_story_layer)
 	_menu_layer = CanvasLayer.new()
 	_menu_layer.layer = 40
 	add_child(_menu_layer)
@@ -125,6 +129,14 @@ func _ready() -> void:
 	if _args.has("brother"):
 		chosen = _arg("brother", chosen)
 		start_run(first_seed)
+	elif _args.has("story") or (_recording and not Records.story_seen):
+		# The first time, the story of the picture before anything else.
+		state = "story"
+		play_story(Story.OPENING).connect(func() -> void:
+			Records.story_seen = true
+			if _recording:
+				Records.save()
+			show_select())
 	else:
 		show_select()
 	if _args.has("autoplay"):
@@ -220,7 +232,7 @@ func show_select() -> void:
 	select.options_wanted.connect(func() -> void:
 		select.active = false
 		_open_options(true).closed.connect(func() -> void:
-			if select != null:
+			if select != null and not _story_layer.get_child_count():
 				select.wake()))
 	iris.open(camera.position, 0.6)
 	Music.play("menu")
@@ -352,16 +364,29 @@ func _descend() -> void:
 
 func _finish() -> void:
 	state = "over"
-	Music.play("menu")
 	get_tree().paused = true
 	var seconds := _play_time
+	var best := _record(true)
+	if _recording and run != null:
+		# The girls are free: the end of the picture, before the numbers.
+		await play_story(Story.ENDING)
+	Music.play("menu")
 	var lines := _run_lines()
-	if _record(true):
+	if best:
 		lines.append("новый рекорд — быстрее всех!")
 	elif Records.best_time > 0.0 and _recording:
 		lines.append("рекорд — %s" % Records.clock(Records.best_time))
 	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _look(), _items())
 	print("finished in %.1f s" % seconds)
+
+
+## Plays [param shots] of the story over everything. Await the signal it
+## returns for the end of it, skipped or not.
+func play_story(shots: Array[Dictionary]) -> Signal:
+	var story := Story.new()
+	story.shots = shots
+	_story_layer.add_child(story)
+	return story.finished
 
 
 ## R, Enter or A: another run; Esc or Start: back to the brothers.
@@ -450,7 +475,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("pause"):
 			get_tree().quit()
 		return
-	if _busy or state == "select":
+	if _busy or state == "select" or state == "story":
 		return
 	if event.is_action_pressed("restart"):
 		_restart(false)
@@ -510,8 +535,9 @@ func _unpause() -> void:
 
 
 ## The settings, over whatever is on screen. From the brother choice there
-## is also the way out of the game, which the pause has of its own.
-func _open_options(with_quit: bool) -> CardMenu:
+## are also the story and the way out of the game, which the pause has of
+## its own.
+func _open_options(from_select: bool) -> CardMenu:
 	var card := CardMenu.new()
 	card.title = "Настройки"
 	card.lines = [
@@ -522,13 +548,20 @@ func _open_options(with_quit: bool) -> CardMenu:
 		{"id": "fullscreen", "text": "Во весь экран", "toggle": Options.fullscreen},
 		{"id": "back", "text": "Назад"},
 	]
-	if with_quit:
+	if from_select:
+		card.lines.insert(card.lines.size() - 1, {"id": "story", "text": "Смотреть историю"})
 		card.lines.append({"id": "quit", "text": "Выйти из игры"})
 	card.hint = "← → менять   ·   Esc — назад"
 	card.changed.connect(_on_option_changed)
 	card.picked.connect(func(id: String) -> void:
 		if id == "quit":
 			get_tree().quit()
+		elif id == "story":
+			var story := play_story(Story.OPENING)
+			card.close()
+			story.connect(func() -> void:
+				if select != null:
+					select.wake())
 		else:
 			card.close())
 	card.closed.connect(func() -> void:
