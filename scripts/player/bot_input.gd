@@ -45,11 +45,11 @@ func update(brother: Brother, _delta: float) -> void:
 	if goal == Vector2.INF:
 		move = (((room.center() + Vector2(0, 120)) - me) / 200.0).limit_length(1.0)
 		return
-	move = ((goal - me) / 40.0).limit_length(1.0)
+	move = ((goal - me) / 40.0 + _apart(room, me)).limit_length(1.0)
 
 
 ## A push away from enemies closer than [constant KEEP_AWAY] (more for big
-## ones), from spit coming its way, and off the walls.
+## ones), from spit coming its way, from its brother, and off the walls.
 func _danger(room: Room, me: Vector2) -> Vector2:
 	var away := Vector2.ZERO
 	for enemy in room.enemies:
@@ -62,6 +62,7 @@ func _danger(room: Room, me: Vector2) -> Vector2:
 		if shot != null and shot.hostile and shot.global_position.distance_to(me) < 180.0:
 			var side := shot.velocity.orthogonal().normalized()
 			away += side * signf(side.dot(me - shot.global_position) + 0.01) * 1.5
+	away += _apart(room, me)
 	var inside := room.floor_rect().grow(-80.0)
 	if not inside.has_point(me):
 		away += (inside.get_center() - me).normalized() * 0.8
@@ -98,6 +99,17 @@ func _fight(nearest: Enemy, me: Vector2, away: Vector2) -> void:
 			if absf(to.x) < keep:
 				line_up.x = -signf(to.x)
 	move = (line_up + away * 2.0).limit_length(1.0)
+
+
+## A push off its brother: two bots would stand in the very same spot and
+## look like one.
+static func _apart(room: Room, me: Vector2) -> Vector2:
+	var push := Vector2.ZERO
+	for other in room.brothers:
+		var gap := me - other.global_position
+		if gap.length() > 0.5 and gap.length() < 110.0:
+			push += gap.normalized() * (110.0 - gap.length()) / 110.0 * 0.7
+	return push
 
 
 ## True when a shot from [param a] to [param b] would not hit a rock.
