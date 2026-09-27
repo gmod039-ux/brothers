@@ -3,9 +3,12 @@ extends Node2D
 ## Choosing a brother, on the poster of a picture house: velvet curtains, a
 ## sunburst behind the title in a marquee of lamps, both brothers on the
 ## boards with the chosen one in the spotlight, each with his playbill card
-## of numbers.
+## of numbers. Between them on the boards, once there is anything to
+## write on it, a board with the records.
 
 signal chosen(id: String)
+## Esc: the settings card, over this.
+signal options_wanted
 
 const IDS := ["older", "younger"]
 const SPOTS := [Vector2(620, 700), Vector2(1300, 700)]
@@ -31,6 +34,9 @@ const BARS := [
 ]
 
 var index := 0
+## False while the settings are up over the poster.
+var active := true
+var _nav: MenuNav
 var _looks: Array[BrotherLook] = []
 var _names: Array[Label] = []
 var _taken := false
@@ -43,6 +49,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	_nav = MenuNav.new()
 	var title := Ui.label("БРАТЬЯ", Ui.title(Ui.fit("БРАТЬЯ", 150, 700.0)))
 	title.position = Vector2(0, 72)
 	add_child(title)
@@ -69,8 +76,8 @@ func _ready() -> void:
 		var about := Ui.label(str(character.get("about", "")), about_style, 520)
 		about.position = Vector2(x - 260, 818)
 		add_child(about)
-	var hint := Ui.label("←  →  выбрать     ·     Пробел — в бой", Ui.text(32), 1920)
-	hint.position = Vector2(0, 1000)
+	var hint := Ui.label("←  →  выбрать     ·     Пробел — в бой     ·     Esc — настройки", Ui.text(30), 1920)
+	hint.position = Vector2(0, 992)
 	add_child(hint)
 	_show()
 
@@ -81,21 +88,25 @@ func _process(delta: float) -> void:
 	if d != _drawing:
 		_drawing = d
 		queue_redraw()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _taken:
+	if _taken or not active:
 		return
-	if event.is_action_pressed("p1_left") or event.is_action_pressed("p1_shoot_left"):
-		index = 0
+	var step := _nav.step(delta)
+	if step.x != 0 and index != (0 if step.x < 0 else 1):
+		index = 0 if step.x < 0 else 1
 		Sfx.play("select", -6.0, 0.0)
 		_show()
-	elif event.is_action_pressed("p1_right") or event.is_action_pressed("p1_shoot_right"):
-		index = 1
-		Sfx.play("select", -6.0, 0.0)
-		_show()
-	elif event.is_action_pressed("confirm"):
+	if _nav.pressed("confirm"):
 		pick()
+	elif _nav.pressed("pause"):
+		Sfx.play("select", -4.0, 0.0)
+		options_wanted.emit()
+
+
+## Back from the settings: the key that closed them must not pick a
+## brother as well.
+func wake() -> void:
+	active = true
+	_nav.hold()
 
 
 func pick() -> void:
@@ -130,6 +141,7 @@ func _draw() -> void:
 	Frames.ribbon(self, Vector2(960, 312), 560.0, 66.0)
 	for i in IDS.size():
 		_playbill(i)
+	_records()
 	_curtains()
 	_footlights()
 
@@ -306,6 +318,42 @@ func _playbill(i: int) -> void:
 		var width := maxf(bar.size.x * clampf(value, 0.0, 1.0) - 4.0, 12.0)
 		draw_style_box(fill, Rect2(bar.position + Vector2(2, 2), Vector2(width, bar.size.y - 4)))
 		draw_line(bar.position + Vector2(8, 4), bar.position + Vector2(width - 4, 4), Color(1, 1, 1, 0.35), 2.0)
+
+
+## A board on an easel between the brothers, chalked with the records:
+## runs, ways out, the quickest one. Not there before the first run.
+func _records() -> void:
+	if Records.runs == 0:
+		return
+	var center := Vector2(960, 548)
+	var board := Rect2(center - Vector2(128, 88), Vector2(256, 176))
+	# The easel: two legs splayed onto the boards, one behind.
+	Toon.hand_line(self, center + Vector2(0, -60), center + Vector2(0, 150), 7.0, 71, Color("5a3a22"))
+	for side: float in [-1.0, 1.0]:
+		Toon.stroke(self, PackedVector2Array([center + Vector2(side * 70, -100), center + Vector2(side * 108, 152)]), 11.0)
+		Toon.stroke(self, PackedVector2Array([center + Vector2(side * 70, -100), center + Vector2(side * 108, 152)]), 6.0,
+				Color("8a5a36"))
+	Toon.glow(self, center + Vector2(0, 156), Vector2(140, 22), Color(0, 0, 0, 0.45), 2)
+	draw_rect(board.grow(9), Toon.INK)
+	draw_rect(board.grow(5), Color("7a4c2c"))
+	draw_rect(board, Color("2c3a2e"))
+	# Old chalk wiped off, never quite.
+	for k in 5:
+		var at := board.position + Vector2(30 + Toon.hash01(k, 1) * 190, 24 + Toon.hash01(k, 2) * 120)
+		Toon.spot(self, at, Vector2(34, 12), Color(1, 1, 1, 0.035), 0, k, 0.3)
+	var chalk := Color("ece6d6")
+	var font := Ui.font()
+	draw_string(font, board.position + Vector2(0, 38), "Рекорды", HORIZONTAL_ALIGNMENT_CENTER, board.size.x, 28,
+			Color(GOLD, 0.95))
+	draw_line(board.position + Vector2(56, 50), board.position + Vector2(board.size.x - 56, 50), Color(chalk, 0.5), 2.0)
+	var rows := ["забегов: %d" % Records.runs, "выбрались: %d" % Records.wins]
+	if Records.best_time > 0.0:
+		rows.append("быстрее всех: %s" % Records.clock(Records.best_time))
+	else:
+		rows.append("дальше всех: этаж %d" % maxi(Records.deepest, 1))
+	for r in rows.size():
+		draw_string(font, board.position + Vector2(0, 86 + r * 30), rows[r], HORIZONTAL_ALIGNMENT_CENTER,
+				board.size.x, 22, chalk)
 
 
 ## Red velvet curtains drawn back to either side, a valance with a gold

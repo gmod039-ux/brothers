@@ -21,6 +21,8 @@ var intertitle: Intertitle
 var iris: Iris
 var film: Film
 var select: BrotherSelect
+## The card of choices up now (the pause, or the settings over it), or null.
+var menu: CardMenu
 var room: Room
 var brother: Brother
 var waves: Waves
@@ -34,6 +36,9 @@ var demo := false
 var god := false
 
 var _select_layer: CanvasLayer
+var _menu_layer: CanvasLayer
+## Runs go into the records: not the bot's, not a screenshot tour's.
+var _recording := true
 var _flash: ColorRect
 var _shake := 0.0
 ## Seconds of play in this run: game time, so it is right in fast checks
@@ -47,6 +52,8 @@ func _ready() -> void:
 	Controls.setup()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_args = OS.get_cmdline_user_args()
+	Options.load_file()
+	Records.load_file()
 	_fit_window()
 	world = Node2D.new()
 	world.name = "World"
@@ -75,6 +82,9 @@ func _ready() -> void:
 	add_child(card_layer)
 	intertitle = Intertitle.new()
 	card_layer.add_child(intertitle)
+	_menu_layer = CanvasLayer.new()
+	_menu_layer.layer = 40
+	add_child(_menu_layer)
 	var flash_layer := CanvasLayer.new()
 	flash_layer.layer = 18
 	add_child(flash_layer)
@@ -86,12 +96,13 @@ func _ready() -> void:
 	Fx.on_flash = _screen_flash
 	Fx.on_shake = func(seconds: float) -> void: _shake = maxf(_shake, seconds)
 	film = Film.new()
-	film.strength = float(_arg("film", "1.0"))
+	film.strength = float(_arg("film", str(Options.film)))
 	add_child(film)
 	add_child(Sfx.new())
 	var music := Music.new()
 	music.enabled = not _args.has("mute") and DisplayServer.get_name() != "headless"
 	add_child(music)
+	Options.apply_sound()
 	var shooter := preload("res://scripts/dev/screenshot.gd").new()
 	shooter.name = "Screenshot"
 	add_child(shooter)
@@ -109,6 +120,7 @@ func _ready() -> void:
 		Room.texture_variant = int(_arg("textures", "0"))
 	demo = _args.has("demo")
 	god = _args.has("god") or demo
+	_recording = not demo and not _args.has("tour") and not _args.has("shot")
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
 	if _args.has("brother"):
 		chosen = _arg("brother", chosen)
@@ -130,6 +142,9 @@ func _fit_window() -> void:
 		return
 	if _args.has("shot") or _args.has("tour"):
 		return
+	if Options.fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
 	var screen := DisplayServer.window_get_current_screen()
 	var area := DisplayServer.screen_get_usable_rect(screen)
 	var width := mini(int(area.size.x * 0.9), int(area.size.y * 0.9 * 16.0 / 9.0))
@@ -147,11 +162,22 @@ func _screen_flash(color: Color, seconds: float) -> void:
 
 func _toggle_fullscreen() -> void:
 	var mode := DisplayServer.window_get_mode()
-	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+	_set_fullscreen(mode != DisplayServer.WINDOW_MODE_FULLSCREEN
+			and mode != DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+	Options.save()
+	if menu != null:
+		menu.set_value("fullscreen", Options.fullscreen)
+
+
+func _set_fullscreen(on: bool) -> void:
+	Options.fullscreen = on
+	if DisplayServer.get_name() == "headless":
+		return
+	if on:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		_fit_window()
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _input(event: InputEvent) -> void:
@@ -183,6 +209,7 @@ func show_select() -> void:
 	get_tree().paused = false
 	banner.clear()
 	intertitle.hide_card()
+	_dismiss_menus()
 	_clear_world()
 	hud.visible = false
 	select = BrotherSelect.new()
@@ -190,6 +217,11 @@ func show_select() -> void:
 	var index := BrotherSelect.IDS.find(chosen)
 	select.select(maxi(index, 0))
 	select.chosen.connect(_on_chosen)
+	select.options_wanted.connect(func() -> void:
+		select.active = false
+		_open_options(true).closed.connect(func() -> void:
+			if select != null:
+				select.wake()))
 	iris.open(camera.position, 0.6)
 	Music.play("menu")
 
@@ -323,9 +355,26 @@ func _finish() -> void:
 	Music.play("menu")
 	get_tree().paused = true
 	var seconds := _play_time
-	intertitle.show_card("won", "Выбрались!", _run_lines(),
-			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
+	var lines := _run_lines()
+	if _record(true):
+		lines.append("новый рекорд — быстрее всех!")
+	elif Records.best_time > 0.0 and _recording:
+		lines.append("рекорд — %s" % Records.clock(Records.best_time))
+	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _look(), _items())
 	print("finished in %.1f s" % seconds)
+
+
+## R, Enter or A: another run; Esc or Start: back to the brothers.
+func _over_hint() -> String:
+	return "R, Enter — ещё раз   ·   Esc — выбрать брата"
+
+
+## Writes the run that has just ended into the records. True when it was
+## the quickest way out yet.
+func _record(won: bool) -> bool:
+	if not _recording or run == null:
+		return false
+	return Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten)
 
 
 ## The numbers of the run for the card at its end.
@@ -392,8 +441,8 @@ func _on_died() -> void:
 	await iris.close(at, 0.8)
 	get_tree().paused = true
 	Music.stop()
-	intertitle.show_card("dead", "Эх, братец…", _run_lines(),
-			"R — ещё раз   ·   Esc — выбрать брата", _look(), _items())
+	_record(false)
+	intertitle.show_card("dead", "Эх, братец…", _run_lines(), _over_hint(), _look(), _items())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -408,15 +457,110 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("pause"):
 		if state == "over":
 			_restart(true)
-		elif get_tree().paused:
-			get_tree().paused = false
-			intertitle.hide_card()
+		elif not get_tree().paused:
+			_pause()
+	elif event.is_action_pressed("confirm") and state == "over" and intertitle.is_settled():
+		_restart(false)
+
+
+## The game stops under a card of choices.
+func _pause() -> void:
+	get_tree().paused = true
+	Sfx.play("select", -4.0, 0.0)
+	var card := CardMenu.new()
+	card.title = "Пауза"
+	card.lines = [
+		{"id": "resume", "text": "Дальше"},
+		{"id": "options", "text": "Настройки"},
+		{"id": "restart", "text": "Заново"},
+		{"id": "select", "text": "Выбрать брата"},
+		{"id": "quit", "text": "Выйти из игры"},
+	]
+	card.items = _items()
+	card.hint = "Esc — дальше   ·   R — заново"
+	card.let_through = ["fullscreen", "restart"]
+	card.picked.connect(_on_pause_pick.bind(card))
+	card.closed.connect(_unpause)
+	_menu_layer.add_child(card)
+	menu = card
+
+
+func _on_pause_pick(id: String, card: CardMenu) -> void:
+	match id:
+		"resume":
+			_unpause()
+		"options":
+			card.active = false
+			card.visible = false
+			_open_options(false).closed.connect(func() -> void:
+				if is_instance_valid(card):
+					menu = card
+					card.wake())
+		"restart":
+			_restart(false)
+		"select":
+			_restart(true)
+		"quit":
+			get_tree().quit()
+
+
+func _unpause() -> void:
+	_dismiss_menus()
+	get_tree().paused = false
+
+
+## The settings, over whatever is on screen. From the brother choice there
+## is also the way out of the game, which the pause has of its own.
+func _open_options(with_quit: bool) -> CardMenu:
+	var card := CardMenu.new()
+	card.title = "Настройки"
+	card.lines = [
+		{"id": "music", "text": "Музыка", "level": Options.music},
+		{"id": "sounds", "text": "Звуки", "level": Options.sounds},
+		{"id": "film", "text": "Старая плёнка", "level": Options.film},
+		{"id": "shake", "text": "Тряска экрана", "toggle": Options.shake},
+		{"id": "fullscreen", "text": "Во весь экран", "toggle": Options.fullscreen},
+		{"id": "back", "text": "Назад"},
+	]
+	if with_quit:
+		card.lines.append({"id": "quit", "text": "Выйти из игры"})
+	card.hint = "← → менять   ·   Esc — назад"
+	card.changed.connect(_on_option_changed)
+	card.picked.connect(func(id: String) -> void:
+		if id == "quit":
+			get_tree().quit()
 		else:
-			get_tree().paused = true
-			intertitle.show_card("pause", "Пауза", PackedStringArray(["Esc — дальше", "R — заново",
-					"Enter — выбрать брата"]), "", {}, _items())
-	elif event.is_action_pressed("confirm") and get_tree().paused and state == "play":
-		_restart(true)
+			card.close())
+	card.closed.connect(func() -> void:
+		Options.save()
+		if menu == card:
+			menu = null)
+	_menu_layer.add_child(card)
+	menu = card
+	return card
+
+
+## A setting turned on the card: heard or seen at once.
+func _on_option_changed(id: String, value: Variant) -> void:
+	Options.set_value(id, value)
+	match id:
+		"film":
+			film.strength = Options.film
+		"fullscreen":
+			_set_fullscreen(Options.fullscreen)
+		"sounds":
+			# A sample of how loud they are now.
+			Sfx.play("coin", 0.0, 0.0)
+
+
+## Takes down every card of choices, without the backing out they do on
+## Esc.
+func _dismiss_menus() -> void:
+	for card: CardMenu in _menu_layer.get_children():
+		card.active = false
+		card.visible = false
+		card.queue_free()
+	menu = null
 
 
 ## A new run, or back to choosing a brother, through the iris.
@@ -425,6 +569,7 @@ func _restart(to_select: bool) -> void:
 	get_tree().paused = false
 	banner.clear()
 	intertitle.hide_card()
+	_dismiss_menus()
 	if not iris.is_closed():
 		var at := brother.global_position + Vector2(0, -60) if brother != null else camera.position + Vector2.ZERO
 		await iris.close(at, 0.5)
@@ -440,7 +585,7 @@ func _process(delta: float) -> void:
 		_play_time += delta
 	if _shake > 0.0:
 		_shake = maxf(_shake - delta, 0.0)
-		var k := _shake / 0.25
+		var k := _shake / 0.25 * (1.0 if Options.shake else 0.0)
 		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 12.0 * k
 	else:
 		camera.offset = Vector2.ZERO

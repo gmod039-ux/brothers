@@ -74,3 +74,17 @@ static func title_card(ci: CanvasItem, size := Vector2(1920, 1080), color := CRE
 			var a := PI * 0.5 * k / 6.0
 			var dir := Vector2(inward.x * cos(a), inward.y * sin(a))
 			ci.draw_line(corner, corner + dir * (60.0 if k % 2 == 0 else 38.0), color, 2.5, true)
+
+
+## The double rule round a title card, with a fan and a gold star in each
+## corner: the frame of the cards between scenes.
+static func double_rule(ci: CanvasItem, r: Rect2, color := CREAM) -> void:
+	ci.draw_rect(r, color, false, 5.0)
+	ci.draw_rect(r.grow(-14), Color(color, 0.6), false, 2.0)
+	for corner: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+		var inward := (r.get_center() - corner).sign()
+		for k in 7:
+			var a := PI * 0.5 * k / 6.0
+			var dir := Vector2(inward.x * cos(a), inward.y * sin(a))
+			ci.draw_line(corner + dir * 14.0, corner + dir * (60.0 if k % 2 == 0 else 40.0), color, 2.5, true)
+		Toon.star(ci, corner + inward * 22.0, 8.0, 0.0, GOLD)

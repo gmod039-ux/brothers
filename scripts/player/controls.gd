@@ -18,6 +18,12 @@ static func setup() -> void:
 	_action("pause", [KEY_ESCAPE], [JOY_BUTTON_START])
 	_action("confirm", [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE], [JOY_BUTTON_A])
 	_action("fullscreen", [KEY_F11], [])
+	# Menus: either set of keys, the d-pad or the left stick.
+	_action("menu_up", [KEY_W, KEY_UP], [JOY_BUTTON_DPAD_UP], -1, JOY_AXIS_LEFT_Y, -1.0)
+	_action("menu_down", [KEY_S, KEY_DOWN], [JOY_BUTTON_DPAD_DOWN], -1, JOY_AXIS_LEFT_Y, 1.0)
+	_action("menu_left", [KEY_A, KEY_LEFT], [JOY_BUTTON_DPAD_LEFT], -1, JOY_AXIS_LEFT_X, -1.0)
+	_action("menu_right", [KEY_D, KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], -1, JOY_AXIS_LEFT_X, 1.0)
+	_action("menu_back", [KEY_BACKSPACE], [JOY_BUTTON_B])
 
 
 ## Actions for one brother: `<prefix>left` … for walking, `<prefix>shoot_left`

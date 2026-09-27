@@ -65,14 +65,15 @@ func _tour(words: PackedStringArray) -> void:
 				(main.get("film") as Film).strength = float(value)
 				i += 2
 			"press":
-				Input.action_press(value)
-				await _frames(1)
-				Input.action_release(value)
+				# As an event, the way a real key comes: it reaches both what
+				# waits for events and what polls Input. (Pressing the action
+				# as well made it count twice: the pause card closed on one
+				# and opened again on the other.)
 				var event := InputEventAction.new()
 				event.action = value
 				event.pressed = true
 				Input.parse_input_event(event)
-				await _frames(1)
+				await _frames(2)
 				# And let go: a press without a release leaves the action held.
 				var release := InputEventAction.new()
 				release.action = value

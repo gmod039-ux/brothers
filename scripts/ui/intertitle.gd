@@ -1,11 +1,10 @@
 class_name Intertitle
 extends Node2D
-## The cards between the scenes of a silent picture: the end of a run, the
-## way out, and the pause.
+## The cards between the scenes of a silent picture: the end of a run and
+## the way out. (The pause is a [CardMenu].)
 ##   "dead"   the brother flat on his back with stars going round, "Эх,
 ##            братец…", and what he got done
 ##   "won"    the brother dancing under a shower of stars, "Выбрались!"
-##   "pause"  the room dimmed behind a card with the ways on
 ## Each is lettered like a title card and framed like one: a double rule
 ## with fans in the corners. Pops in over three drawings.
 
@@ -23,6 +22,7 @@ var _items: Array[String] = []
 var _clock := 0.0
 var _drawing := -1
 var _pop := 1.0
+var _shown_at := 0
 
 
 func _init() -> void:
@@ -54,15 +54,15 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 	if _figure != null:
 		_figure.queue_free()
 		_figure = null
-	var pause := kind == "pause"
-	_title.label_settings.font_size = Ui.fit(title, 104 if pause else 116, 620.0 if pause else 1300.0)
+	_title.label_settings.font_size = Ui.fit(title, 116, 1300.0)
 	_title.size = Vector2(1920, 180)
-	_title.position = Vector2(0, 250 if pause else 76)
+	_title.position = Vector2(0, 76)
 	_lines.size = Vector2(1920, 300)
-	_lines.position = Vector2(0, 430 if pause else 660)
+	_lines.position = Vector2(0, 660)
 	_lines.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_hint.position = Vector2(0, 704 if pause else 958)
-	if not pause and not look.is_empty():
+	_hint.position = Vector2(0, 958)
+	_shown_at = Time.get_ticks_msec()
+	if not look.is_empty():
 		_figure = BrotherLook.new()
 		_figure.configure(look)
 		_figure.scale = Vector2(2.0, 2.0)
@@ -81,6 +81,12 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 			_title.scale = Vector2(step, step)
 			queue_redraw())
 		tween.tween_interval(1.0 / Toon.FPS)
+
+
+## The card has been up long enough to be read: a key held from the fight
+## (the A button shoots down) must not throw it away unseen.
+func is_settled() -> bool:
+	return visible and Time.get_ticks_msec() - _shown_at > 700
 
 
 func hide_card() -> void:
@@ -105,9 +111,6 @@ func _draw() -> void:
 	if _kind == "":
 		return
 	_title.pivot_offset = _title.size * 0.5
-	if _kind == "pause":
-		_draw_pause()
-		return
 	draw_rect(Rect2(0, 0, 1920, 1080), SEPIA)
 	# A sunburst, faint, behind the figure: the title card of a picture.
 	var center := Vector2(960, 470)
@@ -135,17 +138,6 @@ func _draw() -> void:
 	for side: float in [-1.0, 1.0]:
 		draw_line(Vector2(960 + side * 120, 945), Vector2(960 + side * 560, 945), Color(CREAM, 0.5), 2.0)
 		Toon.star(self, Vector2(960 + side * 100, 945), 7.0, 0.0, CREAM)
-
-
-func _draw_pause() -> void:
-	draw_rect(Rect2(0, 0, 1920, 1080), Color(0.06, 0.04, 0.03, 0.62))
-	var card := Rect2(560, 240, 800, 470)
-	Frames.card(self, card.grow(6), SEPIA, 0.96)
-	_frame_rect(card.grow(-22))
-	var width := Ui.title_font().get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			_title.label_settings.font_size).x
-	Frames.ribbon(self, Vector2(960, 340), (width + 120.0) * _pop, 130.0 * _pop)
-	_item_row(Vector2(960, 620))
 
 
 ## Pictures of the items he had, in a row under the numbers.
@@ -179,16 +171,4 @@ func _confetti() -> void:
 
 ## The double rule round a title card, with a fan in each corner.
 func _frame(size: Vector2, inset: float) -> void:
-	_frame_rect(Rect2(Vector2(inset, inset), size - Vector2(inset, inset) * 2.0))
-
-
-func _frame_rect(r: Rect2) -> void:
-	draw_rect(r, CREAM, false, 5.0)
-	draw_rect(r.grow(-14), Color(CREAM, 0.6), false, 2.0)
-	for corner: Vector2 in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
-		var inward := (r.get_center() - corner).sign()
-		for k in 7:
-			var a := PI * 0.5 * k / 6.0
-			var dir := Vector2(inward.x * cos(a), inward.y * sin(a))
-			draw_line(corner + dir * 14.0, corner + dir * (60.0 if k % 2 == 0 else 40.0), CREAM, 2.5, true)
-		Toon.star(self, corner + inward * 22.0, 8.0, 0.0, GOLD)
+	Frames.double_rule(self, Rect2(Vector2(inset, inset), size - Vector2(inset, inset) * 2.0))
