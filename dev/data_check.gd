@@ -1,6 +1,7 @@
 extends SceneTree
 ## Every data file reads, and holds together: brothers have their numbers,
-## waves name enemies that exist, room layouts are the right size.
+## items have their words and actives an effect, waves name enemies that
+## exist, room layouts are the right size.
 ##
 ##     godot --headless --path . --script res://dev/data_check.gd
 
@@ -23,6 +24,14 @@ func _initialize() -> void:
 		var e: Dictionary = enemies[kind]
 		_expect(float(e.get("hp", 0)) > 0.0, "%s has health" % kind)
 		_expect(float(e.get("radius", 0)) > 0.0, "%s has a size" % kind)
+	var items := GameData.items()
+	for id: String in items:
+		var item: Dictionary = items[id]
+		_expect(item.has("name") and item.has("text"), "item %s has a name and a line" % id)
+		if item.has("active"):
+			var charge := int(item["active"])
+			_expect(charge >= 1 and charge <= 6, "active %s charges in 1 to 6 rooms (%d)" % [id, charge])
+			_expect(ActiveItems.EFFECTS.has(id), "active %s does something" % id)
 	var waves := GameData.waves("arena")
 	_expect(not waves.is_empty(), "the arena has waves")
 	for wave: Dictionary in waves:
@@ -32,8 +41,8 @@ func _initialize() -> void:
 	_expect(layout.size() == Room.ROWS, "arena has %d rows (has %d)" % [Room.ROWS, layout.size()])
 	for row in layout:
 		_expect(row.length() == Room.COLS, "arena row '%s' is %d wide" % [row, Room.COLS])
-	print("data: %d brothers, %d enemies, %d waves, layout %dx%d" % [characters.size(),
-			enemies.size(), waves.size(), layout[0].length() if layout.size() > 0 else 0, layout.size()])
+	print("data: %d brothers, %d enemies, %d items, %d waves, layout %dx%d" % [characters.size(),
+			enemies.size(), items.size(), waves.size(), layout[0].length() if layout.size() > 0 else 0, layout.size()])
 	quit(1 if _failures > 0 else 0)
 
 

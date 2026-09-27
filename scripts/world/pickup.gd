@@ -19,6 +19,9 @@ var item := ""
 var price := 0
 var room: Room
 var gone := false
+## Left by a brother taking another item in its place: waits until nobody
+## is standing on it, or it would go straight back into his hands.
+var wait_clear := false
 
 var _clock := 0.0
 
@@ -27,6 +30,11 @@ func _physics_process(delta: float) -> void:
 	_clock += delta
 	if gone or _clock < 0.4:
 		return
+	if wait_clear:
+		for brother in room.brothers:
+			if brother.global_position.distance_to(global_position) <= REACH * 1.6:
+				return
+		wait_clear = false
 	for brother in room.brothers:
 		if brother.dead:
 			continue

@@ -21,6 +21,11 @@ var from := Vector2.ZERO
 var to := Vector2.ZERO
 ## Whoever threw it is not hurt by it.
 var thrower: Enemy
+## How far it reaches and how hard it hits: a stick of dynamite more.
+var reach := REACH
+var damage := DAMAGE
+## Spares the brothers: theirs, not a boss's, and thrown well clear.
+var friendly := false
 
 var _clock := 0.0
 var _air := 0.0
@@ -52,19 +57,21 @@ func _physics_process(delta: float) -> void:
 func _explode() -> void:
 	var at := global_position
 	for enemy in room.enemies.duplicate():
-		if enemy != thrower and enemy.can_be_hit() and enemy.global_position.distance_to(at) < REACH + enemy.radius * 0.5:
-			enemy.hurt(DAMAGE, (enemy.global_position - at).normalized(), 2.0)
+		if enemy != thrower and enemy.can_be_hit() and enemy.global_position.distance_to(at) < reach + enemy.radius * 0.5:
+			enemy.hurt(damage, (enemy.global_position - at).normalized(), 2.0)
 	for brother in room.brothers:
-		if not brother.dead and brother.global_position.distance_to(at) < REACH * 0.8:
+		if not friendly and not brother.dead and brother.global_position.distance_to(at) < reach * 0.8:
 			brother.hurt(2, at)
 	for row in Room.ROWS:
 		for col in Room.COLS:
 			var cell := Vector2i(col, row)
-			if room.is_rock(cell) and room.tile_center(cell).distance_to(at) < REACH + 30.0:
+			if room.is_rock(cell) and room.tile_center(cell).distance_to(at) < reach + 30.0:
 				room.break_rock(cell)
 	Sfx.play("blast", 0.0)
+	if friendly:
+		Fx.shake(0.3)
 	var blast := Blast.new()
-	blast.radius = REACH
+	blast.radius = reach
 	room.effects.add_child(blast)
 	blast.global_position = at
 	exploded.emit(at)
@@ -84,8 +91,15 @@ func _draw() -> void:
 		var up := sin(k * PI) * 160.0
 		Toon.spot(self, Vector2(0, 2), Vector2(20, 7), Color(Toon.INK, 0.25))
 		draw_set_transform(Vector2(0, -up), k * 8.0, Vector2.ONE)
-		Toon.blob(self, Vector2(0, -22), Vector2(24, 22), Toon.INK, drawing, 3, 3.5)
+		if friendly:
+			_stick(drawing, 1.0)
+		else:
+			Toon.blob(self, Vector2(0, -22), Vector2(24, 22), Toon.INK, drawing, 3, 3.5)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	if friendly:
+		Toon.spot(self, Vector2(0, 2), Vector2(26, 8), Color(Toon.INK, 0.3))
+		_stick(drawing, 1.0 + (0.08 if drawing % 2 == 0 else 0.0))
 		return
 	# Swells as the fuse burns down, and flashes red in the last half second.
 	var swell := 1.0 + (1.0 - left) * 0.25 + (0.06 if drawing % 2 == 0 else 0.0)
@@ -96,6 +110,17 @@ func _draw() -> void:
 	var fuse_end := Vector2(14, -48) * swell + Vector2(0, 10) * (1.0 - left)
 	Toon.stroke(self, Toon.bent(Vector2(8, -42) * swell, fuse_end, 4.0), 3.5, ItemIcon.BROWN)
 	Toon.star(self, fuse_end, 8.0 + (drawing % 2) * 3.0, drawing * 0.9, ItemIcon.GOLD)
+
+
+## A stick of dynamite on its side, fuse sparking at one end.
+func _stick(drawing: int, swell: float) -> void:
+	draw_set_transform(Vector2(0, -16), -0.3, Vector2(swell, swell))
+	Toon.box(self, Vector2.ZERO, Vector2(30, 11), Color("c8392b"), drawing, 5, 4.0)
+	draw_rect(Rect2(-12, -11, 6, 22), Color("e8dcc0"))
+	draw_rect(Rect2(8, -11, 6, 22), Color("e8dcc0"))
+	Toon.stroke(self, Toon.bent(Vector2(30, -2), Vector2(44, -16), 5.0), 3.0, ItemIcon.BROWN)
+	Toon.star(self, Vector2(45, -18), 7.0 + (drawing % 2) * 3.0, drawing * 0.9, ItemIcon.GOLD)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## The explosion itself: a flash, a ring of smoke, stars, and the word for

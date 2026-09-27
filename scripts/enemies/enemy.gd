@@ -46,6 +46,9 @@ var _wince := 0.0
 ## Seconds into being knocked out, or -1.
 var _ko := -1.0
 var _gone := false
+## Seconds left standing stock still, stars going round: a flash in the
+## eyes, a stopped watch.
+var _daze := 0.0
 
 
 func setup(kind_: String, room_: Room, rng_: RandomNumberGenerator) -> void:
@@ -75,6 +78,19 @@ func setup(kind_: String, room_: Room, rng_: RandomNumberGenerator) -> void:
 
 func can_touch() -> bool:
 	return not dead and _spawn <= 0.0
+
+
+## Stock still for [param seconds]: it does not move, attack or hurt on
+## touch. Its whole tick stops, so a boss mid-jump hangs in the air.
+func daze(seconds: float) -> void:
+	if dead:
+		return
+	_daze = maxf(_daze, seconds)
+	set_physics_process(false)
+
+
+func is_dazed() -> bool:
+	return _daze > 0.0
 
 
 func can_be_hit() -> bool:
@@ -194,6 +210,11 @@ func _separation() -> Vector2:
 func _process(delta: float) -> void:
 	_clock += delta
 	_wince = maxf(_wince - delta, 0.0)
+	if _daze > 0.0:
+		_daze -= delta
+		if _daze <= 0.0 or dead:
+			_daze = 0.0
+			set_physics_process(true)
 	if _ko >= 0.0:
 		_ko += delta
 		if _ko >= ko_time():
@@ -226,6 +247,23 @@ func _draw() -> void:
 			Vector2(grow * (1.0 + squash), grow * (1.0 - squash)) * stretch())
 	draw_body(boil, _flash > 0.0)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_daze(boil)
+
+
+## Stars going round over its head while it is dazed.
+func draw_daze(boil: int) -> void:
+	if _daze <= 0.0 or dead:
+		return
+	var over := Vector2(0, -daze_height())
+	for i in 3:
+		var a := boil * 0.7 + TAU * i / 3.0
+		Toon.star(self, over + Vector2(cos(a) * radius * 0.9, sin(a) * radius * 0.25), 8.0 + radius * 0.08, a,
+				Color("f2c14e"))
+
+
+## How high over its feet the stars go round when it is dazed.
+func daze_height() -> float:
+	return radius * 1.9 + lift()
 
 
 ## How high off the floor it is drawn (its shadow stays down): a leap.

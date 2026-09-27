@@ -71,8 +71,9 @@ func _process(_delta: float) -> void:
 	if not bosses.is_empty():
 		queue_redraw()
 	for one in brothers:
-		if is_instance_valid(one) and one.dead:
-			# The stars round a knocked-out brother's medallion go round.
+		if is_instance_valid(one) and (one.dead or one.is_charged()):
+			# The stars round a knocked-out brother's medallion go round,
+			# a charged item glows.
 			queue_redraw()
 			break
 
@@ -115,8 +116,28 @@ func _draw_hearts() -> float:
 			var fill := clampi(one.hp - i * 2, 0, 2)
 			var at := Vector2(x0 + (i % 6) * 62, y + (i / 6) * 56)
 			Toon.heart(self, at, HEART, fill, RED, EMPTY)
+		if one.active != "":
+			_active(one, Vector2(x0 + 6 * 62 + 28, y + 4))
 		y += (1 + (hearts - 1) / 6) * 56.0 + (8.0 if two else 0.0)
 	return y
+
+
+## The item in a brother's hands on a medallion, and its charge as a
+## column of little lamps beside it; charged, it glows.
+func _active(one: Brother, at: Vector2) -> void:
+	var most := one.max_charge()
+	var ready := one.is_charged()
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)
+	if ready:
+		Toon.glow(self, at, Vector2(56, 56), Color(1, 0.88, 0.45, 0.35 + 0.25 * pulse), 3)
+	Toon.blob(self, at, Vector2(29, 29), Color(CREAM, 0.95) if ready else Color("b8a88a"), 0, 50 + one.player, 4.0)
+	ItemIcon.draw(self, one.active, at, 44.0, 0)
+	var step := 58.0 / most
+	for k in most:
+		var lamp := Vector2(at.x + 42, at.y + 26 - step * (k + 0.5))
+		var lit := k < one.charge
+		Toon.blob(self, lamp, Vector2(7, minf(step * 0.36, 9.0)), Color("fff1a8") if lit else Color("4a3a2c"), 0,
+				60 + k, 3.0)
 
 
 ## The player's number on a cream medallion ringed in his brother's colour;

@@ -132,6 +132,12 @@ func _fill() -> Color:
 	return SPIT if hostile else INK_BLUE
 
 
+## Gone in a splash where it is: time stopped under it.
+func pop() -> void:
+	if ended == "":
+		_end("pop")
+
+
 func _end(how: String) -> void:
 	ended = how
 	finished.emit(how)

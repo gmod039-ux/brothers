@@ -362,6 +362,7 @@ func _draw() -> void:
 	_figure(boil, flash)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_over(boil)
+	draw_daze(boil)
 
 
 ## False while he is not there to be drawn (the Baron, vanished).
@@ -439,6 +440,10 @@ func _over(boil: int) -> void:
 ## How far from his feet his head is: where the stars go when he lies down.
 func _height_of_head() -> float:
 	return 160.0
+
+
+func daze_height() -> float:
+	return _height_of_head() + 40.0 + _height
 
 
 ## The figure itself, standing on (0, 0).

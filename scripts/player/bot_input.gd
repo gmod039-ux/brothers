@@ -19,8 +19,12 @@ func update(brother: Brother, _delta: float) -> void:
 	var room := brother.room
 	move = Vector2.ZERO
 	shoot = Vector2.ZERO
+	use = false
 	if room == null:
 		return
+	# The item in its hands, charged, on a crowd or a boss.
+	if brother.is_charged() and (room.enemies.size() >= 3 or (not room.enemies.is_empty() and room.enemies[0] is Boss)):
+		use = true
 	var me := brother.global_position
 	var away := _danger(room, me)
 	var nearest: Enemy = null

@@ -342,6 +342,8 @@ func _physics_process(delta: float) -> void:
 		room.set_doors_open(true)
 		if info.kind == "normal":
 			_reward()
+		for brother in brothers:
+			brother.add_charge()
 		room_cleared.emit(info)
 	_revive_knocked(delta)
 	for brother in brothers:

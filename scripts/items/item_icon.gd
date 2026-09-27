@@ -121,6 +121,43 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 			Toon.blob(ci, at + Vector2(2, -4) * k, Vector2(22, 19) * k, RED, boil, 25)
 			Toon.blob(ci, at + Vector2(-17, 4) * k, Vector2(8, 10) * k, RED, boil, 26, 4.0, 0.4)
 			Toon.spot(ci, at + Vector2(4, -14) * k, Vector2(9, 4) * k, Color(1, 1, 1, 0.55))
+		"camera":
+			# A box camera on its side, a flash pan up on a stick.
+			Toon.box(ci, at + Vector2(0, 8) * k, Vector2(22, 15) * k, Toon.INK, boil, 40, 3.0)
+			Toon.blob(ci, at + Vector2(2, 9) * k, Vector2(10, 10) * k, SILVER, boil, 41, 3.0)
+			Toon.blob(ci, at + Vector2(2, 9) * k, Vector2(5, 5) * k, Color("3a4a5a"), boil, 42, 0.0)
+			Toon.spot(ci, at + Vector2(-1, 6) * k, Vector2(2, 2) * k, Color(1, 1, 1, 0.9))
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-16, -6) * k, at + Vector2(-16, -20) * k]), 3.0 * k)
+			Toon.box(ci, at + Vector2(-16, -22) * k, Vector2(11, 3) * k, SILVER, boil, 43, 2.5)
+			if boil % 3 == 0:
+				Toon.star(ci, at + Vector2(-16, -30) * k, 9.0 * k, boil * 0.5, Color("fff1a8"))
+		"dynamite":
+			for i in 3:
+				var c := at + Vector2(-12 + i * 12, 6) * k
+				Toon.box(ci, c, Vector2(6, 18) * k, Color("c8392b"), boil, 44 + i, 3.0)
+				draw_band(ci, c + Vector2(0, -6) * k, k)
+			Toon.stroke(ci, Toon.bent(at + Vector2(0, -12) * k, at + Vector2(10, -26) * k, 4.0 * k), 2.5 * k, BROWN)
+			Toon.star(ci, at + Vector2(11, -28) * k, 6.0 * k, boil * 0.8, GOLD)
+		"soda":
+			var bottle := PackedVector2Array([at + Vector2(-5, -28) * k, at + Vector2(5, -28) * k,
+					at + Vector2(6, -14) * k, at + Vector2(13, -4) * k, at + Vector2(13, 26) * k,
+					at + Vector2(-13, 26) * k, at + Vector2(-13, -4) * k, at + Vector2(-6, -14) * k])
+			Toon.shape(ci, bottle, Color("7fb0a0"), 3.5)
+			Toon.box(ci, at + Vector2(0, 8) * k, Vector2(12, 7) * k, CREAM, boil, 48, 2.0)
+			Toon.box(ci, at + Vector2(0, -29) * k, Vector2(7, 3) * k, RED, boil, 49, 2.0)
+			for i in 3:
+				var rise := fmod(boil * 0.3 + i * 0.33, 1.0)
+				Toon.spot(ci, at + Vector2(-4 + i * 4, 20 - rise * 36) * k, Vector2(2, 2) * k, Color(1, 1, 1, 0.8))
+		"watch":
+			Toon.stroke(ci, Toon.bent(at + Vector2(0, -22) * k, at + Vector2(14, -32) * k, -6.0 * k), 3.0 * k, GOLD)
+			Toon.blob(ci, at + Vector2(0, -21) * k, Vector2(5, 4) * k, GOLD, boil, 50, 3.0)
+			Toon.blob(ci, at + Vector2(0, 2) * k, Vector2(22, 22) * k, GOLD, boil, 51, 4.0)
+			Toon.blob(ci, at + Vector2(0, 2) * k, Vector2(17, 17) * k, CREAM, boil, 52, 2.0)
+			for h in 4:
+				var a := TAU * h / 4.0
+				Toon.spot(ci, at + Vector2(0, 2) * k + Vector2(cos(a), sin(a)) * 13.0 * k, Vector2(1.6, 1.6) * k, Toon.INK)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 2) * k, at + Vector2(0, -9) * k]), 2.5 * k)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 2) * k, at + Vector2(8, 4) * k]), 2.5 * k)
 		"coin":
 			# Spins: its width goes in and out drawing by drawing.
 			var turn: float = [1.0, 0.7, 0.3, 0.7][boil % 4]
@@ -145,3 +182,8 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 				Toon.stroke(ci, PackedVector2Array([p, p + Vector2(7, -7) * k]), 3.0 * k, GOLD)
 		_:
 			Toon.blob(ci, at, Vector2(18, 18) * k, SILVER, boil, 32)
+
+
+## The paper band round a stick of dynamite.
+static func draw_band(ci: CanvasItem, at: Vector2, k: float) -> void:
+	ci.draw_rect(Rect2(at - Vector2(6, 2.5) * k, Vector2(12, 5) * k), Color("e8dcc0"))

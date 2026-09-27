@@ -12,6 +12,8 @@ signal revived
 ## Coins, bombs, keys or items changed.
 signal inventory_changed
 signal item_taken(id: String)
+## The item in his hands was used, or charged up.
+signal active_changed
 
 ## The body on the floor: feet, not the whole drawing. Heads may overlap
 ## walls and enemies' tops, as in Isaac; feet may not.
@@ -65,6 +67,12 @@ var keys: int:
 var player := 1
 ## Items taken, in order.
 var items: Array[String] = []
+## The item in his hands (Space, RB), "" for none, and how many beaten
+## rooms of charge it has.
+var active := ""
+var charge := 0
+## Seconds left of the fizz of a soda: quicker feet and hands.
+var boost := 0.0
 
 var _walk := Vector2.ZERO
 var _knock := Vector2.ZERO
@@ -103,7 +111,8 @@ func _physics_process(delta: float) -> void:
 	if dead or frozen:
 		return
 	input.update(self, delta)
-	var target := input.move.limit_length(1.0) * stats.walk_px()
+	boost = maxf(boost - delta, 0.0)
+	var target := input.move.limit_length(1.0) * stats.walk_px() * (1.25 if boost > 0.0 else 1.0)
 	var rate := ACCEL if input.move != Vector2.ZERO else FRICTION
 	_walk = _walk.move_toward(target, rate * delta)
 	velocity = _walk + _knock
@@ -113,6 +122,8 @@ func _physics_process(delta: float) -> void:
 	_shoot(delta)
 	if input.bomb and bombs > 0:
 		place_bomb()
+	if input.use:
+		use_active()
 	_touch_enemies()
 	_update_look()
 
@@ -126,7 +137,7 @@ func _shoot(delta: float) -> void:
 		return
 	if _cooldown > 0.0:
 		return
-	_cooldown += stats.fire_interval()
+	_cooldown += stats.fire_interval() / (1.6 if boost > 0.0 else 1.0)
 	fire(input.shoot)
 
 
@@ -169,9 +180,27 @@ func place_bomb() -> Bomb:
 	return bomb
 
 
-## Takes an item: its numbers go into his stats at once.
+## Takes an item: its numbers go into his stats at once. One for his hands
+## goes there, charged, and the one he had before is left on the floor.
 func take_item(id: String) -> void:
 	var item: Dictionary = GameData.items().get(id, {})
+	if item.has("active"):
+		var old := active
+		active = id
+		charge = int(item["active"])
+		if old != "" and room != null:
+			var left := Pickup.new()
+			left.kind = "item"
+			left.item = old
+			left.room = room
+			# Not picked straight back up by whoever is standing there.
+			left.wait_clear = true
+			room.actors.add_child(left)
+			left.global_position = global_position + Vector2(0, -10)
+		active_changed.emit()
+		inventory_changed.emit()
+		item_taken.emit(id)
+		return
 	var old_max := stats.max_hp()
 	stats.apply(item)
 	items.append(id)
@@ -182,13 +211,45 @@ func take_item(id: String) -> void:
 	item_taken.emit(id)
 
 
+## Rooms of charge the item in his hands needs; 0 with none.
+func max_charge() -> int:
+	if active == "":
+		return 0
+	return int(GameData.items().get(active, {}).get("active", 1))
+
+
+func is_charged() -> bool:
+	return active != "" and charge >= max_charge()
+
+
+## One more beaten room towards the item in his hands.
+func add_charge(rooms := 1) -> void:
+	if active == "" or charge >= max_charge():
+		return
+	charge = mini(charge + rooms, max_charge())
+	if charge >= max_charge():
+		Sfx.play("pickup", -6.0, 0.0)
+	active_changed.emit()
+
+
+## Uses the item in his hands if it is charged.
+func use_active() -> bool:
+	if not is_charged() or dead:
+		return false
+	if not ActiveItems.use(self, active):
+		return false
+	charge = 0
+	active_changed.emit()
+	return true
+
+
 ## Contact damage, the way it is in Isaac: touching an enemy hurts, and
-## nothing pushes the brother and the enemy apart.
+## nothing pushes the brother and the enemy apart. Not a dazed one.
 func _touch_enemies() -> void:
 	if _invulnerable > 0.0:
 		return
 	for enemy in room.enemies:
-		if enemy.can_touch() and global_position.distance_to(enemy.global_position) \
+		if enemy.can_touch() and not enemy.is_dazed() and global_position.distance_to(enemy.global_position) \
 				< RADIUS + enemy.radius - 6.0:
 			hurt(enemy.contact, enemy.global_position)
 			return
@@ -279,6 +340,9 @@ func _update_look() -> void:
 	elif walking:
 		look.facing = _facing_for(_walk, look.facing)
 	look.blink = _invulnerable > 0.0 and int(_invulnerable * Toon.FPS) % 2 == 1
+	if boost > 0.0 and int(boost * 4.0) != int((boost + get_physics_process_delta_time()) * 4.0):
+		# Bubbles off him while the soda fizzes.
+		Fx.burst(room, global_position + Vector2(0, -90), "steam", 2, 0.4)
 
 
 ## One of the four directions for a walk, keeping the current one while the

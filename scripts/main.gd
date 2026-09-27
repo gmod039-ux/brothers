@@ -59,6 +59,11 @@ func _ready() -> void:
 	Controls.setup()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_args = OS.get_cmdline_user_args()
+	# What follows "tour" is the tour's (scripts/dev/screenshot.gd): its
+	# words, "give watch" among them, are not the game's switches.
+	var tour_at := _args.find("tour")
+	if tour_at >= 0:
+		_args = _args.slice(0, tour_at + 1)
 	Options.load_file()
 	Records.load_file()
 	_fit_window()
@@ -288,7 +293,11 @@ func start_run(seed_value: int) -> void:
 		one.inventory_changed.connect(hud.queue_redraw)
 		one.item_taken.connect(func(id: String) -> void:
 			var item: Dictionary = GameData.items().get(id, {})
-			banner.caption(str(item.get("name", id)), str(item.get("text", ""))))
+			var text := str(item.get("text", ""))
+			if item.has("active"):
+				text += "   ·   Пробел / RB"
+			banner.caption(str(item.get("name", id)), text))
+		one.active_changed.connect(hud.queue_redraw)
 		brothers.append(one)
 	brother = brothers[0]
 	hud.brothers = brothers.duplicate()

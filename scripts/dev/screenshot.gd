@@ -21,6 +21,8 @@ extends Node
 ##   ko            knock out the bosses in the room
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
 ##   story NAME    play the story's opening or ending over the game
+##   give ID       put item ID into the brother's hands or stats
+##   use           use the item in his hands
 ##   *.png         save the screen there
 ##
 ## Without `shot` or `tour` on the command line this node does nothing.
@@ -134,6 +136,16 @@ func _tour(words: PackedStringArray) -> void:
 				i += 2
 			"finish":
 				main.call("_finish")
+				i += 1
+			"give":
+				var given := main.get("brother") as Brother
+				if given != null:
+					given.take_item(value)
+				i += 2
+			"use":
+				var user := main.get("brother") as Brother
+				if user != null:
+					user.use_active()
 				i += 1
 			"story":
 				main.call("play_story", Story.ENDING if value == "ending" else Story.OPENING)

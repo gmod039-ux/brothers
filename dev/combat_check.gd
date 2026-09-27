@@ -4,7 +4,8 @@ extends SceneTree
 ## an enemy costs half a heart and then a second of grace, spit hurts, shots
 ## fall where their range runs out, and a wave appears away from the brother
 ## and ends when it is knocked out. Two brothers share one pocket, and one
-## knocked out gets up once the room is clear -- unless both are down.
+## knocked out gets up once the room is clear -- unless both are down. The
+## items in hand charge by rooms and do what they say.
 ##
 ##     godot --headless --fixed-fps 60 --path . --script res://dev/combat_check.gd
 ##
@@ -43,6 +44,7 @@ func _run() -> void:
 	await _bomb()
 	await _shop()
 	await _coop()
+	await _actives()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -263,6 +265,48 @@ func _coop() -> void:
 	run.queue_free()
 	camera.queue_free()
 	await process_frame
+
+
+func _actives() -> void:
+	await _fresh_room(EMPTY)
+	var brother := _brother(Vector2i(2, 3))
+	var walker := _enemy("walker", Vector2i(8, 3))
+	brother.take_item("camera")
+	_expect(brother.active == "camera" and brother.is_charged(), "a camera picked up is in his hands, charged")
+	var before := walker.hp
+	_expect(brother.use_active(), "the flash goes off")
+	_expect(is_equal_approx(walker.hp, before - ActiveItems.FLASH_DAMAGE) and walker.is_dazed(),
+			"it singes the walker and dazes it (%.1f → %.1f)" % [before, walker.hp])
+	_expect(brother.charge == 0 and not brother.use_active(), "then it is empty and does nothing")
+	walker.global_position = brother.global_position
+	var hp := brother.hp
+	await _steps(10)
+	_expect(brother.hp == hp, "a dazed walker does not hurt on touch")
+	for i in brother.max_charge():
+		brother.add_charge()
+	_expect(brother.is_charged(), "%d beaten rooms charge it again" % brother.max_charge())
+	# Dynamite: a big bang ahead, and the brother untouched even close by.
+	await _fresh_room(EMPTY)
+	brother = _brother(Vector2i(3, 3))
+	brother.look.facing = Vector2.RIGHT
+	walker = _enemy("walker", Vector2i(6, 3))
+	before = walker.hp
+	hp = brother.hp
+	brother.take_item("dynamite")
+	brother.use_active()
+	await _steps(90)
+	_expect(not is_instance_valid(walker) or walker.hp < before, "the dynamite hurts the walker")
+	_expect(brother.hp == hp, "and spares the brother (hp %d)" % brother.hp)
+	# Another item for his hands: the old one is left on the floor.
+	brother.take_item("watch")
+	var left: Pickup = null
+	for node in room.actors.get_children():
+		if node is Pickup:
+			left = node
+	_expect(brother.active == "watch" and left != null and left.item == "dynamite",
+			"taking the watch leaves the dynamite on the floor")
+	await _steps(60)
+	_expect(is_instance_valid(left) and brother.active == "watch", "and it is not picked straight back up")
 
 
 # --- helpers ---------------------------------------------------------------
