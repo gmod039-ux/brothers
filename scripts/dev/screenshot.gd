@@ -39,7 +39,9 @@ func _ready() -> void:
 		return
 	at = args.find("tour")
 	if at >= 0:
-		_tour(args.slice(at + 1))
+		# A tour passed in quotes comes as one word with spaces in it, and was
+		# saved as one picture at a path made of the whole tour.
+		_tour(" ".join(args.slice(at + 1)).split(" ", false))
 
 
 func _single(path: String, frames: int) -> void:
