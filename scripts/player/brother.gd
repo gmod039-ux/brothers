@@ -7,6 +7,8 @@ extends CharacterBody2D
 signal health_changed(hp: int, max_hp: int)
 signal hurt_taken
 signal died
+## Back on his feet after being knocked out, with his brother still up.
+signal revived
 ## Coins, bombs, keys or items changed.
 signal inventory_changed
 signal item_taken(id: String)
@@ -41,9 +43,26 @@ var shots_fired := 0
 var damage_taken := 0
 ## Held still, e.g. while the camera slides to the next room.
 var frozen := false
-var coins := 0
-var bombs := 1
-var keys := 0
+## Coins, bombs and keys: in one pocket for both brothers, as in Isaac's
+## co-op. Alone, the pocket is his own.
+var purse := Purse.new()
+var coins: int:
+	get:
+		return purse.coins
+	set(value):
+		purse.coins = value
+var bombs: int:
+	get:
+		return purse.bombs
+	set(value):
+		purse.bombs = value
+var keys: int:
+	get:
+		return purse.keys
+	set(value):
+		purse.keys = value
+## 1 or 2: which player, for the second one's place on the HUD.
+var player := 1
 ## Items taken, in order.
 var items: Array[String] = []
 
@@ -224,6 +243,29 @@ func _die() -> void:
 	look.blink = false
 	Sfx.play("sad", 0.0, 0.0)
 	died.emit()
+
+
+## Up again with [param amount] half hearts, blinking a while so that
+## whatever knocked him down cannot do it again at once.
+func revive(amount := 2) -> void:
+	if not dead:
+		return
+	dead = false
+	look.knocked = false
+	hp = clampi(amount, 1, stats.max_hp())
+	_invulnerable = INVULNERABLE * 2.0
+	stop()
+	health_changed.emit(hp, stats.max_hp())
+	Sfx.play("whistle_up", -4.0, 0.0)
+	revived.emit()
+
+
+## What the brothers carry between them.
+class Purse:
+	extends RefCounted
+	var coins := 0
+	var bombs := 1
+	var keys := 0
 
 
 func _update_look() -> void:

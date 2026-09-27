@@ -11,7 +11,7 @@ extends Node
 ##   wait N        let N frames pass
 ##   film X        set the old-film strength
 ##   press ACTION  press an input action for one frame (p1_right, confirm …)
-##   hurt | die    hit the brother, or knock him out
+##   hurt | die    hit the brother, or knock out the first brother still up
 ##   bomb          drop a bomb at his feet
 ##   goto KIND     jump to the floor's shop, treasure room, boss room …
 ##   coins N       give him N coins
@@ -84,6 +84,11 @@ func _tour(words: PackedStringArray) -> void:
 				i += 2
 			"hurt", "die":
 				var brother := main.get("brother") as Brother
+				if word == "die":
+					for one: Brother in main.get("brothers"):
+						if not one.dead:
+							brother = one
+							break
 				if brother != null:
 					if word == "die":
 						brother.god = false

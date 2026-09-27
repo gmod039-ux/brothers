@@ -1,8 +1,9 @@
 class_name Hud
 extends Node2D
 ## What is on the screen over the room, kept out of the way the way Isaac
-## keeps it: hearts in the top-left corner over the dark of the wall, the
-## pockets under them, the map of the floor in the top-right on a little
+## keeps it: hearts in the top-left corner over the dark of the wall (with
+## two brothers, a row each behind a medallion with his number), the pockets
+## they share under them, the map of the floor in the top-right on a little
 ## plate just big enough for the rooms found so far, the floor's name under
 ## it, and the boss's health across the bottom while there is a boss.
 ## Lettered like a title card: cream with a thick ink edge.
@@ -21,9 +22,9 @@ const MAP_VISITED := Color("c9b08a")
 const MAP_HERE := Color("fbf6ea")
 const MAP_UNKNOWN := Color("6a5446")
 
-var brother: Brother:
+var brothers: Array[Brother] = []:
 	set(value):
-		brother = value
+		brothers = value
 		queue_redraw()
 var run: Run:
 	set(value):
@@ -40,7 +41,6 @@ var bosses: Array[Boss] = []:
 		queue_redraw()
 
 var _floor: Label
-var _name: Label
 var _boss_name: Label
 
 
@@ -49,10 +49,6 @@ func _ready() -> void:
 	_floor = Ui.label("", floor_style, 420)
 	_floor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_floor)
-	_name = Ui.label("", Ui.title(30, Color("e0584a")), 300)
-	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_name.visible = false
-	add_child(_name)
 	_boss_name = Ui.label("", Ui.text(38), 900)
 	_boss_name.position = Vector2(510, 952)
 	add_child(_boss_name)
@@ -68,20 +64,23 @@ func set_health(_hp: int, _max_hp: int) -> void:
 
 
 func _process(_delta: float) -> void:
-	if brother != null and _name.text != brother.display_name:
-		_name.text = brother.display_name
 	if run != null:
 		var text := "%s · этаж %d" % [run.floor_name(), run.floor_index + 1]
 		if _floor.text != text:
 			_floor.text = text
 	if not bosses.is_empty():
 		queue_redraw()
+	for one in brothers:
+		if is_instance_valid(one) and one.dead:
+			# The stars round a knocked-out brother's medallion go round.
+			queue_redraw()
+			break
 
 
 func _draw() -> void:
-	if brother != null:
-		_draw_hearts()
-		_draw_pockets()
+	if not brothers.is_empty():
+		var y := _draw_hearts()
+		_draw_pockets(y)
 	if run != null and run.plan != null:
 		_draw_map()
 	elif _floor.text != "":
@@ -98,22 +97,48 @@ func _shade(at: Vector2, radii: Vector2) -> void:
 	Toon.glow(self, at, radii, Color(0.05, 0.03, 0.02, 0.55), 3)
 
 
-func _draw_hearts() -> void:
-	var hearts := brother.stats.max_hp() / 2
-	var rows := 1 + (hearts - 1) / 6
-	_shade(Vector2(150, 110), Vector2(300, 150 + rows * 20))
-	for i in hearts:
-		var fill := clampi(brother.hp - i * 2, 0, 2)
-		var row := i / 6
-		var at := Vector2(78 + (i % 6) * 62, 66 + row * 56)
-		Toon.heart(self, at, HEART, fill, RED, EMPTY)
+## Each brother's hearts, six to a row; returns where the pockets go.
+func _draw_hearts() -> float:
+	var two := brothers.size() > 1
+	var x0 := 112.0 if two else 78.0
+	var rows := 0
+	for one in brothers:
+		rows += 1 + (one.stats.max_hp() / 2 - 1) / 6
+	_shade(Vector2(150 + (30 if two else 0), 110 + (rows - 1) * 28), Vector2(300 + (40 if two else 0), 150 + rows * 30))
+	var y := 66.0
+	for j in brothers.size():
+		var one := brothers[j]
+		var hearts := one.stats.max_hp() / 2
+		if two:
+			_badge(one, Vector2(46, y))
+		for i in hearts:
+			var fill := clampi(one.hp - i * 2, 0, 2)
+			var at := Vector2(x0 + (i % 6) * 62, y + (i / 6) * 56)
+			Toon.heart(self, at, HEART, fill, RED, EMPTY)
+		y += (1 + (hearts - 1) / 6) * 56.0 + (8.0 if two else 0.0)
+	return y
+
+
+## The player's number on a cream medallion ringed in his brother's colour;
+## grey with stars going round while he is knocked out.
+func _badge(one: Brother, at: Vector2) -> void:
+	var accent := BrotherLook._color(GameData.character(one.id).get("look", {}), "accent", Color.WHITE)
+	var fill := Color("8a8076") if one.dead else Color(CREAM, 0.95)
+	Toon.blob(self, at, Vector2(24, 24), accent, 0, 30 + one.player, 4.0)
+	Toon.blob(self, at, Vector2(17, 17), fill, 0, 32 + one.player, 0.0)
+	draw_string(Ui.title_font(), at + Vector2(-20, 11), str(one.player), HORIZONTAL_ALIGNMENT_CENTER, 40, 30, Toon.INK)
+	if one.dead:
+		var turn := Time.get_ticks_msec() / 400.0
+		for k in 2:
+			var a := turn + PI * k
+			Toon.star(self, at + Vector2(cos(a) * 26.0, -22.0 + sin(a) * 6.0), 7.0, a, Color("f2c14e"))
 
 
 ## Coins, bombs and keys under the hearts, as in Isaac: an icon and a count
-## each.
-func _draw_pockets() -> void:
-	var rows := 1 + (brother.stats.max_hp() / 2 - 1) / 6
-	var y := 66.0 + rows * 56.0 + 22.0
+## each. Two brothers share them.
+func _draw_pockets(top: float) -> void:
+	var y := top + 22.0
+	var brother := brothers[0]
 	var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
 	for i in counts.size():
 		var at := Vector2(78, y + i * 50.0)

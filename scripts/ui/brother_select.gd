@@ -6,7 +6,9 @@ extends Node2D
 ## of numbers. Between them on the boards, once there is anything to
 ## write on it, a board with the records.
 
-signal chosen(id: String)
+## [param id] is the first player's brother; [param both] brings the other
+## one along for a second player.
+signal chosen(id: String, both: bool)
 ## Esc: the settings card, over this.
 signal options_wanted
 
@@ -34,11 +36,19 @@ const BARS := [
 ]
 
 var index := 0
+## Both brothers go: the one picked for the first player, the other for the
+## second, on a gamepad.
+var together := false:
+	set(value):
+		together = value
+		if is_inside_tree():
+			_show()
 ## False while the settings are up over the poster.
 var active := true
 var _nav: MenuNav
 var _looks: Array[BrotherLook] = []
 var _names: Array[Label] = []
+var _sub: Label
 var _taken := false
 var _clock := 0.0
 var _drawing := -1
@@ -54,9 +64,9 @@ func _ready() -> void:
 	title.position = Vector2(0, 72)
 	add_child(title)
 	var sub_style := Ui.text(38, CREAM)
-	var sub := Ui.label("кого ведём в подвал?", sub_style, 1920)
-	sub.position = Vector2(0, 282)
-	add_child(sub)
+	_sub = Ui.label("кого ведём в подвал?", sub_style, 1920)
+	_sub.position = Vector2(0, 282)
+	add_child(_sub)
 	for i in IDS.size():
 		var character := GameData.character(IDS[i])
 		var look := BrotherLook.new()
@@ -76,7 +86,8 @@ func _ready() -> void:
 		var about := Ui.label(str(character.get("about", "")), about_style, 520)
 		about.position = Vector2(x - 260, 818)
 		add_child(about)
-	var hint := Ui.label("←  →  выбрать     ·     Пробел — в бой     ·     Esc — настройки", Ui.text(30), 1920)
+	var hint := Ui.label("←  →  выбрать   ·   ↑  ↓  один или вдвоём   ·   Пробел — в бой   ·   Esc — настройки",
+			Ui.text(28), 1920)
 	hint.position = Vector2(0, 992)
 	add_child(hint)
 	_show()
@@ -95,6 +106,9 @@ func _process(delta: float) -> void:
 		index = 0 if step.x < 0 else 1
 		Sfx.play("select", -6.0, 0.0)
 		_show()
+	elif step.y != 0:
+		together = not together
+		Sfx.play("confirm" if together else "select", -6.0, 0.0)
 	if _nav.pressed("confirm"):
 		pick()
 	elif _nav.pressed("pause"):
@@ -114,7 +128,7 @@ func pick() -> void:
 		return
 	_taken = true
 	Sfx.play("confirm", -4.0, 0.0)
-	chosen.emit(IDS[index])
+	chosen.emit(IDS[index], together)
 
 
 func select(i: int) -> void:
@@ -122,9 +136,16 @@ func select(i: int) -> void:
 	_show()
 
 
+## Lit and in the spotlight: the chosen brother, or both going together.
+func _lit(i: int) -> bool:
+	return together or i == index
+
+
 func _show() -> void:
+	if _sub != null:
+		_sub.text = "идём вдвоём!" if together else "кого ведём в подвал?"
 	for i in _looks.size():
-		var on := i == index
+		var on := _lit(i)
 		_looks[i].moving = on
 		_looks[i].walk_rate = 0.8
 		_looks[i].modulate = Color.WHITE if on else Color(0.5, 0.46, 0.44)
@@ -207,7 +228,7 @@ func _stage() -> void:
 ## on the boards. Bright on the chosen one, a glimmer on the other.
 func _spotlight(i: int) -> void:
 	var spot: Vector2 = SPOTS[i]
-	var on := i == index
+	var on := _lit(i)
 	var strength := 0.3 if on else 0.07
 	var flick := 1.0 + (Toon.hash01(_drawing, i) - 0.5) * 0.06
 	var top_x := spot.x + (i - 0.5) * 300.0
@@ -296,9 +317,11 @@ func _rim_points(rect: Rect2, n: int) -> PackedVector2Array:
 func _playbill(i: int) -> void:
 	var character := GameData.character(IDS[i])
 	var x: float = (SPOTS[i] as Vector2).x
-	var on := i == index
+	var on := _lit(i)
 	var card := Rect2(x - 250, 740, 500, 246)
 	Frames.card(self, card, CREAM if on else Color("cdbd9c"), 0.97)
+	if together:
+		_player_badge(i, Vector2(card.position.x + 6, card.position.y + 6))
 	for b in BARS.size():
 		var row: Array = BARS[b]
 		var value := float(character.get(row[1], 0.0)) / float(row[2])
@@ -318,6 +341,23 @@ func _playbill(i: int) -> void:
 		var width := maxf(bar.size.x * clampf(value, 0.0, 1.0) - 4.0, 12.0)
 		draw_style_box(fill, Rect2(bar.position + Vector2(2, 2), Vector2(width, bar.size.y - 4)))
 		draw_line(bar.position + Vector2(8, 4), bar.position + Vector2(width - 4, 4), Color(1, 1, 1, 0.35), 2.0)
+
+
+## A gold medallion on the corner of a playbill: which player takes that
+## brother, and on what.
+func _player_badge(i: int, at: Vector2) -> void:
+	var first := i == index
+	Toon.ball(self, at, Vector2(34, 34), GOLD, _drawing, 90 + i, 4.5)
+	draw_string(Ui.title_font(), at + Vector2(-34, 14), "1" if first else "2", HORIZONTAL_ALIGNMENT_CENTER, 68, 40,
+			Toon.INK)
+	var pads := Controls.coop_pads()
+	var what := ""
+	if first:
+		what = "клавиатура" + (" и геймпад" if pads.size() == 2 and pads[0] != Controls.NO_PAD else "")
+	else:
+		what = "геймпад" if not pads.is_empty() else "нужен геймпад!"
+	var color := Color("3a2418") if first or not pads.is_empty() else Color("b8322a")
+	draw_string(Ui.font(), at + Vector2(44, 12), what, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
 
 
 ## A board on an easel between the brothers, chalked with the records:

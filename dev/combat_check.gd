@@ -3,7 +3,8 @@ extends SceneTree
 ## exactly the brother's damage off what it hits, rocks stop shots, touching
 ## an enemy costs half a heart and then a second of grace, spit hurts, shots
 ## fall where their range runs out, and a wave appears away from the brother
-## and ends when it is knocked out.
+## and ends when it is knocked out. Two brothers share one pocket, and one
+## knocked out gets up once the room is clear -- unless both are down.
 ##
 ##     godot --headless --fixed-fps 60 --path . --script res://dev/combat_check.gd
 ##
@@ -41,6 +42,7 @@ func _run() -> void:
 	await _items()
 	await _bomb()
 	await _shop()
+	await _coop()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -213,6 +215,54 @@ func _shop() -> void:
 	await _steps(4)
 	_expect(not is_instance_valid(pickup) and brother.bombs == bombs + 1 and brother.coins == 2,
 			"with the coins it is bought (coins 7 → %d)" % brother.coins)
+
+
+func _coop() -> void:
+	await _fresh_room(EMPTY)
+	var first := _brother(Vector2i(2, 3))
+	var second := _brother(Vector2i(10, 3))
+	second.purse = first.purse
+	var coin := Pickup.new()
+	coin.kind = "coin"
+	coin.room = room
+	room.actors.add_child(coin)
+	coin.global_position = second.global_position
+	var before := first.coins
+	await _steps(40)
+	_expect(first.coins == before + 1 and second.coins == first.coins,
+			"a coin one brother picks up is in both brothers' pocket (%d, %d)" % [first.coins, second.coins])
+	room.queue_free()
+	room = null
+	# On a real floor: the first room has nobody in it.
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var a := Brother.new()
+	a.setup("older", null, PlayerInput.new())
+	var b := Brother.new()
+	b.setup("younger", null, PlayerInput.new())
+	b.purse = a.purse
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	run.begin(rng, camera, [a, b] as Array[Brother])
+	await _steps(2)
+	b.hp = 1
+	b.hurt(1, b.global_position + Vector2(40, 0))
+	_expect(b.dead and not a.dead, "the second brother is knocked out, the first is up")
+	await _steps(int(Run.REVIVE_AFTER * 60.0) + 10)
+	_expect(not b.dead and b.hp == 2, "once the room is clear he gets up with a heart (hp %d)" % b.hp)
+	# Past the blinking after getting up, then both go down.
+	await _steps(int(Brother.INVULNERABLE * 2.0 * 60.0) + 10)
+	a.hp = 1
+	b.hp = 1
+	a.hurt(1, a.global_position + Vector2(40, 0))
+	b.hurt(1, b.global_position + Vector2(40, 0))
+	await _steps(int(Run.REVIVE_AFTER * 60.0) + 10)
+	_expect(a.dead and b.dead, "with both knocked out nobody gets up")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
 
 
 # --- helpers ---------------------------------------------------------------

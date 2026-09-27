@@ -17,7 +17,7 @@ var _kind := ""
 var _title: Label
 var _lines: Label
 var _hint: Label
-var _figure: BrotherLook
+var _figures: Array[BrotherLook] = []
 var _items: Array[String] = []
 var _clock := 0.0
 var _drawing := -1
@@ -42,18 +42,16 @@ func _ready() -> void:
 
 
 ## Puts up the card. [param lines] are the numbers of the run, one to a line;
-## [param look] is the brother's look (for "dead" and "won"); [param items]
-## the items he had, shown as a row of pictures.
+## [param looks] the brothers' looks, one figure each; [param items] the
+## items they had, shown as a row of pictures.
 func show_card(kind: String, title: String, lines: PackedStringArray, hint: String,
-		look := {}, items: Array[String] = []) -> void:
+		looks: Array[Dictionary] = [], items: Array[String] = []) -> void:
 	_kind = kind
 	_items = items
 	_title.text = title
 	_lines.text = "\n".join(lines)
 	_hint.text = hint
-	if _figure != null:
-		_figure.queue_free()
-		_figure = null
+	_clear_figures()
 	_title.label_settings.font_size = Ui.fit(title, 116, 1300.0)
 	_title.size = Vector2(1920, 180)
 	_title.position = Vector2(0, 76)
@@ -62,16 +60,17 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 	_lines.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_hint.position = Vector2(0, 958)
 	_shown_at = Time.get_ticks_msec()
-	if not look.is_empty():
-		_figure = BrotherLook.new()
-		_figure.configure(look)
-		_figure.scale = Vector2(2.0, 2.0)
-		_figure.position = Vector2(960, 600)
-		_figure.knocked = kind == "dead"
-		_figure.moving = kind == "won"
-		_figure.walk_rate = 1.4
-		add_child(_figure)
-		move_child(_figure, 0)
+	for i in looks.size():
+		var figure := BrotherLook.new()
+		figure.configure(looks[i])
+		figure.scale = Vector2(2.0, 2.0)
+		figure.position = Vector2(960 + (i - (looks.size() - 1) * 0.5) * 260.0, 600)
+		figure.knocked = kind == "dead"
+		figure.moving = kind == "won"
+		figure.walk_rate = 1.4 - i * 0.2
+		add_child(figure)
+		move_child(figure, 0)
+		_figures.append(figure)
 	visible = true
 	_pop = 0.3
 	var tween := create_tween()
@@ -92,9 +91,13 @@ func is_settled() -> bool:
 func hide_card() -> void:
 	visible = false
 	_kind = ""
-	if _figure != null:
-		_figure.queue_free()
-		_figure = null
+	_clear_figures()
+
+
+func _clear_figures() -> void:
+	for figure in _figures:
+		figure.queue_free()
+	_figures.clear()
 
 
 func _process(delta: float) -> void:
@@ -129,8 +132,8 @@ func _draw() -> void:
 			_title.label_settings.font_size).x
 	Frames.ribbon(self, Vector2(960, 170), (width + 140.0) * _pop, 150.0 * _pop,
 			RED if _kind == "dead" else Color("a8781f"))
-	# The floor under the figure.
-	Toon.glow(self, Vector2(960, 612), Vector2(210, 34), Color(0, 0, 0, 0.6), 2)
+	# The floor under the figures.
+	Toon.glow(self, Vector2(960, 612), Vector2(210 + 130 * maxi(_figures.size() - 1, 0), 34), Color(0, 0, 0, 0.6), 2)
 	if _kind == "won":
 		_confetti()
 	_item_row()

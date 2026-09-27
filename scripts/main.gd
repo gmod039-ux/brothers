@@ -5,6 +5,8 @@ extends Node2D
 ##
 ## Command line, after `--`:
 ##   brother older|younger  skip the choice
+##   coop                   both brothers, the second on a gamepad (or a
+##                          second bot in the demo)
 ##   arena                  the old test room with its waves, not a floor
 ##   seed N                 the first run's seed
 ##   demo                   a bot plays (and cannot lose)
@@ -24,7 +26,11 @@ var select: BrotherSelect
 ## The card of choices up now (the pause, or the settings over it), or null.
 var menu: CardMenu
 var room: Room
+## The first player's brother; in co-op [member brothers] has both.
 var brother: Brother
+var brothers: Array[Brother] = []
+## Both brothers play: the second on a gamepad of his own.
+var coop := false
 var waves: Waves
 var run: Run
 var rng := RandomNumberGenerator.new()
@@ -126,6 +132,7 @@ func _ready() -> void:
 	god = _args.has("god") or demo
 	_recording = not demo and not _args.has("tour") and not _args.has("shot")
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
+	coop = _args.has("coop")
 	if _args.has("brother"):
 		chosen = _arg("brother", chosen)
 		start_run(first_seed)
@@ -228,6 +235,7 @@ func show_select() -> void:
 	_select_layer.add_child(select)
 	var index := BrotherSelect.IDS.find(chosen)
 	select.select(maxi(index, 0))
+	select.together = coop
 	select.chosen.connect(_on_chosen)
 	select.options_wanted.connect(func() -> void:
 		select.active = false
@@ -238,8 +246,9 @@ func show_select() -> void:
 	Music.play("menu")
 
 
-func _on_chosen(id: String) -> void:
+func _on_chosen(id: String, both: bool) -> void:
 	chosen = id
+	coop = both
 	await iris.close(select.SPOTS[select.index] + Vector2(0, -150), 0.7)
 	select.queue_free()
 	select = null
@@ -254,18 +263,35 @@ func start_run(seed_value: int) -> void:
 	banner.clear()
 	intertitle.hide_card()
 	_clear_world()
-	brother = Brother.new()
-	var input: PlayerInput = BotInput.new() if demo else DeviceInput.new("p1_")
-	brother.setup(chosen, null, input)
-	brother.god = god
-	brother.health_changed.connect(hud.set_health)
-	brother.hurt_taken.connect(_on_hurt)
-	brother.died.connect(_on_died)
-	brother.inventory_changed.connect(hud.queue_redraw)
-	brother.item_taken.connect(func(id: String) -> void:
-		var item: Dictionary = GameData.items().get(id, {})
-		banner.caption(str(item.get("name", id)), str(item.get("text", ""))))
-	hud.brother = brother
+	var two := coop and not _args.has("arena")
+	if not demo and not Controls.assign(two):
+		# No gamepad for the second brother: alone, then.
+		two = false
+		Controls.assign(false)
+		banner.caption("Второму брату нужен геймпад", "подключи и выбери «вдвоём» снова", 3.0)
+	var ids: Array[String] = [chosen]
+	if two:
+		ids.append(BrotherSelect.IDS[1 - BrotherSelect.IDS.find(chosen)])
+	brothers.clear()
+	for i in ids.size():
+		var one := Brother.new()
+		var input: PlayerInput = BotInput.new() if demo else DeviceInput.new("p%d_" % (i + 1))
+		one.setup(ids[i], null, input)
+		one.player = i + 1
+		one.god = god
+		if i > 0:
+			one.purse = brothers[0].purse
+		one.health_changed.connect(hud.set_health)
+		one.hurt_taken.connect(_on_hurt)
+		one.died.connect(_on_died)
+		one.revived.connect(func() -> void: banner.caption("Братец снова в строю!", "", 1.6))
+		one.inventory_changed.connect(hud.queue_redraw)
+		one.item_taken.connect(func(id: String) -> void:
+			var item: Dictionary = GameData.items().get(id, {})
+			banner.caption(str(item.get("name", id)), str(item.get("text", ""))))
+		brothers.append(one)
+	brother = brothers[0]
+	hud.brothers = brothers.duplicate()
 	hud.visible = true
 	if _args.has("arena"):
 		_start_arena()
@@ -279,17 +305,16 @@ func start_run(seed_value: int) -> void:
 		run.boss_beaten.connect(_on_boss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
-		var brothers: Array[Brother] = [brother]
 		if _args.has("verbose"):
 			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:
 				print("%6.1f s  enter %s %s (%s)" % [_play_time, info.kind, info.cell, info.layout_name]))
 			run.room_cleared.connect(func(info: FloorPlan.RoomInfo) -> void:
 				print("%6.1f s  cleared %s" % [_play_time, info.cell]))
-		run.begin(rng, camera, brothers)
+		run.begin(rng, camera, brothers.duplicate())
 		room = run.room
 	hud.run = run
 	_play_time = 0.0
-	print("run: seed %d, %s" % [seed_value, chosen])
+	print("run: seed %d, %s" % [seed_value, " + ".join(ids)])
 	iris.open(brother.global_position + Vector2(0, -60))
 
 
@@ -376,7 +401,7 @@ func _finish() -> void:
 		lines.append("новый рекорд — быстрее всех!")
 	elif Records.best_time > 0.0 and _recording:
 		lines.append("рекорд — %s" % Records.clock(Records.best_time))
-	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _look(), _items())
+	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _looks(), _items())
 	print("finished in %.1f s" % seconds)
 
 
@@ -417,12 +442,22 @@ func _run_lines() -> PackedStringArray:
 	return lines
 
 
-func _look() -> Dictionary:
-	return GameData.character(chosen).get("look", {})
+## How the brothers look, for the figures on the card at the end.
+func _looks() -> Array[Dictionary]:
+	var looks: Array[Dictionary] = []
+	for one in brothers:
+		looks.append(GameData.character(one.id).get("look", {}))
+	if looks.is_empty():
+		looks.append(GameData.character(chosen).get("look", {}))
+	return looks
 
 
+## Every item the brothers have, the first one's first.
 func _items() -> Array[String]:
-	return brother.items if brother != null else ([] as Array[String])
+	var all: Array[String] = []
+	for one in brothers:
+		all.append_array(one.items)
+	return all
 
 
 func _clear_world() -> void:
@@ -431,11 +466,13 @@ func _clear_world() -> void:
 		child.queue_free()
 	room = null
 	brother = null
+	brothers.clear()
 	waves = null
 	run = null
 	if hud != null:
 		hud.run = null
 		hud.bosses = []
+		hud.brothers = []
 
 
 func _on_wave(number: int, total: int) -> void:
@@ -456,6 +493,12 @@ func _on_hurt() -> void:
 
 
 func _on_died() -> void:
+	for one in brothers:
+		if not one.dead:
+			# His brother is still up, and will get him up once the room is
+			# clear.
+			banner.caption("Братец в нокауте!", "расчисти комнату — и он встанет", 2.2)
+			return
 	state = "over"
 	if waves != null:
 		waves.stop()
@@ -467,7 +510,8 @@ func _on_died() -> void:
 	get_tree().paused = true
 	Music.stop()
 	_record(false)
-	intertitle.show_card("dead", "Эх, братец…", _run_lines(), _over_hint(), _look(), _items())
+	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", _run_lines(),
+			_over_hint(), _looks(), _items())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -638,13 +682,16 @@ func _autoplay(seconds: float) -> void:
 				brother.damage_taken if brother != null else 0, state])
 	elif run != null:
 		kills = run.kills
+		var shots := 0
+		for one in brothers:
+			shots += one.shots_fired
 		var visited := 0
 		for info: FloorPlan.RoomInfo in run.plan.rooms.values():
 			if info.visited:
 				visited += 1
 		print("autoplay: %.0f s, %s, floor %d, rooms %d/%d visited, %d cleared, bosses %d, knocked out %d, shots %d, %s" % [
 				seconds, chosen, run.floor_index + 1, visited, run.plan.rooms.size(), run.rooms_cleared,
-				run.bosses_beaten, kills, brother.shots_fired if brother != null else 0, state])
+				run.bosses_beaten, kills, shots, state])
 	# `need_bosses N`: the run must also have got past that many bosses.
 	var bosses := run.bosses_beaten if run != null else 0
 	var needed := int(_arg("need_bosses", "0"))

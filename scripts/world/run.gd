@@ -28,6 +28,9 @@ const BOSS_INTRO := 2.0
 const ARENAS := ["ring", "boiler", "cabaret"]
 ## What a shop sells, and for how much.
 const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5}
+## Seconds a knocked-out brother lies there once the room is clear, before
+## his brother gets him up.
+const REVIVE_AFTER := 1.2
 
 var rng: RandomNumberGenerator
 var layouts: RoomLayouts
@@ -46,6 +49,8 @@ var rooms_cleared := 0
 var bosses_beaten := 0
 ## Items not yet offered this run: each turns up once at most.
 var pool: Array[String] = []
+
+var _revive_in := 0.0
 
 var _floor_seed := 0
 var _fighting := false
@@ -145,7 +150,8 @@ func _enter(to: Vector2i, through: String) -> void:
 	info.visited = true
 	var entry: String = FloorPlan.OPPOSITE[through] if through != "" else ""
 	next.brothers.assign(brothers)
-	for brother in brothers:
+	for i in brothers.size():
+		var brother := brothers[i]
 		if brother.get_parent() == null:
 			next.actors.add_child(brother)
 		else:
@@ -153,6 +159,10 @@ func _enter(to: Vector2i, through: String) -> void:
 		brother.room = next
 		brother.stop()
 		brother.global_position = next.entry_point(entry) if entry != "" else next.tile_center(Vector2i(6, 3))
+		if brothers.size() > 1:
+			# Side by side through the door, not one inside the other.
+			var across := Vector2(FloorPlan.SIDES[entry]).orthogonal() if entry != "" else Vector2.RIGHT
+			brother.global_position += across * (i - 0.5) * 70.0
 	map_changed.emit()
 	if old != null:
 		old.brothers.clear()
@@ -275,6 +285,10 @@ func _start_boss() -> void:
 			# Two at once: each a good deal less tough.
 			boss.max_hp *= 0.65
 			boss.hp = boss.max_hp
+		if brothers.size() > 1:
+			# Two brothers hit twice as often.
+			boss.max_hp *= 1.4
+			boss.hp = boss.max_hp
 		room.actors.add_child(boss)
 		var col := 6 if bosses.size() == 1 else (3 + i * 6)
 		boss.global_position = room.tile_center(Vector2i(col, 1))
@@ -317,7 +331,7 @@ func _on_boss_down(beaten: Enemy) -> void:
 	_drop("heart", room.tile_center(Vector2i(4, 3)))
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if busy or room == null:
 		return
 	if _fighting and room.enemies.is_empty():
@@ -329,6 +343,7 @@ func _physics_process(_delta: float) -> void:
 		if info.kind == "normal":
 			_reward()
 		room_cleared.emit(info)
+	_revive_knocked(delta)
 	for brother in brothers:
 		if brother.dead:
 			continue
@@ -338,6 +353,27 @@ func _physics_process(_delta: float) -> void:
 			return
 		if brother.keys > 0 and not room.locked.is_empty():
 			_try_unlock(brother)
+
+
+## A brother knocked out gets up again once the room is clear, if his
+## brother is still standing: half the fight is getting him through it.
+func _revive_knocked(delta: float) -> void:
+	var down: Array[Brother] = []
+	var up := 0
+	for brother in brothers:
+		if brother.dead:
+			down.append(brother)
+		else:
+			up += 1
+	if down.is_empty() or up == 0 or not room.enemies.is_empty():
+		_revive_in = REVIVE_AFTER
+		return
+	_revive_in -= delta
+	if _revive_in > 0.0:
+		return
+	for brother in down:
+		brother.revive(2)
+		Fx.burst(room, brother.global_position + Vector2(0, -60), "stars", 10, 1.0)
 
 
 ## A brother with a key walking up to a locked door opens it.
