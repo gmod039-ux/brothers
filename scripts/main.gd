@@ -165,6 +165,8 @@ func _ready() -> void:
 		_autoplay(float(_arg("autoplay", "60")))
 	if _args.has("watch"):
 		add_child(load("res://dev/watch.gd").new())
+	if _args.has("fuzz"):
+		add_child(load("res://dev/fuzz.gd").new())
 
 
 ## A window of 1280 by 720 is 1280 by 720 pixels, and on a Retina screen

@@ -47,6 +47,7 @@ func _run() -> void:
 	await _actives()
 	await _trapdoor_stays()
 	await _last_blow()
+	await _key_opens_door()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -341,6 +342,61 @@ func _trapdoor_stays() -> void:
 	await _steps(2)
 	_expect(run.trapdoor != null and run.trapdoor.is_inside_tree(),
 			"and is there again on coming back to finish the floor")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
+
+
+## Below the first floor the treasure room is locked: a key opens it, and
+## the brother walks in.
+func _key_opens_door() -> void:
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	run.start_floor(1)
+	await _steps(2)
+	# A room next to the locked one, already beaten, to stand in.
+	var locked := Vector2i(-99, -99)
+	var beside := Vector2i(-99, -99)
+	var side := ""
+	for at: Vector2i in run.plan.rooms:
+		if run.plan.info(at).locked:
+			locked = at
+	for s: String in FloorPlan.SIDES:
+		var next: Vector2i = locked - FloorPlan.SIDES[s]
+		if run.plan.rooms.has(next) and run.plan.doors(next).has(s):
+			beside = next
+			side = s
+	_expect(side != "", "floor 2 has a locked room with a way to it")
+	if side == "":
+		run.queue_free()
+		camera.queue_free()
+		return
+	run.plan.info(beside).cleared = true
+	run.room = null
+	run._enter(beside, "")
+	await _steps(2)
+	_expect(run.room.locked.has(side) and not bool(run.room.open_doors.get(side, false)),
+			"its door is locked and shut")
+	brother.keys = 1
+	brother.global_position = run.room.door_point(side) - Vector2(FloorPlan.SIDES[side]) * 50.0
+	await _steps(3)
+	_expect(brother.keys == 0 and not run.room.locked.has(side) and bool(run.room.open_doors.get(side, false)),
+			"a key opens it")
+	brother.global_position = run.room.door_point(side) + Vector2(FloorPlan.SIDES[side]) * 60.0
+	await _until(func() -> bool: return run.cell == locked, 120)
+	_expect(run.cell == locked, "and he walks through into it")
 	run.queue_free()
 	camera.queue_free()
 	await process_frame
