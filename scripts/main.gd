@@ -132,6 +132,10 @@ func _ready() -> void:
 		film.strength = 0.0
 		_select_layer.add_child(preload("res://scripts/dev/icon_sheet.gd").new())
 		return
+	if _args.has("items"):
+		state = "sheet"
+		_select_layer.add_child(preload("res://scripts/dev/item_sheet.gd").new())
+		return
 	if _args.has("bestiary"):
 		state = "sheet"
 		_select_layer.add_child(preload("res://scripts/dev/bestiary.gd").new())

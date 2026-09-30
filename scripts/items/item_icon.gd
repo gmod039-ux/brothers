@@ -50,18 +50,41 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 			Toon.blob(ci, at + Vector2(0, 8) * k, Vector2(23, 19) * k, Toon.INK, boil, 9, 3.0)
 			Toon.spot(ci, at + Vector2(-8, 0) * k, Vector2(5, 7) * k, Color(1, 1, 1, 0.5))
 		"pie":
-			Toon.shape(ci, PackedVector2Array([at + Vector2(-24, 16) * k, at + Vector2(24, 16) * k,
-					at + Vector2(6, -22) * k]), Color("e3a85a"), 4.0)
-			Toon.shape(ci, PackedVector2Array([at + Vector2(-18, 8) * k, at + Vector2(20, 8) * k,
-					at + Vector2(5, -14) * k]), RED, 1.0)
-			Toon.blob(ci, at + Vector2(4, -20) * k, Vector2(10, 7) * k, CREAM, boil, 10, 3.0)
+			# A wedge of cherry pie seen from the side and a little above:
+			# the crust on top with a fluted edge and steam vents, the
+			# filling showing at the cut, a dollop of cream on the point.
+			var crust := Color("e3a85a")
+			var base := [at + Vector2(-26, 18) * k, at + Vector2(24, 18) * k, at + Vector2(24, 4) * k,
+					at + Vector2(-26, 4) * k]
+			Toon.shape(ci, PackedVector2Array(base), crust.darkened(0.15), 4.0)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(-22, 6) * k, at + Vector2(22, 6) * k,
+					at + Vector2(22, 14) * k, at + Vector2(-22, 14) * k]), RED, 0.0)
+			for i in 4:
+				Toon.spot(ci, at + Vector2(-16 + i * 11, 10) * k, Vector2(3, 2.5) * k, RED.darkened(0.35))
+			var top := PackedVector2Array([at + Vector2(-26, 4) * k, at + Vector2(24, 4) * k,
+					at + Vector2(6, -22) * k])
+			Toon.shape(ci, top, crust, 4.0)
+			for i in 5:
+				var p := (at + Vector2(-26, 4) * k).lerp(at + Vector2(6, -22) * k, (i + 0.5) / 5.0)
+				Toon.spot(ci, p + Vector2(2, 2) * k, Vector2(3, 2) * k, crust.darkened(0.25))
+			for i in 2:
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(-4 + i * 10, -4) * k, at + Vector2(i * 10, -10) * k]),
+						2.5 * k, crust.darkened(0.4))
+			Toon.blob(ci, at + Vector2(6, -22) * k, Vector2(9, 6) * k, CREAM, boil, 10, 3.0)
 		"horseshoe":
+			# Open end up, for luck: a U with its heels flared and a row of
+			# nail holes round it.
 			var arc := PackedVector2Array()
-			for i in 15:
-				var a := PI * 0.1 + PI * 1.8 * i / 14.0 + PI * 0.5
-				arc.append(at + Vector2(cos(a) * 20.0, -sin(a) * 20.0 + 4.0) * k)
-			Toon.stroke(ci, arc, 13.0 * k)
-			Toon.stroke(ci, arc, 7.0 * k, SILVER)
+			for i in 17:
+				var a := lerpf(-PI * 0.22, PI * 1.22, i / 16.0)
+				arc.append(at + Vector2(cos(a) * 19.0, sin(a) * 21.0 + 2.0) * k)
+			Toon.stroke(ci, arc, 14.0 * k)
+			Toon.stroke(ci, arc, 8.0 * k, SILVER)
+			for end: Vector2 in [arc[0], arc[arc.size() - 1]]:
+				Toon.box(ci, end + Vector2(0, -2) * k, Vector2(6, 3.5) * k, SILVER, boil, 61, 2.5)
+			for i in [3, 5, 7, 9, 11, 13]:
+				Toon.spot(ci, arc[i], Vector2(1.4, 1.4) * k, Toon.INK)
+			Toon.stroke(ci, arc.slice(2, 8), 2.0 * k, Color(1, 1, 1, 0.55))
 		"fork":
 			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 28) * k, at + Vector2(0, -4) * k]), 8.0 * k)
 			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 28) * k, at + Vector2(0, -4) * k]), 4.0 * k, SILVER)
