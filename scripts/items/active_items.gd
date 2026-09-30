@@ -9,8 +9,13 @@ extends RefCounted
 ##             spares the brothers
 ##   soda      fizz: faster feet and a quicker hand for a few seconds
 ##   watch     time stands still for the enemies, and their spit drops
+##   sandwich  a whole heart, for him or, if he is whole, for his brother
+##   hat       three odds and ends out of a magician's topper: coins, a
+##             bomb, a key, a heart
 
-const EFFECTS := ["camera", "dynamite", "soda", "watch"]
+const EFFECTS := ["camera", "dynamite", "soda", "watch", "sandwich", "hat"]
+## What comes out of the hat, a pick each time: coins most often.
+const HAT_ODDS := ["coin", "coin", "coin", "coin", "bomb", "key", "half_heart", "heart"]
 const FLASH_DAMAGE := 8.0
 const FLASH_DAZE := 2.5
 const WATCH_DAZE := 4.0
@@ -72,5 +77,35 @@ static func use(brother: Brother, id: String) -> bool:
 				var shot := node as Shot
 				if shot != null and shot.hostile:
 					shot.pop()
+			return true
+		"sandwich":
+			var fed := brother
+			if brother.hp >= brother.stats.max_hp():
+				# Whole already: the other half goes to his brother.
+				fed = null
+				for other in room.brothers:
+					if other != brother and not other.dead and other.hp < other.stats.max_hp():
+						fed = other
+			if fed == null:
+				return false
+			fed.heal(2)
+			Sfx.play("heart", 0.0, 0.0)
+			Fx.burst(room, fed.global_position + Vector2(0, -70), "confetti", 8, 0.6)
+			return true
+		"hat":
+			if room.run == null:
+				return false
+			var here := room.tile_at(brother.global_position)
+			var tiles := room.free_tiles()
+			tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+				return Vector2(a - here).length() < Vector2(b - here).length())
+			# The tiles round him, not the one he stands on.
+			tiles.erase(here)
+			for i in mini(3, tiles.size()):
+				var at := room.tile_center(tiles[i])
+				room.run.drop(HAT_ODDS[room.run.rng.randi() % HAT_ODDS.size()], at)
+				Fx.burst(room, at, "stars", 5, 0.6)
+			Fx.burst(room, brother.global_position + Vector2(0, -90), "confetti", 10, 0.8)
+			Sfx.play("item", -4.0, 0.0)
 			return true
 	return false

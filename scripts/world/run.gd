@@ -140,6 +140,11 @@ func _enter(to: Vector2i, through: String) -> void:
 	var doors := plan.doors(to)
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
+	# The controls in chalk on the floor where the run begins.
+	if info.kind == "start" and floor_index == 0:
+		var chalk := ChalkHints.new()
+		chalk.coop = brothers.size() > 1
+		next.decals.add_child(chalk)
 	for side: String in doors:
 		var beyond := plan.info(to + FloorPlan.SIDES[side])
 		if beyond.locked:
@@ -412,6 +417,11 @@ func _reward() -> void:
 		_drop("bomb", at)
 	else:
 		_drop("key", at)
+
+
+## Something on the floor at [param at], from anywhere: a hat's tricks.
+func drop(kind: String, at: Vector2, item := "") -> Pickup:
+	return _drop(kind, at, item)
 
 
 func _drop(kind: String, at: Vector2, item := "") -> Pickup:

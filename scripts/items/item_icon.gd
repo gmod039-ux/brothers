@@ -158,6 +158,21 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 				Toon.spot(ci, at + Vector2(0, 2) * k + Vector2(cos(a), sin(a)) * 13.0 * k, Vector2(1.6, 1.6) * k, Toon.INK)
 			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 2) * k, at + Vector2(0, -9) * k]), 2.5 * k)
 			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 2) * k, at + Vector2(8, 4) * k]), 2.5 * k)
+		"sandwich":
+			# Bread, a lettuce frill, ham, cheese, bread.
+			Toon.box(ci, at + Vector2(0, 14) * k, Vector2(24, 6) * k, Color("e3a85a"), boil, 53, 3.5)
+			Toon.box(ci, at + Vector2(0, 5) * k, Vector2(25, 4) * k, Color("f0c43a"), boil, 54, 3.0, 0.05)
+			Toon.box(ci, at + Vector2(0, -2) * k, Vector2(23, 4) * k, Color("e07a86"), boil, 55, 3.0, -0.04)
+			Toon.blob(ci, at + Vector2(0, -8) * k, Vector2(26, 4) * k, GREEN, boil, 56, 3.0)
+			Toon.blob(ci, at + Vector2(0, -16) * k, Vector2(24, 10) * k, Color("e3a85a"), boil, 57, 3.5)
+			Toon.spot(ci, at + Vector2(-8, -20) * k, Vector2(7, 2.5) * k, Color(1, 1, 1, 0.45))
+		"hat":
+			# A magician's topper, a star coming out of it.
+			Toon.blob(ci, at + Vector2(0, 20) * k, Vector2(28, 7) * k, Toon.INK, boil, 58, 3.0)
+			Toon.box(ci, at + Vector2(0, 2) * k, Vector2(17, 17) * k, Toon.INK, boil, 59, 3.0)
+			Toon.box(ci, at + Vector2(0, 12) * k, Vector2(17, 4) * k, RED, boil, 60, 2.5)
+			Toon.spot(ci, at + Vector2(-9, -2) * k, Vector2(3, 10) * k, Color(1, 1, 1, 0.3))
+			Toon.star(ci, at + Vector2(10, -24) * k, 9.0 * k, boil * 0.5, GOLD)
 		"coin":
 			# Spins: its width goes in and out drawing by drawing.
 			var turn: float = [1.0, 0.7, 0.3, 0.7][boil % 4]
