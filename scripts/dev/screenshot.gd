@@ -27,6 +27,11 @@ extends Node
 ##   *.png         save the screen there
 ##
 ## Without `shot` or `tour` on the command line this node does nothing.
+##
+## A tour needs a window: it counts drawn frames, and with --headless
+## nothing is drawn, so it never gets past its first wait (and `god off`
+## in it never happens -- use `mortal` for a bot that can lose). On a
+## machine with no screen: xvfb-run -a godot --rendering-driver opengl3 …
 
 ## The first picture waits this long: shaders compile on first use.
 const FIRST_WAIT := 60

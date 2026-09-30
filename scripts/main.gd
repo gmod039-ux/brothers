@@ -9,7 +9,7 @@ extends Node2D
 ##                          second bot in the demo)
 ##   arena                  the old test room with its waves, not a floor
 ##   seed N                 the first run's seed
-##   demo                   a bot plays (and cannot lose)
+##   demo                   a bot plays (and cannot lose, unless `mortal`)
 ##   god                    hits cost nothing
 ##   film X                 strength of the old-film look, 0 to switch off
 ##   autoplay S             quit after S seconds of play, printing a summary
@@ -143,7 +143,8 @@ func _ready() -> void:
 	if _args.has("textures"):
 		Room.texture_variant = int(_arg("textures", "0"))
 	demo = _args.has("demo")
-	god = _args.has("god") or demo
+	# The bot cannot lose, unless told `mortal`: to see how far it gets.
+	god = _args.has("god") or (demo and not _args.has("mortal"))
 	_recording = not demo and not _args.has("tour") and not _args.has("shot")
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
 	coop = _args.has("coop")
@@ -760,15 +761,17 @@ func _autoplay(seconds: float) -> void:
 	elif run != null:
 		kills = run.kills
 		var shots := 0
+		var taken := 0
 		for one in brothers:
 			shots += one.shots_fired
+			taken += one.damage_taken
 		var visited := 0
 		for info: FloorPlan.RoomInfo in run.plan.rooms.values():
 			if info.visited:
 				visited += 1
-		print("autoplay: %.0f s, %s, floor %d, rooms %d/%d visited, %d cleared, bosses %d, knocked out %d, shots %d, %s" % [
+		print("autoplay: %.0f s, %s, floor %d, rooms %d/%d visited, %d cleared, bosses %d, knocked out %d, shots %d, half hearts lost %d, %s" % [
 				seconds, chosen, run.floor_index + 1, visited, run.plan.rooms.size(), run.rooms_cleared,
-				run.bosses_beaten, kills, shots, state])
+				run.bosses_beaten, kills, shots, taken, state])
 	# `need_bosses N`: the run must also have got past that many bosses.
 	var bosses := run.bosses_beaten if run != null else 0
 	var needed := int(_arg("need_bosses", "0"))

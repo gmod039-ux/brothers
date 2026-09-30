@@ -260,6 +260,11 @@ func _draw_map() -> void:
 				Toon.star(self, at, 7.0, 0.0, Color("e0b23a"))
 			"shop":
 				ItemIcon.draw(self, "coin", at, 18.0, 0)
+		if info.locked:
+			# A little padlock on the corner: a key opens it.
+			var lock := at + Vector2(MAP_CELL.x * 0.5 - 4, MAP_CELL.y * 0.5 - 4)
+			draw_arc(lock + Vector2(0, -5), 4.0, PI, TAU, 10, Toon.INK, 3.0, true)
+			Toon.box(self, lock, Vector2(6, 5), Color("e0b23a"), 0, 70, 2.0)
 	_floor.position = Vector2(MAP_CORNER.x - 420, plate.end.y + 4)
 
 

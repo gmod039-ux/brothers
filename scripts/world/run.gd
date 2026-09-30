@@ -401,6 +401,7 @@ func _physics_process(delta: float) -> void:
 		rooms_cleared += 1
 		room.set_doors_open(true)
 		if info.kind == "normal":
+			Sfx.play("clear", -6.0, 0.0)
 			_reward()
 		for brother in brothers:
 			brother.add_charge()
