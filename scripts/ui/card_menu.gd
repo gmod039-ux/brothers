@@ -28,6 +28,8 @@ var title := ""
 var lines: Array[Dictionary] = []
 ## Pictures of items in a row under the lines: what the brothers carry.
 var items: Array[String] = []
+## Small lines under the items: the brothers' numbers.
+var notes: PackedStringArray = []
 var hint := ""
 var index := 0
 ## Only the card on top listens; the one under it waits (see [method wake]).
@@ -158,7 +160,7 @@ func _has_values() -> bool:
 
 
 func _card() -> Rect2:
-	var height := 200.0 + lines.size() * ROW + (110.0 if not items.is_empty() else 0.0) \
+	var height := 200.0 + lines.size() * ROW + (110.0 if not items.is_empty() else 0.0) + notes.size() * 34.0 \
 			+ (92.0 if hint != "" else 20.0)
 	return Rect2(960.0 - WIDTH * 0.5, 540.0 - height * 0.5, WIDTH, height)
 
@@ -180,6 +182,18 @@ func _draw() -> void:
 	if not items.is_empty():
 		_item_row(Vector2(960, below + 46.0))
 		below += 110.0
+	for note in notes:
+		var font := Ui.font()
+		# Shrunk to fit inside the frame, whatever the numbers come to.
+		var size := 24
+		var wide := font.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		if wide > WIDTH - 140.0:
+			size = int(size * (WIDTH - 140.0) / wide)
+		draw_string_outline(font, Vector2(card.position.x, below + 22.0), note, HORIZONTAL_ALIGNMENT_CENTER,
+				WIDTH, size, 6, Toon.INK)
+		draw_string(font, Vector2(card.position.x, below + 22.0), note, HORIZONTAL_ALIGNMENT_CENTER,
+				WIDTH, size, Color(GOLD, 0.85))
+		below += 34.0
 	if hint != "":
 		var font := Ui.font()
 		draw_string_outline(font, Vector2(card.position.x, below + 36.0), hint, HORIZONTAL_ALIGNMENT_CENTER,

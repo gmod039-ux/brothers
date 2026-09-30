@@ -597,6 +597,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _pause() -> void:
 	get_tree().paused = true
 	Sfx.play("select", -4.0, 0.0)
+	# An item's name was peeking out over the top of the card.
+	banner.hide_caption()
 	var card := CardMenu.new()
 	card.title = "Пауза"
 	card.lines = [
@@ -607,6 +609,11 @@ func _pause() -> void:
 		{"id": "quit", "text": "Выйти из игры"},
 	]
 	card.items = _items()
+	for one in brothers:
+		var s := one.stats
+		var who := (one.display_name + " — ") if brothers.size() > 1 else ""
+		card.notes.append("%sурон %.1f · скорость %.1f · %.1f выстр./с · дальность %.1f" % [who,
+				s.damage, s.speed, s.tears * (1.6 if one.boost > 0.0 else 1.0), s.range_tiles])
 	card.hint = "Esc — дальше   ·   R — заново"
 	card.let_through = ["fullscreen", "restart"]
 	card.picked.connect(_on_pause_pick.bind(card))
