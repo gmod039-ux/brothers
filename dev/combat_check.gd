@@ -335,6 +335,20 @@ func _trapdoor_stays() -> void:
 		boss.hurt(boss.hp + 1.0, Vector2.ZERO)
 	await _until(func() -> bool: return run.plan.info(run.cell).cleared, 600)
 	_expect(run.trapdoor != null, "a beaten boss leaves the trapdoor")
+	# The boiler room's vents and fire go out with him.
+	run.start_floor(1)
+	await _steps(2)
+	run.teleport("boss")
+	await _steps(int(Run.BOSS_INTRO * 60.0) + 10)
+	for boss in run.bosses:
+		boss.hurt(boss.hp + 1.0, Vector2.ZERO)
+	await _until(func() -> bool: return run.plan.info(run.cell).cleared, 600)
+	var hot := 0
+	for node in root.get_tree().get_nodes_in_group("hazard"):
+		if run.room.is_ancestor_of(node) and not bool(node.get("_quiet")) and not bool(node.get("_quenched")) \
+				and not bool(node.get("_harmless")):
+			hot += 1
+	_expect(hot == 0, "the boiler room goes quiet once the stove is beaten (%d still hot)" % hot)
 	run.teleport("start")
 	await _steps(2)
 	_expect(run.trapdoor == null, "it stays behind in his room")

@@ -246,6 +246,14 @@ func free_tiles() -> Array[Vector2i]:
 	return cells
 
 
+## The fight in here is over: steam vents go quiet, fire on the floor goes
+## out, and whatever is still coming down lands on nobody.
+func calm() -> void:
+	for node in get_tree().get_nodes_in_group("hazard"):
+		if is_ancestor_of(node) or node.get("room") == self:
+			node.call("quench")
+
+
 func set_doors_open(open: bool) -> void:
 	var changed := false
 	for side: String in doors:

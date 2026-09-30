@@ -17,6 +17,16 @@ var look := "coal"
 
 var _clock := 0.0
 var _landed := false
+## The fight is over: it still comes down, but hurts nobody.
+var _harmless := false
+
+
+func _ready() -> void:
+	add_to_group("hazard")
+
+
+func quench() -> void:
+	_harmless = true
 
 
 func _physics_process(delta: float) -> void:
@@ -29,7 +39,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_landed = true
 	for brother in room.brothers:
-		if not brother.dead and brother.global_position.distance_to(global_position) < REACH:
+		if not _harmless and not brother.dead and brother.global_position.distance_to(global_position) < REACH:
 			brother.hurt(1, global_position, "Пыхтун" if look == "coal" else "Барон Когтев")
 	Sfx.play("hit", -2.0, 0.2)
 	if look == "bag":

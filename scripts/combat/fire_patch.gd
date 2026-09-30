@@ -10,6 +10,17 @@ const LIFE := 2.6
 var room: Room
 
 var _clock := 0.0
+var _quenched := false
+
+
+func _ready() -> void:
+	add_to_group("hazard")
+
+
+## The fight is over: it gutters out at once and burns nobody.
+func quench() -> void:
+	_quenched = true
+	_clock = maxf(_clock, LIFE - 0.3)
 
 
 func _physics_process(delta: float) -> void:
@@ -17,7 +28,7 @@ func _physics_process(delta: float) -> void:
 	if _clock > LIFE:
 		queue_free()
 		return
-	if _clock < 0.15:
+	if _clock < 0.15 or _quenched:
 		return
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < REACH:

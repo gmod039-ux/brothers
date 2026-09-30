@@ -247,6 +247,7 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 			# was made only as he fell, and gone for good once they walked
 			# out to finish the floor.
 			_place_trapdoor()
+			room.calm()
 		return
 	if info.kind == "boss":
 		_start_boss()
@@ -374,6 +375,7 @@ func _on_boss_down(beaten: Enemy) -> void:
 	for enemy in room.enemies.duplicate():
 		enemy.knock_out()
 	boss_beaten.emit(beaten)
+	room.calm()
 	_place_trapdoor()
 	# A boss always leaves an item behind, as in Isaac, and a heart.
 	var prize := draw_item()

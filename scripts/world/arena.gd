@@ -199,9 +199,19 @@ class SteamVent:
 	var _clock := 0.0
 	## Seconds into the current cycle.
 	var _t := 0.0
+	## The boss is beaten: the boilers are let down and the vent is quiet.
+	var _quiet := false
+
+	func _ready() -> void:
+		add_to_group("hazard")
+
+	func quench() -> void:
+		_quiet = true
 
 	func _physics_process(delta: float) -> void:
 		_clock += delta
+		if _quiet:
+			return
 		if _clock < delay:
 			return
 		_t += delta
@@ -223,7 +233,7 @@ class SteamVent:
 		Toon.box(self, Vector2.ZERO, Vector2(36, 20), Color("3a3836"), 0, 3, 4.0)
 		for k in 4:
 			Toon.stroke(self, PackedVector2Array([Vector2(-24 + k * 16, -12), Vector2(-24 + k * 16, 12)]), 3.0)
-		if _clock < delay:
+		if _clock < delay or _quiet:
 			return
 		if _t < 1.0:
 			# The hiss: a few wisps.
