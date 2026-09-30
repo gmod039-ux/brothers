@@ -45,6 +45,7 @@ func _run() -> void:
 	await _shop()
 	await _coop()
 	await _actives()
+	await _trapdoor_stays()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -307,6 +308,41 @@ func _actives() -> void:
 			"taking the watch leaves the dynamite on the floor")
 	await _steps(60)
 	_expect(is_instance_valid(left) and brother.active == "watch", "and it is not picked straight back up")
+
+
+## The boss beaten, the brothers walk out to finish the floor and come
+## back: the way down must still be there.
+func _trapdoor_stays() -> void:
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	run.teleport("boss")
+	await _steps(int(Run.BOSS_INTRO * 60.0) + 10)
+	for boss in run.bosses:
+		boss.hurt(boss.hp + 1.0, Vector2.ZERO)
+	await _until(func() -> bool: return run.plan.info(run.cell).cleared, 600)
+	_expect(run.trapdoor != null, "a beaten boss leaves the trapdoor")
+	run.teleport("start")
+	await _steps(2)
+	_expect(run.trapdoor == null, "it stays behind in his room")
+	run.teleport("boss")
+	await _steps(2)
+	_expect(run.trapdoor != null and run.trapdoor.is_inside_tree(),
+			"and is there again on coming back to finish the floor")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
 
 
 # --- helpers ---------------------------------------------------------------

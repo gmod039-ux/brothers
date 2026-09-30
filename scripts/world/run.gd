@@ -148,6 +148,8 @@ func _enter(to: Vector2i, through: String) -> void:
 	var old := room
 	if old != null:
 		_remember(old)
+	# The trapdoor goes with the room it is in (and comes back with it).
+	trapdoor = null
 	var next := Room.new()
 	next.name = "Room_%d_%d" % [to.x, to.y]
 	next.cell = to
@@ -170,7 +172,9 @@ func _enter(to: Vector2i, through: String) -> void:
 		var beyond := plan.info(to + FloorPlan.SIDES[side])
 		if beyond.locked:
 			next.locked[side] = true
-	next.set_doors_open(info.cleared)
+	# Open as they come in; a fight slams them shut behind them
+	# (see _slam_doors).
+	next.set_doors_open(true)
 	room = next
 	cell = to
 	info.visited = true
@@ -238,6 +242,11 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 			_open_shop(info)
 			return
 	if info.cleared:
+		if info.kind == "boss":
+			# Back in a beaten boss's room: the way down is still open. It
+			# was made only as he fell, and gone for good once they walked
+			# out to finish the floor.
+			_place_trapdoor()
 		return
 	if info.kind == "boss":
 		_start_boss()
@@ -251,6 +260,15 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		var enemy := Waves.spawn(spawn[0], room, rng, room.tile_center(spawn[1]))
 		_toughen(enemy)
 	_fighting = true
+	_slam_doors()
+
+
+## Bang: the doors shut behind the brothers, dust out of every doorway.
+func _slam_doors() -> void:
+	room.set_doors_open(false)
+	Fx.shake(0.12)
+	for side: String in room.doors:
+		Fx.burst(room, room.door_point(side), "dust", 5, 0.7)
 
 
 ## A shop: the shopkeeper behind his counter, across the room from the
@@ -305,7 +323,7 @@ func _boss_lineup() -> Array[Boss]:
 
 
 func _start_boss() -> void:
-	room.set_doors_open(false)
+	_slam_doors()
 	bosses = _boss_lineup()
 	for i in bosses.size():
 		var boss := bosses[i]
@@ -329,7 +347,9 @@ func _start_boss() -> void:
 	for brother in brothers:
 		brother.frozen = true
 	var woken := bosses.duplicate()
-	await get_tree().create_timer(BOSS_INTRO, false).timeout
+	# A tween of the run's own, not a timer of the tree's: a run thrown
+	# away during the title card must not wake up afterwards.
+	await create_tween().tween_interval(BOSS_INTRO).finished
 	for brother in brothers:
 		brother.frozen = false
 	for boss: Boss in woken:
@@ -348,16 +368,21 @@ func _on_boss_down(beaten: Enemy) -> void:
 	for enemy in room.enemies.duplicate():
 		enemy.knock_out()
 	boss_beaten.emit(beaten)
-	trapdoor = Trapdoor.new()
-	trapdoor.room = room
-	room.decals.add_child(trapdoor)
-	trapdoor.global_position = room.tile_center(Vector2i(6, 3))
-	trapdoor.entered.connect(func(_b: Brother) -> void: trapdoor_entered.emit())
+	_place_trapdoor()
 	# A boss always leaves an item behind, as in Isaac, and a heart.
 	var prize := draw_item()
 	if prize != "":
 		_drop("item", room.tile_center(Vector2i(6, 1)), prize)
 	_drop("heart", room.tile_center(Vector2i(4, 3)))
+
+
+## The hatch down to the next floor, in the middle of the boss's room.
+func _place_trapdoor() -> void:
+	trapdoor = Trapdoor.new()
+	trapdoor.room = room
+	room.decals.add_child(trapdoor)
+	trapdoor.global_position = room.tile_center(Vector2i(6, 3))
+	trapdoor.entered.connect(func(_b: Brother) -> void: trapdoor_entered.emit())
 
 
 func _physics_process(delta: float) -> void:

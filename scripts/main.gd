@@ -629,6 +629,9 @@ func _open_options(from_select: bool) -> CardMenu:
 			var story := play_story(Story.OPENING)
 			card.close()
 			story.connect(func() -> void:
+				# Skipped in the middle of the Baron's scene, his record
+				# would play on over the poster.
+				Music.play("menu")
 				if select != null:
 					select.wake())
 		else:

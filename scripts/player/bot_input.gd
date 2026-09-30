@@ -148,9 +148,14 @@ func _next_stop(room: Room, brother: Brother) -> Vector2:
 	# Hearts it can use first.
 	for node in room.actors.get_children():
 		var pickup := node as Pickup
-		if pickup != null and not pickup.gone and pickup.price <= brother.coins:
+		if pickup != null and not pickup.gone and not pickup.wait_clear and pickup.price <= brother.coins:
 			var hearts := pickup.kind == "heart" or pickup.kind == "half_heart"
 			var useful := not hearts or brother.hp < brother.stats.max_hp()
+			# One item in the hands is enough: swapping would leave the old
+			# one under its feet, to be swapped back for ever.
+			if pickup.kind == "item" and brother.active != "" \
+					and GameData.items().get(pickup.item, {}).has("active"):
+				useful = false
 			if useful:
 				return _walk_to(room, brother, room.tile_at(pickup.global_position), pickup.global_position)
 	var run := room.run
