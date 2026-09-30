@@ -294,7 +294,13 @@ func _open_shop(info: FloorPlan.RoomInfo) -> void:
 		var ware: Array = info.stock[i]
 		var pickup := _drop(ware[0], room.tile_center(Vector2i(cols[i], 3)), ware[1])
 		pickup.price = ware[2]
-		pickup.taken.connect(func(_by: Brother) -> void: info.stock.erase(ware))
+		pickup.taken.connect(func(_by: Brother) -> void:
+			info.stock.erase(ware)
+			if is_instance_valid(keeper):
+				keeper.say("Спасибо!"))
+		pickup.refused.connect(func(why: String) -> void:
+			if is_instance_valid(keeper):
+				keeper.say("Маловато монет!" if why == "coins" else "Ты и так здоров!", 1.6, true))
 
 
 ## Deeper floors, tougher enemies.

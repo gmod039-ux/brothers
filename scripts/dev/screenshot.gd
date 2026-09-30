@@ -21,6 +21,7 @@ extends Node
 ##   ko            knock out the bosses in the room
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
 ##   story NAME    play the story's opening or ending over the game
+##   at C R        stand the brother on tile column C, row R
 ##   give ID       put item ID into the brother's hands or stats
 ##   use           use the item in his hands
 ##   *.png         save the screen there
@@ -137,6 +138,12 @@ func _tour(words: PackedStringArray) -> void:
 			"finish":
 				main.call("_finish")
 				i += 1
+			"at":
+				var placed := main.get("brother") as Brother
+				if placed != null and placed.room != null:
+					placed.global_position = placed.room.tile_center(Vector2i(int(value),
+							int(words[i + 2]) if i + 2 < words.size() else 3))
+				i += 3
 			"give":
 				var given := main.get("brother") as Brother
 				if given != null:

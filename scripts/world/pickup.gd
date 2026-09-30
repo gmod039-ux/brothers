@@ -7,6 +7,9 @@ extends Node2D
 ## price and waits for someone with the coins.
 
 signal taken(by: Brother)
+## Someone stepped up to a ware and did not get it: [param why] is "coins"
+## (short of them) or "full" (a heart, and his hearts are full).
+signal refused(why: String)
 
 const REACH := 48.0
 const RED := Color("d8412f")
@@ -41,14 +44,16 @@ func _physics_process(delta: float) -> void:
 			if brother.global_position.distance_to(global_position) <= REACH * 1.6:
 				return
 		wait_clear = false
-	var short := false
+	var short := ""
 	for brother in room.brothers:
 		if brother.dead:
 			continue
 		if brother.global_position.distance_to(global_position) > REACH:
 			continue
 		if price > 0 and brother.coins < price:
-			short = true
+			short = "coins"
+		elif price > 0 and kind in ["heart", "half_heart"] and brother.hp >= brother.stats.max_hp():
+			short = "full"
 		if _use(brother):
 			gone = true
 			var sound: String = {"coin": "coin", "half_heart": "heart", "heart": "heart", "item": "item"}.get(kind, "pickup")
@@ -64,11 +69,12 @@ func _physics_process(delta: float) -> void:
 			puff.global_position = global_position
 			queue_free()
 			return
-	if short and not _refused:
+	if short != "" and not _refused:
 		# Not enough coins: the tag shakes and the shopkeeper tuts.
 		_nope = 0.4
 		Sfx.play("nope", -4.0, 0.0)
-	_refused = short
+		refused.emit(short)
+	_refused = short != ""
 
 
 func _use(brother: Brother) -> bool:
