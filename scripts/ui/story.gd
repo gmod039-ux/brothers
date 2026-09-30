@@ -41,6 +41,12 @@ const RED := Color("c8392b")
 const GROUND := 830.0
 ## Black between two shots: a splice in the film.
 const CUT := 0.12
+## A scene opens out of a circle and closes down into one, the way the
+## silent pictures went from scene to scene.
+const IRIS_OPEN := 0.55
+const IRIS_CLOSE := 0.45
+## A circle this big shows the whole screen from its middle.
+const IRIS_FULL := 1160.0
 
 var shots: Array[Dictionary] = []
 
@@ -105,7 +111,7 @@ func _process(delta: float) -> void:
 	_clock += delta
 	_t += delta
 	var d := int(_clock * Toon.FPS)
-	if d != _drawing or _cut > 0.0:
+	if d != _drawing or _cut > 0.0 or _iris() < IRIS_FULL:
 		# The splice is redrawn every frame, so it lasts as long as it should.
 		_drawing = d
 		queue_redraw()
@@ -291,12 +297,43 @@ func _draw_over() -> void:
 		"descent":
 			if _t > 1.2:
 				_bubble(Vector2(1440, 560), "Спаси-и-ите!")
+	var iris := _iris()
+	if iris < IRIS_FULL:
+		_draw_iris(Vector2(960, 560), iris)
 	var hint := "Enter — дальше   ·   Esc — пропустить"
 	var font := Ui.font()
 	_over.draw_string_outline(font, Vector2(0, 1046), hint, HORIZONTAL_ALIGNMENT_RIGHT, 1860, 24, 6, Toon.INK)
 	_over.draw_string(font, Vector2(0, 1046), hint, HORIZONTAL_ALIGNMENT_RIGHT, 1860, 24, Color(CREAM, 0.45))
 	if _cut > 0.0:
 		_over.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.02, 0.01, 0.01))
+
+
+## The radius of the circle the scene now shows through: growing as it
+## opens, shrinking at its end, the whole screen in between. Cards are not
+## irised.
+func _iris() -> float:
+	var kind := _kind()
+	if kind == "" or kind == "card" or kind == "end":
+		return IRIS_FULL
+	var k := 1.0
+	if _t < IRIS_OPEN:
+		k = ease(_t / IRIS_OPEN, 0.4)
+	elif _t > _length - IRIS_CLOSE:
+		k = ease(maxf(_length - _t, 0.0) / IRIS_CLOSE, 2.2)
+	return IRIS_FULL * k
+
+
+## Black round a circle of [param radius] at [param center].
+func _draw_iris(center: Vector2, radius: float) -> void:
+	var n := 72
+	var far := 2400.0
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var d0 := Vector2(cos(a0), sin(a0))
+		var d1 := Vector2(cos(a1), sin(a1))
+		_over.draw_colored_polygon(PackedVector2Array([center + d0 * radius, center + d1 * radius,
+				center + d1 * far, center + d0 * far]), Color(0.02, 0.01, 0.01))
 
 
 ## A card of words: dark, the double rule round it, a little ornament over

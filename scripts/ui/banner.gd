@@ -116,6 +116,11 @@ func clear() -> void:
 	visible = false
 	# The caption too: an item's name left over from the last floor sat
 	# over the title of the next.
+	hide_caption()
+
+
+## Takes the item's caption down at once: a boss's title card is coming.
+func hide_caption() -> void:
 	if _caption_tween != null:
 		_caption_tween.kill()
 	if _caption != null:

@@ -63,8 +63,8 @@ func show_card(kind: String, title: String, lines: PackedStringArray, hint: Stri
 	for i in looks.size():
 		var figure := BrotherLook.new()
 		figure.configure(looks[i])
-		figure.scale = Vector2(2.0, 2.0)
-		figure.position = Vector2(960 + (i - (looks.size() - 1) * 0.5) * 260.0, 600)
+		figure.scale = Vector2(1.9, 1.9)
+		figure.position = Vector2(960 + (i - (looks.size() - 1) * 0.5) * 260.0, 612)
 		figure.knocked = kind == "dead"
 		figure.moving = kind == "won"
 		figure.walk_rate = 1.4 - i * 0.2

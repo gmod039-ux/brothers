@@ -365,6 +365,8 @@ func _on_floor(index: int) -> void:
 
 
 func _on_bosses(bosses: Array[Boss]) -> void:
+	# The name of an item just picked up sat over the boss's title card.
+	banner.hide_caption()
 	hud.bosses = bosses
 	Music.play("boss")
 	Sfx.play("roar", 0.0, 0.0)
@@ -471,11 +473,14 @@ func _looks() -> Array[Dictionary]:
 	return looks
 
 
-## Every item the brothers have, the first one's first.
+## Every item the brothers have, the first one's first, and what each has
+## in his hands.
 func _items() -> Array[String]:
 	var all: Array[String] = []
 	for one in brothers:
 		all.append_array(one.items)
+		if one.active != "":
+			all.append(one.active)
 	return all
 
 

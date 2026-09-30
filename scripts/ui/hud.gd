@@ -71,7 +71,7 @@ func _process(_delta: float) -> void:
 	if not bosses.is_empty():
 		queue_redraw()
 	for one in brothers:
-		if is_instance_valid(one) and (one.dead or one.is_charged()):
+		if is_instance_valid(one) and (one.dead or one.is_charged() or _low(one)):
 			# The stars round a knocked-out brother's medallion go round,
 			# a charged item glows.
 			queue_redraw()
@@ -112,10 +112,15 @@ func _draw_hearts() -> float:
 		var hearts := one.stats.max_hp() / 2
 		if two:
 			_badge(one, Vector2(46, y))
+		# Down to his last heart, it beats: lub-dub, a rest, lub-dub.
+		var last := (one.hp - 1) / 2 if _low(one) else -1
 		for i in hearts:
 			var fill := clampi(one.hp - i * 2, 0, 2)
 			var at := Vector2(x0 + (i % 6) * 62, y + (i / 6) * 56)
-			Toon.heart(self, at, HEART, fill, RED, EMPTY)
+			var size := HEART
+			if i == last:
+				size *= 1.0 + 0.16 * _beat()
+			Toon.heart(self, at, size, fill, RED, EMPTY)
 		if one.active != "":
 			_active(one, Vector2(x0 + 6 * 62 + 28, y + 4))
 		y += (1 + (hearts - 1) / 6) * 56.0 + (8.0 if two else 0.0)
@@ -138,6 +143,18 @@ func _active(one: Brother, at: Vector2) -> void:
 		var lit := k < one.charge
 		Toon.blob(self, lamp, Vector2(7, minf(step * 0.36, 9.0)), Color("fff1a8") if lit else Color("4a3a2c"), 0,
 				60 + k, 3.0)
+
+
+## Down to one heart or less, and still up.
+func _low(one: Brother) -> bool:
+	return is_instance_valid(one) and not one.dead and one.hp <= 2 and one.stats.max_hp() > 2
+
+
+## 0 to 1: a heartbeat, two quick thumps a little over once a second.
+func _beat() -> float:
+	var t := fmod(Time.get_ticks_msec() / 1000.0, 0.85)
+	var thump := func(at: float) -> float: return maxf(0.0, 1.0 - absf(t - at) / 0.07)
+	return maxf(thump.call(0.07), thump.call(0.24) * 0.7)
 
 
 ## The player's number on a cream medallion ringed in his brother's colour;

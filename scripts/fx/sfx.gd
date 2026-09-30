@@ -93,6 +93,8 @@ func _make() -> void:
 	_add("roar", _growl(95.0, 0.7), 0.5)
 	_add("select", _bell(1200.0, 0.05, 0.35), 0.03)
 	_add("confirm", _notes([660.0, 990.0], 0.07, 0.15, 0.4), 0.1)
+	# Uh-uh: two low notes going down, for what cannot be had.
+	_add("nope", _notes([233.0, 175.0], 0.1, 0.16, 0.4), 0.3)
 	_add("sad", _sad_trombone(), 1.0)
 	_add("fuse", _noise(0.25, 0.12, 0.7), 0.3)
 

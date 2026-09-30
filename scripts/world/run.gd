@@ -51,6 +51,9 @@ var bosses_beaten := 0
 var pool: Array[String] = []
 
 var _revive_in := 0.0
+## The camera sliding to the next room, and the room being left.
+var _slide: Tween
+var _leaving: Room
 
 var _floor_seed := 0
 var _fighting := false
@@ -76,6 +79,7 @@ func is_last_floor() -> bool:
 
 
 func start_floor(index: int) -> void:
+	_stop_slide()
 	floor_index = index
 	_floor_seed = rng.randi()
 	plan = FloorPlan.generate(rng, index, layouts)
@@ -91,9 +95,26 @@ func start_floor(index: int) -> void:
 	floor_started.emit(index)
 
 
+## Cuts short a slide between rooms: jumping to another floor or room in the
+## middle of one left the camera to finish it over the old floor, black,
+## and the room it was going to got filled after all.
+func _stop_slide() -> void:
+	if _slide == null:
+		return
+	_slide.kill()
+	_slide = null
+	if is_instance_valid(_leaving):
+		_leaving.queue_free()
+	_leaving = null
+	for brother in brothers:
+		brother.frozen = false
+	busy = false
+
+
 ## Straight into the first room of [param kind] on the floor, without
 ## walking there: for screenshots and trying things out.
 func teleport(kind: String) -> void:
+	_stop_slide()
 	for at: Vector2i in plan.rooms:
 		var info := plan.info(at)
 		if info.kind == kind:
@@ -174,10 +195,13 @@ func _enter(to: Vector2i, through: String) -> void:
 		busy = true
 		for brother in brothers:
 			brother.frozen = true
-		var tween := create_tween()
-		tween.tween_property(camera, "position", next.center(), SLIDE_TIME) \
+		_leaving = old
+		_slide = create_tween()
+		_slide.tween_property(camera, "position", next.center(), SLIDE_TIME) \
 				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-		await tween.finished
+		await _slide.finished
+		_slide = null
+		_leaving = null
 		old.queue_free()
 		for brother in brothers:
 			brother.frozen = false
