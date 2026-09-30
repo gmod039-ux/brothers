@@ -21,6 +21,8 @@ var from := Vector2.ZERO
 var to := Vector2.ZERO
 ## Whoever threw it is not hurt by it.
 var thrower: Enemy
+## His name, kept apart: he may be gone by the time it goes off.
+var source := ""
 ## How far it reaches and how hard it hits: a stick of dynamite more.
 var reach := REACH
 var damage := DAMAGE
@@ -61,7 +63,7 @@ func _explode() -> void:
 			enemy.hurt(damage, (enemy.global_position - at).normalized(), 2.0)
 	for brother in room.brothers:
 		if not friendly and not brother.dead and brother.global_position.distance_to(at) < reach * 0.8:
-			brother.hurt(2, at)
+			brother.hurt(2, at, source if source != "" else "своя же бомба")
 	for row in Room.ROWS:
 		for col in Room.COLS:
 			var cell := Vector2i(col, row)

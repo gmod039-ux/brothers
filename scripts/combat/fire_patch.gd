@@ -21,7 +21,7 @@ func _physics_process(delta: float) -> void:
 		return
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < REACH:
-			brother.hurt(1, global_position)
+			brother.hurt(1, global_position, "Пыхтун")
 
 
 func _process(_delta: float) -> void:

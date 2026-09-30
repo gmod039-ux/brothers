@@ -220,6 +220,7 @@ func _hat_trick() -> void:
 		var bomb := Bomb.new()
 		bomb.room = room
 		bomb.thrower = self
+		bomb.source = title
 		bomb.flight = 0.7
 		bomb.fuse = 1.0
 		bomb.from = global_position + Vector2(0, -150)

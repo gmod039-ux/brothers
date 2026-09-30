@@ -23,6 +23,8 @@ var height := 40.0
 var damage := 3.5
 var radius := 13.0
 var hostile := false
+## Whose spit it is, for the card at the end.
+var source := ""
 var reach := 700.0
 var travelled := 0.0
 var falling := false
@@ -83,7 +85,7 @@ func _physics_process(delta: float) -> void:
 			# still hits.
 			if not brother.dead and global_position.distance_to(brother.global_position) \
 					< radius + Brother.RADIUS + 6.0:
-				brother.hurt(1, global_position - velocity.normalized() * 10.0)
+				brother.hurt(1, global_position - velocity.normalized() * 10.0, source)
 				_end("brother")
 				return
 	else:

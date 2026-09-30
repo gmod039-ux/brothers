@@ -209,7 +209,7 @@ class SteamVent:
 		if burst:
 			for brother in room.brothers:
 				if not brother.dead and brother.global_position.distance_to(global_position) < REACH:
-					brother.hurt(1, global_position + Vector2(0, -10))
+					brother.hurt(1, global_position + Vector2(0, -10), "горячий пар")
 		if _t > 1.0 and _t - delta <= 1.0:
 			Sfx.play("fuse", -2.0, 0.2)
 		if _t > 5.5:

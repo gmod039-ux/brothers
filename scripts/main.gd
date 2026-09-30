@@ -143,6 +143,11 @@ func _ready() -> void:
 	_recording = not demo and not _args.has("tour") and not _args.has("shot")
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
 	coop = _args.has("coop")
+	if not _args.has("brother") and _recording:
+		# The poster as it was left last time.
+		chosen = Options.brother
+		coop = coop or Options.together
+	Input.joy_connection_changed.connect(_on_joy_changed)
 	if _args.has("brother"):
 		chosen = _arg("brother", chosen)
 		start_run(first_seed)
@@ -209,6 +214,24 @@ func _set_fullscreen(on: bool) -> void:
 		_fit_window()
 
 
+## A game left running while the window is behind another, or with its
+## gamepad unplugged, stops under the pause card instead of carrying on
+## without anyone.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and _recording:
+		_pause_if_playing()
+
+
+func _on_joy_changed(_device: int, connected: bool) -> void:
+	if not connected and not demo:
+		_pause_if_playing()
+
+
+func _pause_if_playing() -> void:
+	if state == "play" and not get_tree().paused and not _busy:
+		_pause()
+
+
 func _input(event: InputEvent) -> void:
 	# Before anything else gets it, in every state, the menu included.
 	if event.is_action_pressed("fullscreen"):
@@ -263,6 +286,10 @@ func show_select() -> void:
 func _on_chosen(id: String, both: bool) -> void:
 	chosen = id
 	coop = both
+	if _recording:
+		Options.brother = id
+		Options.together = both
+		Options.save()
 	await iris.close(select.SPOTS[select.index] + Vector2(0, -150), 0.7)
 	select.queue_free()
 	select = null
@@ -297,7 +324,7 @@ func start_run(seed_value: int) -> void:
 			one.purse = brothers[0].purse
 		one.health_changed.connect(hud.set_health)
 		one.hurt_taken.connect(_on_hurt)
-		one.died.connect(_on_died)
+		one.died.connect(_on_died.bind(one))
 		one.revived.connect(func() -> void: banner.caption("Братец снова в строю!", "", 1.6))
 		one.inventory_changed.connect(hud.queue_redraw)
 		one.item_taken.connect(func(id: String) -> void:
@@ -516,7 +543,7 @@ func _on_hurt() -> void:
 	_shake = 0.25
 
 
-func _on_died() -> void:
+func _on_died(who: Brother) -> void:
 	for one in brothers:
 		if not one.dead:
 			# His brother is still up, and will get him up once the room is
@@ -535,7 +562,10 @@ func _on_died() -> void:
 	await iris.close(at, 0.8)
 	get_tree().paused = true
 	Music.stop()
-	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", _run_lines(),
+	var lines := _run_lines()
+	if is_instance_valid(who) and who.killed_by != "":
+		lines.insert(lines.size() - 1, "последний удар — %s" % who.killed_by)
+	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", lines,
 			_over_hint(), _looks(), _items())
 
 
@@ -686,8 +716,14 @@ func _restart(to_select: bool) -> void:
 
 
 func _process(delta: float) -> void:
-	if state == "play" and not get_tree().paused:
+	var playing := state == "play" and not get_tree().paused
+	if playing:
 		_play_time += delta
+	# Nothing in the game is done with the mouse: its pointer only gets in
+	# the way of the picture while playing.
+	var mouse := Input.MOUSE_MODE_HIDDEN if playing else Input.MOUSE_MODE_VISIBLE
+	if Input.mouse_mode != mouse:
+		Input.mouse_mode = mouse
 	if _shake > 0.0:
 		_shake = maxf(_shake - delta, 0.0)
 		var k := _shake / 0.25 * (1.0 if Options.shake else 0.0)

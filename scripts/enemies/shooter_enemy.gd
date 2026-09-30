@@ -75,6 +75,7 @@ func _spit(dir: Vector2) -> void:
 	shot.launch(room, global_position + dir * radius, 38.0,
 			dir * float(def.get("shot_speed", 420.0)),
 			float(def.get("shot_range", 9.0)) * Room.TILE, 1.0, 12.0, true)
+	shot.source = display_name
 	match floor_look:
 		1:
 			shot.tint = FIRE

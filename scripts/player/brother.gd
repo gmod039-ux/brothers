@@ -67,6 +67,8 @@ var keys: int:
 var player := 1
 ## Items taken, in order.
 var items: Array[String] = []
+## Who dealt the blow that knocked him out, for the card at the end.
+var killed_by := ""
 ## The item in his hands (Space, RB), "" for none, and how many beaten
 ## rooms of charge it has.
 var active := ""
@@ -251,14 +253,15 @@ func _touch_enemies() -> void:
 	for enemy in room.enemies:
 		if enemy.can_touch() and not enemy.is_dazed() and global_position.distance_to(enemy.global_position) \
 				< RADIUS + enemy.radius - 6.0:
-			hurt(enemy.contact, enemy.global_position)
+			hurt(enemy.contact, enemy.global_position, enemy.display_name)
 			return
 
 
-## Takes [param amount] half hearts from a hit coming from [param from].
-## Returns false when the hit did not land: already down, or still blinking
-## from the last one.
-func hurt(amount: int, from: Vector2) -> bool:
+## Takes [param amount] half hearts from a hit coming from [param from],
+## dealt by [param source] (a name, for the card at the end). Returns false
+## when the hit did not land: already down, or still blinking from the last
+## one.
+func hurt(amount: int, from: Vector2, source := "") -> bool:
 	if dead or _invulnerable > 0.0:
 		return false
 	_invulnerable = INVULNERABLE
@@ -272,6 +275,7 @@ func hurt(amount: int, from: Vector2) -> bool:
 	damage_taken += amount
 	health_changed.emit(hp, stats.max_hp())
 	if hp == 0:
+		killed_by = source
 		_die()
 	return true
 

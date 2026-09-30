@@ -46,6 +46,7 @@ func _run() -> void:
 	await _coop()
 	await _actives()
 	await _trapdoor_stays()
+	await _last_blow()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -343,6 +344,17 @@ func _trapdoor_stays() -> void:
 	run.queue_free()
 	camera.queue_free()
 	await process_frame
+
+
+## The card at the end names who dealt the last blow.
+func _last_blow() -> void:
+	await _fresh_room(EMPTY)
+	var brother := _brother(Vector2i(4, 3))
+	var walker := _enemy("walker", Vector2i(4, 3))
+	brother.hp = 1
+	await _steps(4)
+	_expect(brother.dead and brother.killed_by == walker.display_name,
+			"the last blow is written down (%s)" % brother.killed_by)
 
 
 # --- helpers ---------------------------------------------------------------

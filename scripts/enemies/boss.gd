@@ -279,7 +279,7 @@ func _land() -> void:
 	Sfx.play("stomp", 0.0)
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < STOMP_REACH:
-			brother.hurt(contact, global_position)
+			brother.hurt(contact, global_position, title)
 	Fx.ring(room, global_position, STOMP_REACH * 2.4, Toon.INK, 0.45, 12.0)
 	Fx.burst(room, global_position, "dust", 12, 1.3)
 	Fx.shake(0.3)
@@ -326,6 +326,7 @@ func _shoot(direction: Vector2, shot_speed: float, tiles: float, size: float, he
 	shot.launch(room, global_position + direction * radius * 0.8, height, direction * shot_speed,
 			tiles * Room.TILE, 1.0, size, true)
 	shot.tint = tint
+	shot.source = title
 	return shot
 
 

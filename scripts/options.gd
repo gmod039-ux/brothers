@@ -17,6 +17,9 @@ static var sounds := 1.0
 static var film := 1.0
 static var shake := true
 static var fullscreen := false
+## The last choice on the poster, to be there again next time.
+static var brother := "older"
+static var together := false
 
 
 static func load_file() -> void:
@@ -28,6 +31,10 @@ static func load_file() -> void:
 	film = _level(config.get_value("screen", "film", film))
 	shake = bool(config.get_value("screen", "shake", shake))
 	fullscreen = bool(config.get_value("screen", "fullscreen", fullscreen))
+	brother = str(config.get_value("choice", "brother", brother))
+	if not brother in ["older", "younger"]:
+		brother = "older"
+	together = bool(config.get_value("choice", "together", together))
 
 
 static func save() -> void:
@@ -37,6 +44,8 @@ static func save() -> void:
 	config.set_value("screen", "film", film)
 	config.set_value("screen", "shake", shake)
 	config.set_value("screen", "fullscreen", fullscreen)
+	config.set_value("choice", "brother", brother)
+	config.set_value("choice", "together", together)
 	config.save(PATH)
 
 

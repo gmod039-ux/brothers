@@ -34,7 +34,7 @@ func _burst() -> void:
 		return
 	for brother in room.brothers:
 		if not brother.dead and brother.global_position.distance_to(global_position) < BURST_REACH:
-			brother.hurt(1, global_position)
+			brother.hurt(1, global_position, display_name)
 	Fx.ring(room, global_position, BURST_REACH * 1.4, Color("f08a24"), 0.35, 8.0)
 	Fx.burst(room, global_position + Vector2(0, -20), "embers", 12, 1.0)
 	Sfx.play("blast", -8.0, 0.2)
