@@ -10,14 +10,26 @@ shader_type canvas_item;
 // towards the lamps, dark on the far side. Then the room's lights are laid
 // over it all, warm pools round the lamps and dark corners away from them.
 //
+// Inked, the way the characters are: every stone, board and plate has an
+// ink line round it, heavier on the side turned from the light and wavering
+// like a brush; cracks, nail heads, wood grain and pits are drawn into them;
+// and the shadow the walls throw on the floor is hatched, the way a
+// background painter darkened a corner with a pen.
+//
 // Works in the room's own pixels (the polygon's vertices), so the same room
 // looks the same wherever it stands in the world.
 
 // 0 floor, 1 wall.
 uniform int part = 0;
-// Floor: 0 tiles, 1 slabs, 2 flagstones, 3 mat, 4 iron plate, 5 carpet.
+// Floor: 0 tiles, 1 slabs, 2 flagstones, 3 mat, 4 iron tread plate,
+// 5 carpet, 6 floorboards, 7 riveted plates.
 // Wall: 0 brick, 1 steel panels, 2 rough stone, 3 damask.
 uniform int pattern = 0;
+// The cartoon look: ink round everything, drawn details, hatched shadow.
+uniform bool inked = true;
+uniform vec4 ink : source_color = vec4(0.13, 0.08, 0.06, 0.9);
+// Half the width of the line between two stones, in pixels.
+uniform float ink_width = 1.7;
 uniform vec4 base : source_color = vec4(0.85, 0.72, 0.54, 1.0);
 uniform vec4 stain : source_color = vec4(0.72, 0.55, 0.36, 1.0);
 uniform vec4 grout : source_color = vec4(0.35, 0.23, 0.14, 1.0);
@@ -169,6 +181,78 @@ vec3 stone_tone(vec2 id, float spread) {
 	return c;
 }
 
+// Which way a stone's edge at this point faces: 1 towards the lamps (up and
+// to the left), -1 away from them.
+float facing_of(float depth) {
+	vec2 grad = vec2(dFdx(depth), dFdy(depth));
+	float len = length(grad);
+	if (len < 0.0001) {
+		return 0.0;
+	}
+	return dot(-grad / len, normalize(vec2(-0.55, -0.85)));
+}
+
+// The edge of a stone, board or plate. Inked: a line round it, heavier on
+// the side away from the light and wavering like a brush stroke, the joint
+// itself lost in it. Otherwise the plain painted joint.
+vec3 edge(vec3 c, float d, vec2 x) {
+	if (!inked) {
+		return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	}
+	float facing = facing_of(d);
+	float w = ink_width * (0.65 + 0.7 * noise(x * 0.04 + seed)) * (1.0 + 0.8 * max(-facing, 0.0));
+	float aa = max(fwidth(d), 0.6);
+	float line = 1.0 - smoothstep(w - aa, w + aa, d);
+	return mix(c, ink.rgb, line * ink.a);
+}
+
+// A crack drawn across now and then a stone: a jagged ink line through its
+// middle, thinning out at both ends. [f] is the point from the stone's
+// middle, [size] about its size.
+float crack(vec2 f, vec2 id, float size, float often) {
+	if (!inked || hash(id + 11.3) > often) {
+		return 0.0;
+	}
+	float a = hash(id + 12.1) * 3.14159;
+	vec2 dir = vec2(cos(a), sin(a));
+	vec2 off = (hash2(id + 4.4) - 0.5) * size * 0.3;
+	vec2 q = f - off;
+	float along = dot(q, dir);
+	float across = dot(q, vec2(-dir.y, dir.x))
+			+ (noise(vec2(along * 0.11, id.x * 7.0 + id.y * 3.0)) - 0.5) * 9.0;
+	float len = size * (0.22 + 0.25 * hash(id + 13.7));
+	float w = 1.2 * (1.0 - smoothstep(len * 0.5, len, abs(along)));
+	float aa = max(fwidth(across), 0.5);
+	return 1.0 - smoothstep(w - aa, w + aa, abs(across));
+}
+
+// Pits and specks of dirt: little ink dots, sparse.
+float pits(vec2 x, float amount) {
+	if (!inked) {
+		return 0.0;
+	}
+	vec2 g = x / 23.0;
+	vec2 i = floor(g);
+	vec2 at = (i + 0.2 + 0.6 * hash2(i + 77.0)) * 23.0;
+	float r = 0.8 + 1.4 * hash(i + 31.0);
+	float d = length(x - at) - r;
+	return (1.0 - smoothstep(-0.6, 0.6, d)) * step(1.0 - amount, hash(i + 5.5));
+}
+
+// Pen hatching, for shade: diagonal strokes [spacing] apart, thickening as
+// [amount] grows; nothing below a little shade.
+float hatch(vec2 x, float amount, float spacing) {
+	if (!inked || amount < 0.08) {
+		return 0.0;
+	}
+	float wob = (noise(x * 0.03) - 0.5) * 3.0;
+	float h = abs(fract((x.x + x.y + wob) / spacing) - 0.5) * spacing * 0.707;
+	float w = 0.35 + 1.3 * smoothstep(0.08, 0.6, amount);
+	// Strokes broken here and there, as a pen lifts.
+	float broken = step(0.28, noise(vec2((x.x - x.y) * 0.02, floor((x.x + x.y) / spacing) * 3.7)));
+	return (1.0 - smoothstep(w, w + 0.9, h)) * broken;
+}
+
 // --- floors -------------------------------------------------------------
 
 // A hand-laid grid: the joints wander a little, so it does not look ruled.
@@ -194,7 +278,8 @@ vec3 floor_tiles(vec2 x, float size, vec2 aspect, bool stagger, float spread) {
 	c *= 1.0 + lit * 0.32;
 	// Joints are dark; a soft shadow creeps a few pixels onto each stone.
 	c = mix(c, c * 0.8, 1.0 - smoothstep(0.0, 5.0, d));
-	return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	c = mix(c, ink.rgb, crack(f, id, size, 0.16) * 0.85 + pits(x, 0.18) * 0.35);
+	return edge(c, d, x);
 }
 
 // Poured concrete in big square slabs: speckled, with a darker skin of
@@ -216,7 +301,8 @@ vec3 slabs(vec2 x) {
 	float lit = bevel(d, 5.0);
 	c *= 1.0 + lit * 0.25;
 	c = mix(c, c * 0.85, 1.0 - smoothstep(0.0, 4.0, d));
-	return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	c = mix(c, ink.rgb, crack(f, id, size.x, 0.2) * 0.85 + pits(x, 0.3) * 0.3);
+	return edge(c, d, x);
 }
 
 vec3 flagstones(vec2 x) {
@@ -242,18 +328,18 @@ vec3 flagstones(vec2 x) {
 			}
 		}
 	}
-	float edge = 8.0;
+	float gap = 8.0;
 	for (int y = -2; y <= 2; y++) {
 		for (int xx = -2; xx <= 2; xx++) {
 			vec2 o = vec2(float(xx), float(y));
 			vec2 r = o + 0.15 + 0.7 * hash2(i + o) - fr;
 			vec2 diff = r - nearest;
 			if (dot(diff, diff) > 0.0001) {
-				edge = min(edge, dot(0.5 * (nearest + r), normalize(diff)));
+				gap = min(gap, dot(0.5 * (nearest + r), normalize(diff)));
 			}
 		}
 	}
-	float d = edge * size - 3.5;
+	float d = gap * size - (inked ? 0.8 : 3.5);
 	vec3 c = stone_tone(nearest_id, 0.22);
 	c *= 0.93 + 0.1 * noise(x * 0.06 + nearest_id * 5.0);
 	// Moss in the joints.
@@ -261,6 +347,13 @@ vec3 flagstones(vec2 x) {
 	float lit = bevel(d, 11.0);
 	c *= 1.0 + lit * 0.34;
 	c = mix(c, c * 0.8, 1.0 - smoothstep(0.0, 6.0, d));
+	if (inked) {
+		// Moss creeping out of the joints onto the stone, in soft green tufts.
+		float tuft = smoothstep(0.5, 0.75, noise(x * 0.05 + 9.0)) * (1.0 - smoothstep(0.0, 16.0, d));
+		c = mix(c, vec3(0.42, 0.5, 0.26), tuft * smoothstep(0.45, 0.7, noise(x * 0.012 + 3.0)) * 0.8);
+		c = mix(c, ink.rgb, crack(nearest * size, nearest_id, size, 0.22) * 0.85 + pits(x, 0.22) * 0.35);
+		return edge(c, d, x);
+	}
 	vec3 joint = mix(grout.rgb, vec3(0.3, 0.42, 0.2), moss * 0.8);
 	return mix(joint, c, smoothstep(-0.8, 0.8, d));
 }
@@ -275,33 +368,99 @@ vec3 ring_mat(vec2 x) {
 	return c;
 }
 
-vec3 iron(vec2 x) {
-	// Plates two tiles wide with riveted seams, a diamond tread pressed in.
+vec3 iron(vec2 x, bool tread) {
+	// Plates riveted along their seams. Laid as a deck is: courses of plates
+	// two tiles long, every other course shifted half a plate. [tread] gives
+	// every plate the diamond pattern; otherwise about one in three has it,
+	// the rest are plain, hammer-marked and of their own shade.
 	vec2 plate = vec2(tile * 2.0, tile * 1.5);
-	vec2 id = floor(x / plate);
-	vec2 f = x - (id + 0.5) * plate;
-	float d = -round_box(f, plate * 0.5 - 2.5, 3.0);
-	vec3 c = base.rgb * (0.92 + 0.12 * hash(id));
+	float course = floor(x.y / plate.y);
+	vec2 sx = x + vec2(mod(course, 2.0) * plate.x * 0.5, 0.0);
+	vec2 id = floor(sx / plate);
+	vec2 f = sx - (id + 0.5) * plate;
+	float d = -round_box(f, plate * 0.5 - 1.5, 3.0);
+	vec3 c = base.rgb * (0.86 + 0.2 * hash(id));
+	c = mix(c, stain.rgb, step(0.8, hash(id + 2.2)) * 0.35);
+	bool diamond = tread || hash(id + 6.6) > 0.68;
 	// The tread: little raised bars on the diagonals, lit on one side.
 	vec2 t = x / 26.0;
 	vec2 tf = fract(t) - 0.5;
 	float flip = mod(floor(t.x) + floor(t.y), 2.0) > 0.5 ? 1.0 : -1.0;
 	vec2 r = mat2(vec2(0.707, 0.707 * flip), vec2(-0.707 * flip, 0.707)) * tf;
 	float bar = round_box(r, vec2(0.28, 0.06), 0.06);
-	c *= 1.0 - 0.18 * (1.0 - smoothstep(-0.02, 0.02, bar));
-	c *= 1.0 + 0.2 * (1.0 - smoothstep(-0.02, 0.02, round_box(r + vec2(0.0, 0.05), vec2(0.28, 0.02), 0.02)));
-	// Rivets along each seam.
-	vec2 along = abs(f) - (plate * 0.5 - 12.0);
-	vec2 rv = vec2(mod(f.x + 12.0, 28.0) - 14.0, along.y);
-	vec2 rh = vec2(along.x, mod(f.y + 12.0, 28.0) - 14.0);
+	if (diamond) {
+		c *= 1.0 - 0.18 * (1.0 - smoothstep(-0.02, 0.02, bar));
+		c *= 1.0 + 0.2 * (1.0 - smoothstep(-0.02, 0.02, round_box(r + vec2(0.0, 0.05), vec2(0.28, 0.02), 0.02)));
+	} else {
+		// Plain plate: hammer marks and a sheen.
+		c *= 0.94 + 0.1 * noise(x * 0.04 + id * 5.0);
+	}
+	// Rivets along each seam: fewer and bigger on a plain deck.
+	float gap = tread ? 28.0 : 44.0;
+	float rr = tread ? 4.2 : 5.5;
+	vec2 along = abs(f) - (plate * 0.5 - 13.0);
+	vec2 rv = vec2(mod(f.x + gap * 0.5, gap) - gap * 0.5, along.y);
+	vec2 rh = vec2(along.x, mod(f.y + gap * 0.5, gap) - gap * 0.5);
 	float rivet = min(length(rv), length(rh));
-	c = mix(c, c * 1.35, 1.0 - smoothstep(3.0, 4.5, rivet));
-	c = mix(c, c * 0.6, (1.0 - smoothstep(4.5, 6.0, rivet)) * smoothstep(3.0, 4.5, rivet));
+	c = mix(c, c * 1.3, 1.0 - smoothstep(rr - 1.2, rr, rivet));
+	c = mix(c, c * 0.6, (1.0 - smoothstep(rr, rr + 1.6, rivet)) * smoothstep(rr - 1.2, rr, rivet));
 	float lit = bevel(d, 6.0);
 	c *= 1.0 + lit * 0.4;
-	// Rust and soot.
+	// Rust and soot; coal dust thickest along the walls.
 	c = mix(c, vec3(0.45, 0.25, 0.14), smoothstep(0.62, 0.85, fbm(x / 140.0)) * 0.5);
-	return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	vec2 from_wall = min(x, floor_size - x);
+	float dusty = 1.0 - smoothstep(0.0, 160.0, min(from_wall.x, from_wall.y));
+	c = mix(c, vec3(0.18, 0.17, 0.17), dusty * smoothstep(0.35, 0.75, fbm(x / 60.0 + 4.0)) * 0.45);
+	if (inked) {
+		// Each rivet a ring of ink with a glint on its top.
+		c = mix(c, ink.rgb, (1.0 - smoothstep(0.6, 1.4, abs(rivet - rr))) * 0.8);
+		c = mix(c, ink.rgb, pits(x, 0.2 + dusty * 0.4) * 0.3);
+		c = mix(c, ink.rgb, crack(f, id, plate.y, 0.08) * 0.6);
+	}
+	return edge(c, d, x);
+}
+
+// Floorboards, the floor of a cartoon cellar: boards half a tile wide
+// running across the room, of different lengths, ends staggered; each its
+// own shade, grain running along it and bending round a knot, two nail heads
+// at each end, worn pale down the middle of the room where feet go.
+vec3 planks(vec2 x) {
+	float h = tile * 0.5;
+	float row = floor(x.y / h);
+	float len = tile * (2.0 + floor(hash(vec2(row, 1.0)) * 3.0));
+	float shift = hash(vec2(row, 2.0)) * len;
+	float col = floor((x.x + shift) / len);
+	vec2 id = vec2(col, row);
+	vec2 f = vec2(x.x + shift - (col + 0.5) * len, x.y - (row + 0.5) * h);
+	float d = -round_box(f, vec2(len, h) * 0.5 - 0.6, 2.0);
+	vec3 c = stone_tone(id, 0.26);
+	// The grain: long lines along the board, waving, bent round a knot.
+	vec2 kp = vec2((hash(id + 5.0) - 0.5) * len * 0.7, (hash(id + 6.0) - 0.5) * h * 0.4);
+	vec2 tk = (f - kp) / vec2(34.0, 13.0);
+	float bend = 11.0 * exp(-dot(tk, tk)) * sign(f.y - kp.y + 0.01);
+	float gy = f.y + bend + 3.0 * sin(f.x * 0.018 + hash(id) * 6.3);
+	float lane = floor(gy / 8.0);
+	float grain = abs(fract(gy / 8.0) - 0.5) * 8.0;
+	float run = step(0.4, noise(vec2(f.x * 0.015 + id.x * 13.0, lane * 2.7 + id.y)));
+	c = mix(c, stain.rgb * 0.8, (1.0 - smoothstep(0.35, 1.1, grain)) * run * 0.55);
+	// A knot on some boards: a dark eye with a ring round it.
+	float knot = length((f - kp) / vec2(11.0, 4.0));
+	float has_knot = step(0.55, hash(id + 8.0));
+	c = mix(c, stain.rgb * 0.75, (1.0 - smoothstep(0.7, 1.0, knot)) * has_knot);
+	c = mix(c, ink.rgb, (1.0 - smoothstep(0.06, 0.2, abs(knot - 1.0))) * has_knot * 0.45);
+	// Worn pale where feet go: a patch in the middle of the room.
+	vec2 room_f = (x - floor_size * 0.5) / floor_size;
+	float worn = (1.0 - smoothstep(0.1, 0.42, abs(room_f.x))) * (1.0 - smoothstep(0.15, 0.48, abs(room_f.y)));
+	c = mix(c, c * 1.12, worn * 0.6);
+	// Nail heads, two at each end of the board.
+	float nx = abs(f.x) - (len * 0.5 - 9.0);
+	vec2 n = vec2(nx, abs(f.y) - h * 0.24);
+	float nail = length(n) - 2.6;
+	c = mix(c, ink.rgb * 1.2, (1.0 - smoothstep(-0.6, 0.6, nail)) * 0.85);
+	float lit = bevel(d, 6.0);
+	c *= 1.0 + lit * 0.18;
+	c = mix(c, ink.rgb, crack(f * vec2(0.6, 1.4), id, h * 2.0, 0.1) * 0.8 + pits(x, 0.12) * 0.25);
+	return edge(c, d, x);
 }
 
 vec3 carpet(vec2 x) {
@@ -349,7 +508,8 @@ vec3 courses(vec2 face, float course, float length_, float vary, float joint, fl
 	float lit = bevel(d, 7.0);
 	c *= 1.0 + lit * 0.4;
 	c = mix(c, c * 0.8, 1.0 - smoothstep(0.0, 4.0, d));
-	return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	c = mix(c, ink.rgb, crack(f, id, length_, 0.14) * 0.8 + pits(face, 0.15) * 0.3);
+	return edge(c, d, face);
 }
 
 vec3 steel(vec2 face, float depth) {
@@ -373,7 +533,10 @@ vec3 steel(vec2 face, float depth) {
 	// Rust running down from the rivets.
 	float streak = smoothstep(0.6, 0.9, noise(vec2(face.x * 0.12, face.y * 0.012)));
 	c = mix(c, vec3(0.5, 0.28, 0.15), streak * 0.45);
-	return mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+	if (inked) {
+		c = mix(c, ink.rgb, (1.0 - smoothstep(0.6, 1.4, abs(rivet - 4.2))) * 0.8 * step(0.0, f.y + 2.0));
+	}
+	return edge(c, d, face);
 }
 
 vec3 damask(vec2 face) {
@@ -430,7 +593,11 @@ void fragment() {
 		} else if (pattern == 3) {
 			c = ring_mat(p);
 		} else if (pattern == 4) {
-			c = iron(fl);
+			c = iron(fl, true);
+		} else if (pattern == 6) {
+			c = planks(fl);
+		} else if (pattern == 7) {
+			c = iron(fl, false);
 		} else if (pattern == 5) {
 			c = carpet(p);
 		} else {
@@ -445,7 +612,8 @@ void fragment() {
 				+ (1.0 - smoothstep(0.0, 60.0, near.x)) * 0.32
 				+ (1.0 - smoothstep(0.0, 60.0, far_.x)) * 0.32
 				+ (1.0 - smoothstep(0.0, 44.0, far_.y)) * 0.22;
-		c *= 1.0 - min(shadow, 0.6);
+		c *= 1.0 - min(shadow, 0.6) * (inked ? 0.75 : 1.0);
+		c = mix(c, ink.rgb, hatch(p, shadow, 11.0) * 0.4);
 	} else {
 		vec2 uv = face_uv(p, q0, q1, q2, q3);
 		float along = length(q2 - q3);
@@ -462,7 +630,7 @@ void fragment() {
 			float d = -round_box(vec2(f.x - (col + 0.5) * seg, f.y - 12.0), vec2(seg * 0.5 - 2.0, 10.0), 3.0);
 			c = cap.rgb * (0.92 + 0.12 * hash(vec2(col, 41.0)));
 			c *= 1.0 + bevel(d, 5.0) * 0.4;
-			c = mix(grout.rgb, c, smoothstep(-0.8, 0.8, d));
+			c = edge(c, d, f);
 			c = wash(c, face, 180.0, 0.2);
 		} else {
 			vec2 below = vec2(face.x, face.y - cap_v * depth);
@@ -483,8 +651,11 @@ void fragment() {
 			// The cap overhangs a little: a line of shadow under it.
 			float under = uv.y - cap_v;
 			c *= 1.0 - (1.0 - smoothstep(0.0, 0.07, under)) * 0.35;
-			// And the wall darkens down into the corner with the floor.
-			c *= 1.0 - smoothstep(0.7, 1.0, uv.y) * 0.25;
+			// And the wall darkens down into the corner with the floor,
+			// hatched.
+			float low = smoothstep(0.62, 1.0, uv.y);
+			c *= 1.0 - low * 0.25;
+			c = mix(c, ink.rgb, hatch(p, low * 0.7, 10.0) * 0.35);
 		}
 	}
 	c *= light_at(p);

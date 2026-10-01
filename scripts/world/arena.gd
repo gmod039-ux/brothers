@@ -16,14 +16,17 @@ const PALETTES := {
 	"ring": {"wall": Color("7e4a3a"), "wall_stain": Color("4e2b21"), "mortar": Color("2e1a14"),
 			"cap": Color("a67c68"), "floor": Color("e2e0d4"), "floor_stain": Color("a3aab0"),
 			"joint": Color("3a3a3a"), "grout": Color(0, 0, 0, 0), "floor_pattern": 3,
+			"ink": Color(0.16, 0.1, 0.08, 0.92),
 			"wall_pattern": 0, "ambient": 0.68},
 	"boiler": {"wall": Color("5e6672"), "wall_stain": Color("353b44"), "mortar": Color("1e2228"),
 			"cap": Color("8a9098"), "floor": Color("9a9ca4"), "floor_stain": Color("5e6068"),
 			"joint": Color("26282c"), "grout": Color(0, 0, 0, 0), "floor_pattern": 4,
+			"ink": Color(0.1, 0.1, 0.12, 0.92),
 			"wall_pattern": 1, "ambient": 0.72},
 	"cabaret": {"wall": Color("8e2328"), "wall_stain": Color("5c1519"), "mortar": Color("2e0a0c"),
 			"cap": Color("c9a050"), "floor": Color("a8282c"), "floor_stain": Color("6e1519"),
 			"joint": Color("2e0a0c"), "trim": Color("e8b83a"), "grout": Color(0, 0, 0, 0),
+			"ink": Color(0.18, 0.04, 0.05, 0.92),
 			"floor_pattern": 5, "wall_pattern": 3, "ambient": 0.72},
 }
 const GOLD := Color("e8b83a")

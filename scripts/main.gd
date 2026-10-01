@@ -12,6 +12,8 @@ extends Node2D
 ##   demo                   a bot plays (and cannot lose, unless `mortal`)
 ##   god                    hits cost nothing
 ##   film X                 strength of the old-film look, 0 to switch off
+##   textures N             floors and walls from the photographed textures
+##                          (0 or 1) instead of drawn in ink
 ##   autoplay S             quit after S seconds of play, printing a summary
 ##   shot / tour …          screenshots, see scripts/dev/screenshot.gd
 
@@ -141,7 +143,7 @@ func _ready() -> void:
 		_select_layer.add_child(preload("res://scripts/dev/bestiary.gd").new())
 		return
 	if _args.has("textures"):
-		Room.texture_variant = int(_arg("textures", "0"))
+		Room.texture_variant = int(_arg("textures", "-1"))
 	demo = _args.has("demo")
 	# The bot cannot lose, unless told `mortal`: to see how far it gets.
 	god = _args.has("god") or (demo and not _args.has("mortal"))

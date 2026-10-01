@@ -28,26 +28,30 @@ const DOOR_GAP := 124.0
 ## walk before he is in the next room.
 const EXIT_DEPTH := 34.0
 
-## The look of each floor: the basement in red brick and warm sandstone
-## tiles, the boiler room in riveted steel and concrete slabs, the catacombs
-## in rough stone and mossy flagstones. "floor_pattern" and "wall_pattern"
+## The look of each floor: the basement in red brick over honey-coloured
+## floorboards, the boiler room in riveted steel over iron plates, the
+## catacombs in rough stone over mossy flagstones. Each has its own ink, the
+## lines round every board and stone a dark of its own colours. "floor_pattern" and "wall_pattern"
 ## pick the shader's patterns (see shaders/room_paint.gdshader); "joint" is
 ## the grout between floor stones, "mortar" between wall ones; "grout" the
 ## ink of cracks drawn over the floor.
 const STYLES := [
 	{"wall": Color("a8573b"), "wall_stain": Color("74382a"), "mortar": Color("4a271b"),
-			"cap": Color("c9a57e"), "floor": Color("e6cc9c"), "floor_stain": Color("c79c68"),
-			"joint": Color("8a6646"), "grout": Color(0.42, 0.29, 0.18, 0.5),
-			"floor_pattern": 0, "wall_pattern": 0, "ambient": 0.8,
+			"cap": Color("c9a57e"), "floor": Color("dcb683"), "floor_stain": Color("ad7e4e"),
+			"joint": Color("4e3020"), "grout": Color(0.42, 0.29, 0.18, 0.5),
+			"ink": Color(0.17, 0.09, 0.05, 0.92),
+			"floor_pattern": 6, "wall_pattern": 0, "ambient": 0.8,
 			"light": Color(1.0, 0.8, 0.5)},
 	{"wall": Color("6d7a8a"), "wall_stain": Color("414a57"), "mortar": Color("242a31"),
-			"cap": Color("9ca3aa"), "floor": Color("d6cfbf"), "floor_stain": Color("a2988a"),
-			"joint": Color("6b6660"), "grout": Color(0.25, 0.24, 0.26, 0.5),
-			"floor_pattern": 1, "wall_pattern": 1, "ambient": 0.78,
+			"cap": Color("9ca3aa"), "floor": Color("b9b8b2"), "floor_stain": Color("807c74"),
+			"joint": Color("3a3a3c"), "grout": Color(0.25, 0.24, 0.26, 0.5),
+			"ink": Color(0.1, 0.1, 0.12, 0.92),
+			"floor_pattern": 7, "wall_pattern": 1, "ambient": 0.78,
 			"light": Color(1.0, 0.68, 0.38)},
 	{"wall": Color("7f8569"), "wall_stain": Color("4c5340"), "mortar": Color("2a2e22"),
 			"cap": Color("aeb094"), "floor": Color("cacbac"), "floor_stain": Color("8f9672"),
 			"joint": Color("545b44"), "grout": Color(0.24, 0.29, 0.2, 0.5),
+			"ink": Color(0.11, 0.13, 0.08, 0.92),
 			"floor_pattern": 2, "wall_pattern": 2, "ambient": 0.74,
 			"light": Color(1.0, 0.78, 0.5)},
 ]
@@ -82,8 +86,9 @@ const ARENA_TEXTURES := {
 					"gain": 1.1, "contrast": 0.5}},
 }
 ## Which of each pair in [constant TEXTURES] the rooms are painted with;
-## -1 paints them with the drawn patterns instead. `-- textures N`.
-static var texture_variant := 0
+## -1, the game's own look, draws them in ink and watercolour instead, like
+## the characters. `-- textures N` brings the photographed textures back.
+static var texture_variant := -1
 
 const ROCK := Color("a79a86")
 const ROCK_DARK := Color("7d705f")
@@ -440,6 +445,8 @@ func _painted(part: int, pattern: int, base: Color, stain: Color, joint: Color) 
 	material.set_shader_parameter("floor_origin", FLOOR.position)
 	material.set_shader_parameter("floor_size", FLOOR.size)
 	material.set_shader_parameter("ambient", float(look.get("ambient", 0.8)))
+	material.set_shader_parameter("inked", texture_variant < 0)
+	material.set_shader_parameter("ink", look.get("ink", Color(0.13, 0.08, 0.06, 0.9)))
 	var lights := PackedVector3Array()
 	var colors := PackedColorArray()
 	for light: Array in lights_of_room():
