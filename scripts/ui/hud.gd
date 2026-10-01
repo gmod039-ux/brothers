@@ -260,6 +260,8 @@ func _draw_map() -> void:
 				Toon.star(self, at, 7.0, 0.0, Color("e0b23a"))
 			"shop":
 				ItemIcon.draw(self, "coin", at, 18.0, 0)
+			"secret":
+				draw_string(Ui.font(), at + Vector2(-10, 8), "?", HORIZONTAL_ALIGNMENT_CENTER, 20, 20, Toon.INK)
 		if info.locked:
 			# A little padlock on the corner: a key opens it.
 			var lock := at + Vector2(MAP_CELL.x * 0.5 - 4, MAP_CELL.y * 0.5 - 4)

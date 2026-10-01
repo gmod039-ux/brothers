@@ -6,6 +6,11 @@ extends RefCounted
 ## there -- so the floor branches instead of clumping -- with the boss in the
 ## dead end furthest from the start, the treasure room in another and, when
 ## there is a third, a shop. Below the first floor both are locked.
+##
+## And, as in Isaac, a secret room: in a gap between two or three rooms,
+## behind a wall with a crack in it. It is not on the plan's [member rooms]
+## until a bomb opens the wall ([method reveal_secret]); till then nothing
+## knows it is there -- no doors, no map, no way for the bot.
 
 const WIDTH := 9
 const HEIGHT := 8
@@ -50,6 +55,10 @@ var boss := Vector2i.ZERO
 var treasure := Vector2i.ZERO
 ## No shop when the floor has only two dead ends: (-1, -1).
 var shop := Vector2i(-1, -1)
+## The secret room, (-1, -1) for none; its info, kept off [member rooms]
+## while it is hidden.
+var secret := Vector2i(-1, -1)
+var secret_info: RoomInfo
 
 
 ## Grows floor [param floor_index] (0 is the first): more rooms deeper down.
@@ -111,7 +120,58 @@ static func _grow(rng: RandomNumberGenerator, target: int) -> FloorPlan:
 		info.cell = cell
 		info.depth = int(depth[cell])
 		plan.rooms[cell] = info
+	plan._hide_secret(rng, depth)
 	return plan
+
+
+## Picks the secret room's cell: an empty one touching the most rooms (two
+## at least), none of them the boss's, the treasure room or the shop -- they
+## stay dead ends.
+func _hide_secret(rng: RandomNumberGenerator, depth: Dictionary) -> void:
+	var best: Array[Vector2i] = []
+	var most := 1
+	for cell: Vector2i in depth:
+		for step: Vector2i in SIDES.values():
+			var spot: Vector2i = cell + step
+			if depth.has(spot) or spot.x < 0 or spot.y < 0 or spot.x >= WIDTH or spot.y >= HEIGHT:
+				continue
+			var n := 0
+			var shallow := 99
+			var special := false
+			for around: Vector2i in SIDES.values():
+				var next: Vector2i = spot + around
+				if depth.has(next):
+					n += 1
+					shallow = mini(shallow, int(depth[next]))
+					special = special or next in [boss, treasure, shop]
+			if special or n < 2 or best.has(spot):
+				continue
+			if n > most:
+				most = n
+				best.clear()
+			if n == most:
+				best.append(spot)
+	if best.is_empty():
+		return
+	secret = best[rng.randi() % best.size()]
+	secret_info = RoomInfo.new()
+	secret_info.cell = secret
+	var shallow := 99
+	for around: Vector2i in SIDES.values():
+		if depth.has(secret + around):
+			shallow = mini(shallow, int(depth[secret + around]))
+	secret_info.depth = shallow + 1
+
+
+## True while [param cell] is the secret room and still hidden.
+func is_hidden_secret(cell: Vector2i) -> bool:
+	return secret_info != null and cell == secret and not rooms.has(secret)
+
+
+## The wall is down: the secret room joins the floor.
+func reveal_secret() -> void:
+	if secret_info != null and not rooms.has(secret):
+		rooms[secret] = secret_info
 
 
 func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
@@ -139,6 +199,11 @@ func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
 				_shuffle(deck, rng)
 			info.layout_name = deck.pop_back()
 		info.rows = layouts.get_rows(info.layout_name)
+	if secret_info != null:
+		secret_info.kind = "secret"
+		secret_info.layout_name = "@secret"
+		secret_info.cleared = true
+		secret_info.rows = layouts.get_rows("@secret")
 	var first: RoomInfo = rooms[start]
 	first.visited = true
 

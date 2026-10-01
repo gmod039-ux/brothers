@@ -131,7 +131,7 @@ func _draw() -> void:
 func _back_wall_taken() -> Array:
 	var f := Room.FLOOR
 	var taken: Array = []
-	if room.doors.has("top"):
+	if room.has_door("top"):
 		taken.append([f.get_center().x, 130.0])
 	for i in 2:
 		taken.append([f.position.x + f.size.x * (0.22 + 0.56 * i), 60.0])

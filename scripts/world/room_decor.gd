@@ -523,7 +523,7 @@ func _boiler() -> void:
 	# above a door and out again below it.
 	for side: float in [-1.0, 1.0]:
 		var x := 118.0 if side < 0.0 else 1802.0
-		var runs: Array = [[70.0, 400.0], [680.0, 1010.0]] if room.doors.has("left" if side < 0.0 else "right") \
+		var runs: Array = [[70.0, 400.0], [680.0, 1010.0]] if room.has_door("left" if side < 0.0 else "right") \
 				else [[70.0, 1010.0]]
 		for run: Array in runs:
 			var a := Vector2(x, run[0])

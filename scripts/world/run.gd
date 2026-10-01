@@ -9,6 +9,8 @@ extends Node2D
 
 signal room_entered(info: FloorPlan.RoomInfo)
 signal room_cleared(info: FloorPlan.RoomInfo)
+## A secret room was found.
+signal secret_found
 ## The boss (or bosses: the last floor has two) is in and the title card
 ## should go up.
 signal bosses_appeared(bosses: Array[Boss])
@@ -128,6 +130,30 @@ func teleport(kind: String) -> void:
 			return
 
 
+## Into a room next to the hidden secret room, standing by the cracked
+## wall: for screenshots and checks. Returns the side the crack is on, or
+## "" when this floor has no secret room left to find.
+func teleport_beside_secret() -> String:
+	if not plan.is_hidden_secret(plan.secret):
+		return ""
+	for side: String in FloorPlan.SIDES:
+		var beside: Vector2i = plan.secret - FloorPlan.SIDES[side]
+		if plan.rooms.has(beside):
+			_stop_slide()
+			plan.info(beside).locked = false
+			plan.info(beside).cleared = true
+			var old := room
+			room = null
+			_enter(beside, "")
+			if old != null:
+				old.queue_free()
+			camera.position = room.center()
+			for brother in brothers:
+				brother.global_position = room.door_point(side) - Vector2(FloorPlan.SIDES[side]) * 110.0
+			return side
+	return ""
+
+
 ## Down the trapdoor: the next floor, same brothers, same hearts.
 func descend() -> void:
 	start_floor(floor_index + 1)
@@ -161,8 +187,12 @@ func _enter(to: Vector2i, through: String) -> void:
 	if info.kind == "boss":
 		next.arena = ARENAS[mini(floor_index, ARENAS.size() - 1)]
 	var doors := plan.doors(to)
+	for side: String in FloorPlan.SIDES:
+		if plan.is_hidden_secret(to + FloorPlan.SIDES[side]):
+			next.hidden_doors[side] = "secret"
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
+	next.wall_blown.connect(_on_wall_blown.bind(next))
 	# The controls in chalk on the floor where the run begins.
 	if info.kind == "start" and floor_index == 0:
 		var chalk := ChalkHints.new()
@@ -214,6 +244,20 @@ func _enter(to: Vector2i, through: String) -> void:
 	_populate(info)
 
 
+## A bomb brought down a cracked wall: the secret room is on the floor now,
+## and its door stands open (shut again if a fight is on in here).
+func _on_wall_blown(side: String, where: Room) -> void:
+	if where != room:
+		return
+	plan.reveal_secret()
+	room.reveal(side)
+	if not plan.info(cell).cleared:
+		room.set_doors_open(false)
+	Sfx.play("stars", 0.0, 0.0)
+	map_changed.emit()
+	secret_found.emit()
+
+
 ## Writes down what is still lying on the floor of a room being left, so it
 ## is there on coming back. Shop wares are the shop's own list.
 func _remember(left: Room) -> void:
@@ -240,6 +284,9 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 			return
 		"shop":
 			_open_shop(info)
+			return
+		"secret":
+			_stock_secret(info)
 			return
 	if info.cleared:
 		if info.kind == "boss":
@@ -302,6 +349,30 @@ func _open_shop(info: FloorPlan.RoomInfo) -> void:
 		pickup.refused.connect(func(why: String) -> void:
 			if is_instance_valid(keeper):
 				keeper.say("Маловато монет!" if why == "coins" else "Ты и так здоров!", 1.6, true))
+
+
+## A secret room's stash, the first time anyone gets in: a heap of coins,
+## and one of an item, a bomb and a key together, or a heart. Stays as it
+## was left, like everything on a floor.
+func _stock_secret(info: FloorPlan.RoomInfo) -> void:
+	if info.looted:
+		return
+	info.looted = true
+	var middle := room.tile_center(Vector2i(6, 3))
+	for i in rng.randi_range(5, 8):
+		var a := TAU * i / 8.0 + rng.randf() * 0.4
+		_drop("coin", middle + Vector2(cos(a) * 150.0, sin(a) * 90.0))
+	var roll := rng.randf()
+	if roll < 0.4:
+		var item := draw_item()
+		if item != "":
+			_drop("item", middle, item)
+			return
+	if roll < 0.75:
+		_drop("bomb", middle + Vector2(-40, 0))
+		_drop("key", middle + Vector2(40, 0))
+	else:
+		_drop("heart", middle)
 
 
 ## Deeper floors, tougher enemies.

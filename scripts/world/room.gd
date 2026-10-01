@@ -111,6 +111,9 @@ var stains: Stains
 var doors := {}
 ## Which doors are open. A door that is shut is a wall.
 var open_doors := {}
+## Doors not yet found: side -> the kind of room beyond. A wall with a
+## crack in it, and a gap behind it, until a bomb goes off by it.
+var hidden_doors := {}
 ## The cell of the floor this room is in.
 var cell := Vector2i.ZERO
 ## The run this room is part of; null in tests and the arena.
@@ -132,6 +135,8 @@ var locked := {}
 
 ## A rock was blown up, so the run can remember it.
 signal rock_broken(cell: Vector2i)
+## A bomb went off by a cracked wall, and there is a way through.
+signal wall_blown(side: String)
 
 var _solid := PackedByteArray()
 var _paint: Node2D
@@ -510,7 +515,7 @@ func _add_walls() -> void:
 	for side: String in ["top", "bottom"]:
 		var y := 0.0 if side == "top" else f.end.y
 		var h := f.position.y if side == "top" else SIZE.y - f.end.y
-		if doors.has(side):
+		if doors.has(side) or hidden_doors.has(side):
 			slabs.append(Rect2(0, y, cx - half, h))
 			slabs.append(Rect2(cx + half, y, SIZE.x - cx - half, h))
 		else:
@@ -518,7 +523,7 @@ func _add_walls() -> void:
 	for side: String in ["left", "right"]:
 		var x := 0.0 if side == "left" else f.end.x
 		var w := f.position.x if side == "left" else SIZE.x - f.end.x
-		if doors.has(side):
+		if doors.has(side) or hidden_doors.has(side):
 			slabs.append(Rect2(x, f.position.y, w, cy - half - f.position.y))
 			slabs.append(Rect2(x, cy + half, w, f.end.y - cy - half))
 		else:
@@ -531,11 +536,44 @@ func _add_walls() -> void:
 		"left": Rect2(f.position.x - 40.0, cy - half, 40.0, DOOR_GAP),
 		"right": Rect2(f.end.x, cy - half, 40.0, DOOR_GAP),
 	}
-	for side: String in doors:
+	for side: String in doors.keys() + hidden_doors.keys():
 		var blocker := _box(blocks[side])
 		body.add_child(blocker)
 		_blockers[side] = blocker
 	add_child(body)
+
+
+## A door here, found or not: props and decor keep clear of it.
+func has_door(side: String) -> bool:
+	return doors.has(side) or hidden_doors.has(side)
+
+
+## A bomb went off at [param at], reaching [param reach]: a cracked wall in
+## reach comes down.
+func blast(at: Vector2, reach: float) -> void:
+	for side: String in hidden_doors.keys():
+		if door_point(side).distance_to(at) < reach + 40.0:
+			wall_blown.emit(side)
+
+
+## The cracked wall at [param side] is down: a door, standing open, where it
+## was, rubble all round it.
+func reveal(side: String) -> void:
+	if not hidden_doors.has(side):
+		return
+	doors[side] = hidden_doors[side]
+	hidden_doors.erase(side)
+	open_doors[side] = true
+	var blocker := _blockers.get(side) as CollisionShape2D
+	if blocker != null:
+		blocker.set_deferred("disabled", true)
+	var lines := get_node_or_null("Lines") as CanvasItem
+	if lines != null:
+		lines.queue_redraw()
+	for k in 3:
+		Fx.burst(self, door_point(side) + Vector2(0, -20), "dust", 8, 1.3)
+	Fx.burst(self, door_point(side), "stars", 6, 1.0)
+	Fx.shake(0.35)
 
 
 static func _box(rect: Rect2) -> CollisionShape2D:

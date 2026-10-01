@@ -359,6 +359,7 @@ func start_run(seed_value: int) -> void:
 		run.boss_beaten.connect(_on_boss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
+		run.secret_found.connect(func() -> void: banner.caption("Тайник!", "за стеной что-то есть", 2.0))
 		if _args.has("verbose"):
 			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:
 				print("%6.1f s  enter %s %s (%s)" % [_play_time, info.kind, info.cell, info.layout_name]))

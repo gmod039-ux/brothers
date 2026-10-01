@@ -60,6 +60,7 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 	var smallest := 99
 	var largest := 0
 	var shops := 0
+	var secrets := 0
 	for seed_value in SEEDS:
 		rng.seed = seed_value
 		var plan := FloorPlan.generate(rng, floor_index, layouts)
@@ -76,6 +77,17 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 		_expect(boss.depth >= 2, "boss not next to the start (seed %d)" % seed_value)
 		_expect(plan.boss != plan.treasure, "boss and treasure apart (seed %d)" % seed_value)
 		_expect(boss.kind == "boss" and treasure.kind == "treasure", "kinds set (seed %d)" % seed_value)
+		if plan.secret_info != null:
+			secrets += 1
+			_expect(not plan.rooms.has(plan.secret), "the secret room is hidden (seed %d)" % seed_value)
+			var around := 0
+			for step: Vector2i in FloorPlan.SIDES.values():
+				if plan.rooms.has(plan.secret + step):
+					around += 1
+					_expect(not (plan.secret + step in [plan.boss, plan.treasure, plan.shop]),
+							"the secret room is not next to a dead end (seed %d)" % seed_value)
+			_expect(around >= 2, "the secret room touches two rooms (seed %d)" % seed_value)
+			_expect(plan.secret_info.rows.size() == Room.ROWS, "the secret room has a layout (seed %d)" % seed_value)
 		_expect(treasure.locked == (floor_index > 0), "treasure locked below the first floor (seed %d)" % seed_value)
 		if plan.shop != Vector2i(-1, -1):
 			shops += 1
@@ -88,8 +100,8 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 				_expect(info.depth <= boss.depth, "no dead end deeper than the boss (seed %d)" % seed_value)
 		if _failures > 20:
 			break
-	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%" % [floor_index + 1, SEEDS, smallest, largest,
-			shops * 100 / SEEDS])
+	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%, a secret room on %d%%" % [floor_index + 1, SEEDS,
+			smallest, largest, shops * 100 / SEEDS, secrets * 100 / SEEDS])
 
 
 func _expect(ok: bool, what: String) -> void:

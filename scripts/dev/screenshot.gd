@@ -22,6 +22,8 @@ extends Node
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
 ##   story NAME    play the story's opening or ending over the game
 ##   at C R        stand the brother on tile column C, row R
+##   secret        into the room by the floor's hidden secret room, at the
+##                 cracked wall
 ##   give ID       put item ID into the brother's hands or stats
 ##   use           use the item in his hands
 ##   *.png         save the screen there
@@ -142,6 +144,11 @@ func _tour(words: PackedStringArray) -> void:
 				i += 2
 			"finish":
 				main.call("_finish")
+				i += 1
+			"secret":
+				var finder := main.get("run") as Run
+				if finder != null:
+					finder.teleport_beside_secret()
 				i += 1
 			"at":
 				var placed := main.get("brother") as Brother

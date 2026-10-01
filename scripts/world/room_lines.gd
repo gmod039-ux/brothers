@@ -28,6 +28,8 @@ func _draw() -> void:
 	_outlines()
 	for side: String in room.doors:
 		_door(quads[side], side, bool(room.open_doors.get(side, false)), str(room.doors[side]))
+	for side: String in room.hidden_doors:
+		_cracked(quads[side], side)
 
 
 ## A few cracked stones, drawn in ink over the painted floor: a jagged
@@ -118,6 +120,31 @@ func _door(quad: Array, side: String, open: bool, beyond: String) -> void:
 		_doorway(quad, hole, beyond)
 		return
 	_shut(quad, hole, half, side)
+
+
+## A wall with something behind it: a web of cracks where a door would be,
+## a stone or two pushed out, a little rubble at its foot. Easy to miss.
+func _cracked(quad: Array, side: String) -> void:
+	var ink := Color(Toon.INK, 0.85)
+	var seed := seed_value + side.length() * 31
+	var middle := Room.face_point(quad, 0.5, 0.58)
+	for k in 6:
+		var a := TAU * (k + Toon.hash01(seed, k) * 0.6) / 6.0
+		var points := PackedVector2Array([middle])
+		var at := middle
+		for step in 4:
+			var bend := a + (Toon.hash01(seed + k, step) - 0.5) * 1.1
+			at += Vector2(cos(bend), sin(bend) * 0.7) * (9.0 + Toon.hash01(seed + k, step + 9) * 8.0)
+			points.append(at)
+		Toon.stroke(self, points, 2.6 - k * 0.2, ink)
+	# A stone pushed half out of the wall.
+	var loose := Room.face_point(quad, 0.5 + (Toon.hash01(seed, 40) - 0.5) * 0.04, 0.45)
+	Toon.box(self, loose, Vector2(16, 9), room.palette().get("cap", FRAME), 0, seed, 3.0)
+	# Rubble at the foot of the wall.
+	for k in 4:
+		var foot := Room.face_point(quad, 0.47 + k * 0.02, 0.97)
+		Toon.ball(self, foot, Vector2(5, 4) * (0.7 + Toon.hash01(seed, 50 + k) * 0.6),
+				room.palette().get("cap", FRAME), 0, seed + k, 2.0)
 
 
 ## One stone of the frame, painted with stone and edged: the light catches

@@ -48,6 +48,7 @@ func _run() -> void:
 	await _trapdoor_stays()
 	await _last_blow()
 	await _key_opens_door()
+	await _secret_room()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -356,6 +357,58 @@ func _trapdoor_stays() -> void:
 	await _steps(2)
 	_expect(run.trapdoor != null and run.trapdoor.is_inside_tree(),
 			"and is there again on coming back to finish the floor")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
+
+
+## A bomb by the cracked wall opens the secret room, and there is a stash
+## in it.
+func _secret_room() -> void:
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	# Not every floor has one: go down until one does.
+	var side := run.teleport_beside_secret()
+	while side == "" and run.floor_index < Run.FLOORS - 1:
+		run.start_floor(run.floor_index + 1)
+		await _steps(2)
+		side = run.teleport_beside_secret()
+	_expect(side != "", "a floor with a secret room (floor %d)" % (run.floor_index + 1))
+	if side == "":
+		run.queue_free()
+		camera.queue_free()
+		return
+	await _steps(2)
+	_expect(run.room.hidden_doors.has(side) and not run.room.doors.has(side),
+			"its wall is just a cracked wall")
+	_expect(run.plan.doors(run.cell).size() == run.room.doors.size() and not run.plan.rooms.has(run.plan.secret),
+			"and it is on no map")
+	brother.bombs = 1
+	brother.place_bomb()
+	await _steps(int(Bomb.FUSE * 60.0) + 10)
+	_expect(run.room.doors.has(side) and bool(run.room.open_doors.get(side, false)),
+			"a bomb by it opens a door there")
+	_expect(run.plan.rooms.has(run.plan.secret), "and the secret room is on the floor now")
+	brother.global_position = run.room.door_point(side) + Vector2(FloorPlan.SIDES[side]) * 60.0
+	await _until(func() -> bool: return run.cell == run.plan.secret, 120)
+	await _steps(30)
+	var coins := 0
+	for node in run.room.actors.get_children():
+		if node is Pickup and (node as Pickup).kind == "coin":
+			coins += 1
+	_expect(run.cell == run.plan.secret and coins >= 5, "inside: a stash (%d coins)" % coins)
 	run.queue_free()
 	camera.queue_free()
 	await process_frame
