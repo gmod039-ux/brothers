@@ -57,7 +57,296 @@ func _draw() -> void:
 			_boiler()
 		_:
 			_catacombs()
+	_clutter()
 	_lamps()
+
+
+# --- odds and ends on the floor ---------------------------------------------
+
+
+## A spot on the floor for something lying flat, [param margin] in from the
+## walls, from the room's seed.
+func _spot(k: int, margin := 90.0) -> Vector2:
+	var f := Room.FLOOR
+	return f.position + Vector2(margin + _h(k) * (f.size.x - margin * 2.0),
+			margin + _h(k + 1) * (f.size.y - margin * 2.0))
+
+
+## What lies about the floor of each floor, drawn in ink like everything:
+## one bigger thing now and then, and a scatter of small ones. Nothing that
+## looks like something to pick up -- no coins, keys or hearts.
+func _clutter() -> void:
+	# The first room's floor has the controls chalked on it: left clear.
+	var big := room.kind != "start" and _h(600) < 0.75
+	match style:
+		0:
+			if big:
+				var pick := int(_h(601) * 3.0)
+				var at := _spot(602, 200.0)
+				var turn := (_h(604) - 0.5) * 0.8
+				if pick == 0:
+					_rug(at, turn)
+				elif pick == 1:
+					_newspaper(at, turn)
+				else:
+					_flyer(at, turn)
+			for i in 3 + int(_h(610) * 4.0):
+				_nail(_spot(611 + i * 2, 60.0), _h(640 + i) * TAU, _h(650 + i) < 0.4)
+			for i in 2 + int(_h(660) * 3.0):
+				_shavings(_spot(661 + i * 2, 70.0), i)
+			if _h(690) < 0.3:
+				_mousetrap(Vector2(Room.FLOOR.position.x + 60.0 + _h(691) * (Room.FLOOR.size.x - 120.0),
+						Room.FLOOR.end.y - 34.0))
+		1:
+			for i in 4 + int(_h(700) * 4.0):
+				_nut(_spot(701 + i * 2, 60.0), i)
+			if big:
+				if _h(720) < 0.5:
+					_wrench(_spot(721, 160.0), _h(723) * TAU)
+				else:
+					_shovel(_spot(724, 180.0), (_h(726) - 0.5) * 1.2)
+			if _h(730) < 0.6:
+				_footprints(_spot(731, 160.0), _h(733) * TAU)
+			for i in 3 + int(_h(740) * 3.0):
+				var at := _spot(741 + i * 2, 50.0)
+				Toon.ball(self, at, Vector2(7, 5) * (0.7 + _h(760 + i) * 0.6), Color("2c2a2e"), 0, 120 + i, 2.5, 0.3)
+		_:
+			for i in 6 + int(_h(800) * 6.0):
+				_pebble(_spot(801 + i * 2, 50.0), i)
+			if big:
+				if _h(830) < 0.55:
+					_ribcage(_spot(831, 180.0), (_h(833) - 0.5) * 0.9)
+				else:
+					for i in 3:
+						_stub(_spot(834 + i * 2, 120.0), i)
+			if _h(850) < 0.7:
+				_spider(Vector2(Room.FLOOR.position.x + 120.0 + _h(851) * (Room.FLOOR.size.x - 240.0), 0.0))
+
+
+## A braided rag rug: a long coil of plaited rag going round and round an
+## oval, its colours changing as the rags ran out, frayed at the ends.
+func _rug(at: Vector2, turn: float) -> void:
+	draw_set_transform(at, turn * 0.3, Vector2.ONE)
+	var colours := [Color("8e4a36"), Color("b89a6a"), Color("6e5038"), Color("a8392e"), Color("c9b48a"),
+			Color("5e6a4a"), Color("8e4a36"), Color("b89a6a")]
+	var r := Vector2(150, 82)
+	Toon.spot(self, Vector2(6, 10), r + Vector2(8, 6), Color(0, 0, 0, 0.22))
+	var rings := colours.size()
+	for k in rings:
+		var rr := r * (1.0 - float(k) / rings * 0.92)
+		Toon.blob(self, Vector2.ZERO, rr, colours[k], 0, 900 + k, 3.0 if k == 0 else 1.5)
+	# The plait: slanted ticks all round every coil, the slant flipping coil
+	# to coil.
+	for k in rings:
+		var rr := r * (1.0 - (k + 0.5) / rings * 0.92)
+		var n := int(46.0 * rr.x / r.x) + 8
+		for i in n:
+			var a := TAU * i / n
+			var p := Vector2(cos(a) * rr.x, sin(a) * rr.y)
+			var slant := a + (1.0 if k % 2 == 0 else -1.0) * 0.8
+			draw_line(p - Vector2(cos(slant), sin(slant)) * 3.0, p + Vector2(cos(slant), sin(slant)) * 3.0,
+					Color(Toon.INK, 0.4), 1.6)
+	# Fringe at the ends.
+	for side: float in [-1.0, 1.0]:
+		for i in 7:
+			var y := (i - 3) * 9.0
+			var x := side * sqrt(maxf(1.0 - pow(y / r.y, 2.0), 0.0)) * r.x
+			Toon.stroke(self, PackedVector2Array([Vector2(x, y), Vector2(x + side * 14.0, y + (i % 2) * 3.0)]),
+					2.0, Color("c9b48a"))
+	draw_set_transform(Vector2.ZERO)
+
+
+## An old newspaper lying open: a masthead, a headline, a picture, columns.
+func _newspaper(at: Vector2, turn: float) -> void:
+	draw_set_transform(at, turn, Vector2.ONE)
+	var page := Rect2(-110, -76, 220, 152)
+	Toon.spot(self, Vector2(6, 8), Vector2(116, 78), Color(0, 0, 0, 0.2))
+	var paper := PackedVector2Array([page.position, Vector2(page.end.x, page.position.y + 4), page.end,
+			Vector2(page.position.x + 6, page.end.y), Vector2(page.position.x - 4, page.position.y + 70)])
+	Toon.shape(self, paper, Color("e9e0c8"), 3.0)
+	# The fold down the middle.
+	draw_line(Vector2(0, page.position.y + 3), Vector2(2, page.end.y - 2), Color(0, 0, 0, 0.15), 3.0)
+	var font := Ui.font()
+	draw_string(font, Vector2(page.position.x, page.position.y + 26), "ВЕЧЕРНИЙ ГОРОД", HORIZONTAL_ALIGNMENT_CENTER,
+			page.size.x, 18, Toon.INK)
+	draw_line(Vector2(page.position.x + 10, page.position.y + 32), Vector2(page.end.x - 10, page.position.y + 32),
+			Toon.INK, 2.0)
+	draw_string(font, Vector2(page.position.x, page.position.y + 52), "БАРОН СНОВА НА ВОЛЕ!",
+			HORIZONTAL_ALIGNMENT_CENTER, page.size.x, 15, Color("7a1e18"))
+	# A picture: the Baron's silhouette, top hat and all.
+	var pic := Rect2(page.position.x + 12, page.position.y + 62, 70, 72)
+	draw_rect(pic, Color("bfb39a"))
+	draw_rect(pic, Toon.INK, false, 2.0)
+	Toon.blob(self, pic.get_center() + Vector2(0, 14), Vector2(18, 20), Toon.INK, 0, 905, 0.0)
+	Toon.blob(self, pic.get_center() + Vector2(0, -8), Vector2(12, 12), Toon.INK, 0, 906, 0.0)
+	draw_rect(Rect2(pic.get_center() + Vector2(-8, -34), Vector2(16, 18)), Toon.INK)
+	draw_rect(Rect2(pic.get_center() + Vector2(-14, -18), Vector2(28, 4)), Toon.INK)
+	# Columns of print.
+	for col in 2:
+		for row in 9:
+			var x0 := page.position.x + 92 + col * 60.0
+			var y := page.position.y + 66 + row * 8.0
+			var w := 50.0 - (12.0 if (row * 7 + col * 3) % 5 == 0 else 0.0)
+			draw_line(Vector2(x0, y), Vector2(x0 + w, y), Color(Toon.INK, 0.55), 2.0)
+	draw_set_transform(Vector2.ZERO)
+
+
+## A flyer for the Baron's cabaret, dropped by his gang.
+func _flyer(at: Vector2, turn: float) -> void:
+	draw_set_transform(at, turn, Vector2.ONE)
+	Toon.spot(self, Vector2(5, 7), Vector2(62, 84), Color(0, 0, 0, 0.2))
+	Toon.box(self, Vector2.ZERO, Vector2(58, 80), Color("8e2328"), 0, 910, 3.5)
+	Toon.box(self, Vector2.ZERO, Vector2(50, 72), Color("8e2328"), 0, 911, 0.0)
+	draw_rect(Rect2(-48, -70, 96, 140), Color("e8b83a"), false, 2.0)
+	var font := Ui.font()
+	draw_string(font, Vector2(-58, -40), "КАБАРЕ", HORIZONTAL_ALIGNMENT_CENTER, 116, 16, Color("f3e6c8"))
+	draw_string(font, Vector2(-58, -18), "«Золотой", HORIZONTAL_ALIGNMENT_CENTER, 116, 15, Color("e8b83a"))
+	draw_string(font, Vector2(-58, 0), "Коготь»", HORIZONTAL_ALIGNMENT_CENTER, 116, 15, Color("e8b83a"))
+	Toon.star(self, Vector2(0, 30), 13.0, 0.0, Color("e8b83a"))
+	draw_string(font, Vector2(-58, 62), "каждую ночь", HORIZONTAL_ALIGNMENT_CENTER, 116, 11, Color("f3e6c8"))
+	draw_set_transform(Vector2.ZERO)
+
+
+## A nail lying about: a shank and a head, or bent double.
+func _nail(at: Vector2, a: float, bent: bool) -> void:
+	var dir := Vector2(cos(a), sin(a) * 0.7)
+	var steel := Color("8a8a90")
+	if bent:
+		var mid := at + dir * 7.0
+		var tip := mid + dir.rotated(1.3) * 8.0
+		Toon.stroke(self, PackedVector2Array([at - dir * 7.0, mid, tip]), 4.5)
+		Toon.stroke(self, PackedVector2Array([at - dir * 7.0, mid, tip]), 2.0, steel)
+	else:
+		Toon.stroke(self, PackedVector2Array([at - dir * 9.0, at + dir * 9.0]), 4.5)
+		Toon.stroke(self, PackedVector2Array([at - dir * 9.0, at + dir * 9.0]), 2.0, steel)
+	Toon.blob(self, at - dir * 9.0, Vector2(3.2, 3.2), steel, 0, int(a * 10.0), 2.0)
+
+
+## A few curls of wood shaving.
+func _shavings(at: Vector2, k: int) -> void:
+	for i in 3:
+		var c := at + Vector2((_h(670 + k * 3 + i) - 0.5) * 40.0, (_h(680 + k * 3 + i) - 0.5) * 20.0)
+		var start := _h(690 + k * 3 + i) * TAU
+		draw_arc(c, 6.0 + i * 2.0, start, start + 4.2, 10, Toon.INK, 3.5, true)
+		draw_arc(c, 6.0 + i * 2.0, start, start + 4.2, 10, Color("e6c48a"), 1.8, true)
+
+
+## A mousetrap against the front wall, a wedge of cheese on it.
+func _mousetrap(at: Vector2) -> void:
+	Toon.spot(self, at + Vector2(3, 6), Vector2(34, 10), Color(0, 0, 0, 0.2))
+	Toon.box(self, at, Vector2(30, 13), Color("b8854e"), 0, 920, 3.0)
+	draw_arc(at + Vector2(-8, 0), 10.0, -PI * 0.5, PI * 0.5, 10, Color("b0b0b8"), 2.5, true)
+	draw_line(at + Vector2(-20, -10), at + Vector2(20, -10), Color("b0b0b8"), 2.5)
+	Toon.shape(self, PackedVector2Array([at + Vector2(6, 4), at + Vector2(22, -2), at + Vector2(22, 8)]),
+			Color("f0c43a"), 2.5)
+	Toon.spot(self, at + Vector2(16, 3), Vector2(1.6, 1.6), Color("c89a20"))
+
+
+## A nut or a bolt off some machine.
+func _nut(at: Vector2, k: int) -> void:
+	var steel := Color("8c8e94")
+	if k % 3 == 0:
+		# A bolt: a hex head and a threaded shank.
+		var a := _h(780 + k) * TAU
+		var dir := Vector2(cos(a), sin(a) * 0.7)
+		Toon.stroke(self, PackedVector2Array([at, at + dir * 18.0]), 6.0)
+		Toon.stroke(self, PackedVector2Array([at, at + dir * 18.0]), 3.0, steel)
+		for t in 3:
+			var p := at + dir * (8.0 + t * 4.0)
+			draw_line(p - dir.orthogonal() * 2.0, p + dir.orthogonal() * 2.0, Toon.INK, 1.2)
+	var hexa := PackedVector2Array()
+	var turn := _h(790 + k)
+	for i in 6:
+		var a := turn + TAU * i / 6.0
+		hexa.append(at + Vector2(cos(a), sin(a) * 0.8) * 7.0)
+	Toon.shape(self, hexa, steel, 2.5)
+	if k % 3 != 0:
+		Toon.spot(self, at, Vector2(2.6, 2.2), Toon.INK)
+
+
+## A big spanner lying where it was dropped.
+func _wrench(at: Vector2, a: float) -> void:
+	var dir := Vector2(cos(a), sin(a) * 0.7)
+	var steel := Color("9a9ca2")
+	Toon.spot(self, at + Vector2(4, 8), Vector2(60, 12), Color(0, 0, 0, 0.18))
+	Toon.stroke(self, PackedVector2Array([at - dir * 44.0, at + dir * 44.0]), 15.0)
+	Toon.stroke(self, PackedVector2Array([at - dir * 44.0, at + dir * 44.0]), 9.0, steel)
+	for end: float in [-1.0, 1.0]:
+		var jaw := at + dir * 50.0 * end
+		Toon.ball(self, jaw, Vector2(13, 11), steel, 0, 930 + int(end), 3.5, a)
+		Toon.spot(self, jaw + dir * 6.0 * end, Vector2(6, 4), Color("3a3836"), 0, 931, a)
+
+
+## A coal shovel lying flat.
+func _shovel(at: Vector2, a: float) -> void:
+	var dir := Vector2(cos(a), sin(a) * 0.7)
+	Toon.spot(self, at + Vector2(6, 10), Vector2(80, 16), Color(0, 0, 0, 0.18))
+	Toon.stroke(self, PackedVector2Array([at - dir * 70.0, at + dir * 20.0]), 11.0)
+	Toon.stroke(self, PackedVector2Array([at - dir * 70.0, at + dir * 20.0]), 6.0, WOOD)
+	Toon.box(self, at - dir * 78.0, Vector2(12, 6), WOOD_DARK, 0, 940, 3.0, a)
+	var blade := at + dir * 46.0
+	var side := dir.orthogonal()
+	Toon.shape(self, PackedVector2Array([blade - dir * 20.0 - side * 16.0, blade + dir * 26.0 - side * 22.0,
+			blade + dir * 30.0 + side * 22.0, blade - dir * 20.0 + side * 16.0]), Color("4a4a50"), 3.5)
+	Toon.ball(self, blade + dir * 8.0, Vector2(12, 8), Color("2c2a2e"), 0, 941, 2.5, a)
+
+
+## Boot prints in the coal dust, walking off.
+func _footprints(at: Vector2, a: float) -> void:
+	var dir := Vector2(cos(a), sin(a) * 0.7)
+	for i in 6:
+		var side := dir.orthogonal() * (9.0 if i % 2 == 0 else -9.0)
+		var p := at + dir * i * 34.0 + side
+		Toon.spot(self, p, Vector2(9, 5), Color(0.1, 0.1, 0.12, 0.35 - i * 0.04), 0, 950 + i, a)
+		Toon.spot(self, p - dir * 10.0, Vector2(5, 4), Color(0.1, 0.1, 0.12, 0.3 - i * 0.04), 0, 960 + i, a)
+
+
+## A pebble or a chip of stone.
+func _pebble(at: Vector2, k: int) -> void:
+	var r := Vector2(5, 4) * (0.6 + _h(870 + k) * 0.9)
+	Toon.spot(self, at + Vector2(1.5, 2.5), r, Color(0, 0, 0, 0.18))
+	Toon.ball(self, at, r, Color("a9a68e").darkened(_h(880 + k) * 0.3), 0, 970 + k, 2.0, _h(890 + k) * PI)
+
+
+## The ribs of something long dead, and its backbone.
+func _ribcage(at: Vector2, turn: float) -> void:
+	draw_set_transform(at, turn, Vector2.ONE)
+	Toon.spot(self, Vector2(4, 12), Vector2(70, 22), Color(0, 0, 0, 0.18))
+	Toon.stroke(self, PackedVector2Array([Vector2(-66, 0), Vector2(66, 0)]), 10.0)
+	Toon.stroke(self, PackedVector2Array([Vector2(-66, 0), Vector2(66, 0)]), 5.0, BONE)
+	for i in 6:
+		var x := -44.0 + i * 17.0
+		for side: float in [-1.0, 1.0]:
+			var rib := Toon.bent(Vector2(x, 0), Vector2(x - 10.0, side * (30.0 - absf(i - 2.5) * 3.0)), side * 9.0, 6)
+			Toon.stroke(self, rib, 7.0)
+			Toon.stroke(self, rib, 3.4, BONE)
+	for i in 8:
+		Toon.blob(self, Vector2(-60.0 + i * 17.0, 0), Vector2(4, 4), BONE, 0, 980 + i, 2.0)
+	draw_set_transform(Vector2.ZERO)
+
+
+## A candle stub burnt down and out, in its puddle of wax.
+func _stub(at: Vector2, k: int) -> void:
+	Toon.spot(self, at + Vector2(0, 6), Vector2(16, 6), Color("e9dfc8"), 0, 990 + k)
+	Toon.box(self, at, Vector2(5, 6), BrotherLook.WHITE, 0, 993 + k, 2.5)
+	Toon.stroke(self, PackedVector2Array([at + Vector2(0, -6), at + Vector2(1, -11)]), 1.8)
+
+
+## A spider let down from the top of the back wall on its thread, bobbing.
+func _spider(top: Vector2) -> void:
+	var drop := 150.0 + sin(_clock * 1.1 + top.x) * 18.0
+	var body := top + Vector2(0, drop)
+	draw_line(top, body, Color(1, 1, 1, 0.5), 1.2)
+	for side: float in [-1.0, 1.0]:
+		for i in 4:
+			var a := -0.9 + i * 0.6
+			var knee := body + Vector2(side * 9.0, -2.0 + i * 3.0) + Vector2(side * cos(a), sin(a)) * 6.0
+			var foot := knee + Vector2(side * 6.0, 7.0 + sin(_clock * 6.0 + i) * 1.5)
+			Toon.stroke(self, PackedVector2Array([body, knee, foot]), 2.0)
+	Toon.blob(self, body, Vector2(8, 9), Toon.INK, 0, 999, 0.0)
+	Toon.blob(self, body + Vector2(0, -9), Vector2(5, 5), Toon.INK, 0, 998, 0.0)
+	for e: float in [-1.0, 1.0]:
+		Toon.spot(self, body + Vector2(e * 2.2, -10), Vector2(1.3, 1.6), BrotherLook.WHITE)
 
 
 ## Cracks and damp on the walls, and cobwebs in the two back corners.
