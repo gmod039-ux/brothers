@@ -48,6 +48,9 @@ var blink := false
 var knocked := false
 ## Held in the startled face a hit gives, for model sheets.
 var pose_shocked := false
+## How high off the floor he is drawn, his shadow left on it shrinking: a
+## hop in the story's cartoon. In his own pixels, before his scale.
+var lift := 0.0
 
 var _clock := 0.0
 var _walk_clock := 0.0
@@ -132,7 +135,8 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var s := size
-	Toon.spot(self, Vector2(0, 2), Vector2(32, 10) * s, Color(Toon.INK, 0.28))
+	var high := clampf(lift / 260.0, 0.0, 0.6)
+	Toon.spot(self, Vector2(0, 2), Vector2(32, 10) * s * (1.0 - high), Color(Toon.INK, 0.28))
 	if blink:
 		return
 	var wobble := Toon.wobble_scale
@@ -141,7 +145,8 @@ func _draw() -> void:
 		_draw_knocked()
 	else:
 		var shocked := _flinch > 0.0 or pose_shocked
-		_draw_figure(facing, aim, moving, shocked, -0.12 if shocked else _squash(moving))
+		_draw_figure(facing, aim, moving, shocked, -0.12 if shocked else _squash(moving),
+				Transform2D(0.0, Vector2(0, -lift)))
 	Toon.wobble_scale = wobble
 
 
