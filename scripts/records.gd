@@ -6,7 +6,9 @@ extends RefCounted
 ## card at the end of a run. The demo bot and screenshot tours leave it
 ## alone (Main decides).
 
-const PATH := "user://records.cfg"
+## Where they are kept. The checks point it at a file of their own, so a
+## check run on someone's own machine never touches their records.
+static var path := "user://records.cfg"
 
 static var runs := 0
 static var wins := 0
@@ -21,11 +23,13 @@ static var story_seen := false
 ## Which scenes between the floors have been shown, one bit each: they play
 ## the first time down each trapdoor, and from the settings after that.
 static var interludes := 0
+## The deeds done (see [Unlocks]), by id.
+static var deeds: Array[String] = []
 
 
 static func load_file() -> void:
 	var config := ConfigFile.new()
-	if config.load(PATH) != OK:
+	if config.load(path) != OK:
 		return
 	runs = int(config.get_value("runs", "runs", 0))
 	wins = int(config.get_value("runs", "wins", 0))
@@ -35,6 +39,7 @@ static func load_file() -> void:
 	bosses = int(config.get_value("runs", "bosses", 0))
 	story_seen = bool(config.get_value("story", "seen", false))
 	interludes = int(config.get_value("story", "interludes", 0))
+	deeds.assign(config.get_value("unlocks", "deeds", []))
 
 
 static func save() -> void:
@@ -47,7 +52,8 @@ static func save() -> void:
 	config.set_value("runs", "bosses", bosses)
 	config.set_value("story", "seen", story_seen)
 	config.set_value("story", "interludes", interludes)
-	config.save(PATH)
+	config.set_value("unlocks", "deeds", deeds)
+	config.save(path)
 
 
 ## Writes down a run that has ended. Returns true when it was a way out

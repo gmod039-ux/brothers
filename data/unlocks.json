@@ -1,0 +1,18 @@
+{
+	"beat_bruno": {"name": "Бруно в нокауте", "hint": "победи Громилу Бруно", "opens": ["rubber_ball"]},
+	"beat_stove": {"name": "Пыхтун потушен", "hint": "потуши Пыхтуна", "opens": ["icecream"]},
+	"beat_baron": {"name": "Барон побеждён", "hint": "победи Барона Когтева", "opens": ["harmonica", "@evil", "@girls"]},
+	"win_older": {"name": "Старший выбрался", "hint": "выберись Старшим", "opens": ["monocle"]},
+	"win_younger": {"name": "Младший выбрался", "hint": "выберись Младшим", "opens": ["chocolate"]},
+	"win_together": {"name": "Выбрались вдвоём", "hint": "выберитесь вдвоём", "opens": ["locket"]},
+	"secret": {"name": "Тайник найден", "hint": "найди тайник за треснувшей стеной", "opens": ["glasses"]},
+	"challenge": {"name": "Испытание пройдено", "hint": "пройди испытание", "opens": ["helmet"]},
+	"jackpot": {"name": "Джекпот!", "hint": "сорви джекпот в автомате", "opens": ["piggy"]},
+	"contract": {"name": "Контракт подписан", "hint": "подпиши контракт Барона", "opens": ["scissors"]},
+	"gold_chest": {"name": "Золотой сундук открыт", "hint": "открой золотой сундук", "opens": ["keyring"]},
+	"no_hit_floor": {"name": "Ни царапины", "hint": "пройди этаж, не пропустив ни удара", "opens": ["umbrella"]},
+	"barrel_chain": {"name": "Три бочки разом", "hint": "взорви три бочки одной цепочкой", "opens": ["firecracker"]},
+	"miniboss": {"name": "Мини-босс повержен", "hint": "победи мини-босса", "opens": ["chick"]},
+	"kills_100": {"name": "Сто нокаутов", "hint": "наберись сотни нокаутов за все забеги", "opens": ["bomb_bag"]},
+	"coins_30": {"name": "Полный карман", "hint": "набери 30 монет разом", "opens": ["galoshes"]}
+}

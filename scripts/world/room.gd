@@ -132,6 +132,9 @@ var _doors_set := false
 var _rocks := {}
 ## Kegs of powder still standing: cell -> [Barrel, body].
 var _barrels := {}
+## The physics frames the last kegs went up on: a chain is three within a
+## second.
+var _bangs: Array[int] = []
 ## The pits and spikes, and what draws them.
 var hazards: Hazards
 ## Doors that stay shut until someone brings a key: side -> true.
@@ -141,6 +144,8 @@ var locked := {}
 signal rock_broken(cell: Vector2i)
 ## A bomb went off by a cracked wall, and there is a way through.
 signal wall_blown(side: String)
+## Three kegs or more gone up in one chain.
+signal barrels_chained
 
 var _solid := PackedByteArray()
 var _paint: Node2D
@@ -686,6 +691,13 @@ func barrel_gone(cell: Vector2i) -> void:
 	body.queue_free()
 	_barrels.erase(cell)
 	rock_broken.emit(cell)
+	var now := Engine.get_physics_frames()
+	_bangs.append(now)
+	while not _bangs.is_empty() and now - _bangs[0] > Engine.physics_ticks_per_second:
+		_bangs.pop_front()
+	if _bangs.size() >= 3:
+		_bangs.clear()
+		barrels_chained.emit()
 
 
 ## Blows a rock away: gone from the floor, the collision and the drawing.

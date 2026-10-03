@@ -11,6 +11,8 @@ extends Node2D
 ## It stands on its tile like a rock and pays out in front of it.
 
 signal paid(what: String)
+## Three alike.
+signal jackpot
 
 const SYMBOLS := ["coin", "heart", "bomb", "key", "star"]
 const WEIGHTS := [32, 20, 18, 18, 12]
@@ -126,6 +128,8 @@ func _pay() -> void:
 		paid.emit("")
 		return
 	_flash = 0.8 if many == 3 else 0.35
+	if many == 3:
+		jackpot.emit()
 	Sfx.play("clear" if many == 3 else "pickup", -2.0, 0.0)
 	Fx.burst(room, global_position + Vector2(0, -150), "stars" if many == 3 else "sparks", 8, 0.9)
 	for i in out.size():

@@ -45,6 +45,8 @@ run "floors" --script res://dev/floor_check.gd
 run "combat" --script res://dev/combat_check.gd
 # The story's cartoon, played through and skipped through.
 run "story" --script res://dev/story_check.gd
+# What is open, what deeds open, and that a check never touches the records.
+run "unlock" --script res://dev/unlock_check.gd
 run "arena, older" -- brother older demo arena seed 11 autoplay 90
 # A whole floor, boss included, with nobody at the keyboard.
 run "floor run, younger" -- brother younger demo seed 3 autoplay 200 need_bosses 1

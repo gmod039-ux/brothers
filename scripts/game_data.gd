@@ -39,6 +39,11 @@ static func items() -> Dictionary:
 	return json("res://data/items.json")
 
 
+## The deeds and what each opens (data/unlocks.json): see [Unlocks].
+static func unlocks() -> Dictionary:
+	return json("res://data/unlocks.json")
+
+
 static func waves(set_name: String) -> Array:
 	var all := json("res://data/waves.json")
 	return all.get(set_name, [])

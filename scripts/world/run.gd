@@ -22,6 +22,9 @@ signal trapdoor_entered
 signal floor_started(index: int)
 signal map_changed
 signal unlocked
+## A deed done (see [Unlocks]): a jackpot, a contract signed, a gold chest
+## opened, a chain of kegs, a challenge won.
+signal deed(id: String)
 
 const FLOORS := 3
 const FLOOR_NAMES := ["Подвал", "Котельная", "Катакомбы"]
@@ -75,7 +78,8 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	camera = camera_
 	brothers = brothers_
 	for id: String in GameData.items():
-		pool.append(id)
+		if Unlocks.is_open(id):
+			pool.append(id)
 	pool.sort()
 	for brother in brothers:
 		brother.item_taken.connect(func(_id: String) -> void: _reveal_if_glasses())
@@ -236,6 +240,7 @@ func _enter(to: Vector2i, through: String) -> void:
 			next.hidden_doors[side] = "secret"
 	next.build(info.rows, _floor_seed + to.x * 131 + to.y * 17, doors, info.broken)
 	next.rock_broken.connect(func(c: Vector2i) -> void: info.broken[c] = true)
+	next.barrels_chained.connect(func() -> void: deed.emit("barrel_chain"))
 	next.wall_blown.connect(_on_wall_blown.bind(next))
 	# The controls in chalk on the floor where the run begins.
 	if info.kind == "start" and floor_index == 0:
@@ -336,6 +341,7 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 			var machine := SlotMachine.new()
 			machine.room = room
 			machine.rng = rng
+			machine.jackpot.connect(func() -> void: deed.emit("jackpot"))
 			room.actors.add_child(machine)
 			machine.global_position = room.tile_center(Vector2i(6, 2)) + Vector2(0, 30)
 			room.block_tile(Vector2i(6, 2))
@@ -461,6 +467,7 @@ func _open_challenge(info: FloorPlan.RoomInfo) -> void:
 		if is_instance_valid(prize):
 			prize.caged = false
 			Fx.burst(here, prize.global_position + Vector2(0, -90), "stars", 10, 1.2)
+		deed.emit("challenge")
 		room_cleared.emit(info))
 
 
@@ -493,6 +500,7 @@ func _lay_out_deal(info: FloorPlan.RoomInfo) -> void:
 		var ware := _drop("item", room.tile_center(Vector2i(cols[i], 3)), deal[0])
 		ware.hearts_price = int(deal[1])
 		ware.taken.connect(func(_by: Brother) -> void:
+			deed.emit("contract")
 			info.deal.erase(deal)
 			if is_instance_valid(desk):
 				desk.say("Приятно иметь дело!"))
@@ -764,6 +772,8 @@ func _drop(kind: String, at: Vector2, item := "") -> Pickup:
 	pickup.room = room
 	room.actors.add_child(pickup)
 	pickup.global_position = at
+	if kind == "gold_chest":
+		pickup.taken.connect(func(_by: Brother) -> void: deed.emit("gold_chest"))
 	return pickup
 
 

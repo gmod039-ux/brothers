@@ -15,6 +15,8 @@ extends Node2D
 ##   textures N             floors and walls from the photographed textures
 ##                          (0 or 1) instead of drawn in ink
 ##   autoplay S             quit after S seconds of play, printing a summary
+##   all                    everything open, as if every deed were done (the
+##                          bot, tours and checks always have it so)
 ##   shot / tour …          screenshots, see scripts/dev/screenshot.gd
 
 var world: Node2D
@@ -55,6 +57,8 @@ var _shake := 0.0
 var _play_time := 0.0
 var _busy := false
 var _args := PackedStringArray()
+## Somebody has been hit on this floor: no deed for a clean one.
+var _hit_on_floor := false
 
 
 func _ready() -> void:
@@ -148,6 +152,8 @@ func _ready() -> void:
 	# The bot cannot lose, unless told `mortal`: to see how far it gets.
 	god = _args.has("god") or (demo and not _args.has("mortal"))
 	_recording = not demo and not _args.has("tour") and not _args.has("shot")
+	Unlocks.recording = _recording
+	Unlocks.everything = not _recording or _args.has("all")
 	var first_seed := int(_arg("seed", str(randi() % 1000000)))
 	coop = _args.has("coop")
 	if not _args.has("brother") and _recording:
@@ -307,6 +313,8 @@ func _on_chosen(id: String, both: bool) -> void:
 
 func start_run(seed_value: int) -> void:
 	state = "play"
+	Unlocks.this_run.clear()
+	_hit_on_floor = false
 	run_seed = seed_value
 	rng.seed = seed_value
 	get_tree().paused = false
@@ -336,6 +344,9 @@ func start_run(seed_value: int) -> void:
 		one.died.connect(_on_died.bind(one))
 		one.revived.connect(func() -> void: banner.caption("Братец снова в строю!", "", 1.6))
 		one.inventory_changed.connect(hud.queue_redraw)
+		one.inventory_changed.connect(func() -> void:
+			if one.coins >= 30:
+				_on_deed("coins_30"))
 		one.item_taken.connect(func(id: String) -> void:
 			var item: Dictionary = GameData.items().get(id, {})
 			var text := str(item.get("text", ""))
@@ -361,7 +372,10 @@ func start_run(seed_value: int) -> void:
 		run.miniboss_beaten.connect(_on_miniboss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
-		run.secret_found.connect(func() -> void: banner.caption("Тайник!", "за стеной что-то есть", 2.0))
+		run.secret_found.connect(func() -> void:
+			banner.caption("Тайник!", "за стеной что-то есть", 2.0)
+			_on_deed("secret"))
+		run.deed.connect(_on_deed)
 		if _args.has("verbose"):
 			run.room_entered.connect(func(info: FloorPlan.RoomInfo) -> void:
 				print("%6.1f s  enter %s %s (%s)" % [_play_time, info.kind, info.cell, info.layout_name]))
@@ -399,6 +413,7 @@ func _start_arena() -> void:
 
 func _on_floor(index: int) -> void:
 	room = run.room
+	_hit_on_floor = false
 	Music.play("floor%d" % clampi(index, 0, 2))
 	banner.say(run.floor_name(), "этаж %d из %d" % [index + 1, Run.FLOORS])
 
@@ -418,6 +433,7 @@ func _on_bosses(bosses: Array[Boss]) -> void:
 
 
 func _on_boss_beaten(_boss: Enemy) -> void:
+	_on_deed(["beat_bruno", "beat_stove", "beat_baron"][clampi(run.floor_index, 0, 2)])
 	hud.bosses = []
 	Music.play("floor%d" % clampi(run.floor_index, 0, 2))
 	Sfx.play("blast", -2.0)
@@ -440,6 +456,7 @@ func _on_miniboss(boss: Boss) -> void:
 
 
 func _on_miniboss_beaten(_boss: Enemy) -> void:
+	_on_deed("miniboss")
 	hud.bosses = []
 	Music.play("floor%d" % clampi(run.floor_index, 0, 2))
 	Sfx.play("blast", -4.0)
@@ -453,6 +470,8 @@ func _descend() -> void:
 		return
 	_busy = true
 	run.busy = true
+	if not _hit_on_floor:
+		_on_deed("no_hit_floor")
 	Sfx.play("whistle_down", 0.0, 0.0)
 	await iris.close(brother.global_position + Vector2(0, -60), 0.7)
 	if run.is_last_floor():
@@ -476,6 +495,7 @@ func _finish() -> void:
 	state = "over"
 	get_tree().paused = true
 	var seconds := _play_time
+	_on_deed("win_together" if brothers.size() > 1 else "win_" + chosen)
 	var best := _record(true)
 	if _recording and run != null:
 		# The girls are free: the end of the picture, before the numbers.
@@ -486,6 +506,7 @@ func _finish() -> void:
 		lines.append("новый рекорд — быстрее всех!")
 	elif Records.best_time > 0.0 and _recording:
 		lines.append("рекорд — %s" % Records.clock(Records.best_time))
+	_add_opened(lines)
 	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _looks(), _items())
 	print("finished in %.1f s" % seconds)
 
@@ -509,7 +530,34 @@ func _over_hint() -> String:
 func _record(won: bool) -> bool:
 	if not _recording or run == null:
 		return false
-	return Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten)
+	var best := Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten)
+	if Records.knockouts >= 100:
+		_on_deed("kills_100")
+	return best
+
+
+## A deed done: the first time, what it opens goes up on the screen.
+func _on_deed(id: String) -> void:
+	var opened := Unlocks.achieve(id)
+	if opened.is_empty():
+		return
+	# Open now, this run too: in among what is still to come.
+	if run != null:
+		for item: String in opened:
+			if GameData.items().has(item) and not run.pool.has(item):
+				run.pool.append(item)
+	Sfx.play("item", -2.0, 0.0)
+	var deed: Dictionary = Unlocks.deeds().get(id, {})
+	banner.caption("Открыто: %s!" % ", ".join(Unlocks.names(opened)), "подвиг: %s" % str(deed.get("name", id)), 3.0)
+
+
+## What this run's deeds opened, as a line for the card at the end.
+func _add_opened(lines: PackedStringArray) -> void:
+	var opened: Array = []
+	for deed: String in Unlocks.this_run:
+		opened.append_array(Unlocks.deeds().get(deed, {}).get("opens", []))
+	if not opened.is_empty():
+		lines.insert(lines.size() - 1, "открыто: %s" % ", ".join(Unlocks.names(opened)))
 
 
 ## The numbers of the run for the card at its end.
@@ -578,6 +626,7 @@ func _on_cleared() -> void:
 
 func _on_hurt() -> void:
 	_shake = 0.25
+	_hit_on_floor = true
 
 
 func _on_died(who: Brother) -> void:
@@ -602,6 +651,7 @@ func _on_died(who: Brother) -> void:
 	var lines := _run_lines()
 	if is_instance_valid(who) and who.killed_by != "":
 		lines.insert(lines.size() - 1, "последний удар — %s" % who.killed_by)
+	_add_opened(lines)
 	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", lines,
 			_over_hint(), _looks(), _items())
 
