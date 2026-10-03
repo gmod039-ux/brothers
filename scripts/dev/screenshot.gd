@@ -21,7 +21,9 @@ extends Node
 ##   finish        end the run as if out of the last trapdoor
 ##   ko            knock out the bosses in the room
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
-##   story NAME    play the story's opening or ending over the game
+##   story NAME    play the story over the game: opening, ending, the
+##                 scenes between floors (boiler, catacombs), or all of it
+##                 but the end (all)
 ##   at C R        stand the brother on tile column C, row R
 ##   secret        into the room by the floor's hidden secret room, at the
 ##                 cracked wall
@@ -168,7 +170,17 @@ func _tour(words: PackedStringArray) -> void:
 					user.use_active()
 				i += 1
 			"story":
-				main.call("play_story", Story.ENDING if value == "ending" else Story.OPENING)
+				var shots: Array[Dictionary] = Story.OPENING
+				match value:
+					"ending":
+						shots = Story.ENDING
+					"boiler":
+						shots = Story.interlude(0)
+					"catacombs":
+						shots = Story.interlude(1)
+					"all":
+						shots = Story.so_far()
+				main.call("play_story", shots)
 				i += 2
 			"god":
 				var brother := main.get("brother") as Brother

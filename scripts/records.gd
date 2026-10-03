@@ -18,6 +18,9 @@ static var knockouts := 0
 static var bosses := 0
 ## The story has been shown once: after that it waits for a key to skip.
 static var story_seen := false
+## Which scenes between the floors have been shown, one bit each: they play
+## the first time down each trapdoor, and from the settings after that.
+static var interludes := 0
 
 
 static func load_file() -> void:
@@ -31,6 +34,7 @@ static func load_file() -> void:
 	knockouts = int(config.get_value("runs", "knockouts", 0))
 	bosses = int(config.get_value("runs", "bosses", 0))
 	story_seen = bool(config.get_value("story", "seen", false))
+	interludes = int(config.get_value("story", "interludes", 0))
 
 
 static func save() -> void:
@@ -42,6 +46,7 @@ static func save() -> void:
 	config.set_value("runs", "knockouts", knockouts)
 	config.set_value("runs", "bosses", bosses)
 	config.set_value("story", "seen", story_seen)
+	config.set_value("story", "interludes", interludes)
 	config.save(PATH)
 
 

@@ -1,6 +1,7 @@
 extends SceneTree
-## The story's cartoon, played through with nobody watching: the opening
-## and the ending run shot by shot to their end, every scene of them shows,
+## The story's cartoon, played through with nobody watching: the opening,
+## the scenes between the floors and the ending run shot by shot to their
+## end, every scene of them shows,
 ## each is over when it should be, and the cast of one scene is gone before
 ## the next. Then the opening again, a key pressed in every shot, which must
 ## cut each one short -- and Esc, which must end it all at once.
@@ -20,6 +21,11 @@ func _run() -> void:
 	await process_frame
 	await _plays_through(Story.OPENING, "opening")
 	await _plays_through(Story.ENDING, "ending")
+	await _plays_through(Story.interlude(0), "scene before the boiler room")
+	await _plays_through(Story.interlude(1), "scene before the catacombs")
+	_check(Story.interlude(2).is_empty(), "no scene after the last floor but the ending")
+	_check(Story.so_far().size() == Story.OPENING.size() + Story.interlude(0).size()
+			+ Story.interlude(1).size() + 2, "the story so far is the opening and both scenes, each after a card")
 	await _skips_shot_by_shot()
 	await _escapes()
 	print("%d checks, %d failed" % [_checks, _failures])

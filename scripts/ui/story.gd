@@ -39,6 +39,40 @@ const OPENING: Array[Dictionary] = [
 	{"scene": "chase", "seconds": 6.8, "music": "floor0"},
 	{"card": "Держись, Барон!\nБратья идут!", "music": "menu"},
 ]
+## Between the floors, the other side of the story: the Baron hears the
+## news. After the basement: the telephone rings in his den -- Bruno is
+## beaten -- and he sets the boiler room's stove on the brothers. After
+## the boiler room: a bat brings him word that the stove is out, the girls
+## in their cage cheer, and he promises the brothers a show.
+const INTERLUDE_BOILER: Array[Dictionary] = [
+	{"scene": "phone", "seconds": 9.4, "music": "boss", "close": "cut"},
+	{"scene": "furnace", "seconds": 5.6, "open": "cut"},
+]
+const INTERLUDE_CATACOMBS: Array[Dictionary] = [
+	{"scene": "lair", "seconds": 10.6, "music": "boss"},
+]
+## The scenes between floor [param index] and the next, or none.
+static func interlude(index: int) -> Array[Dictionary]:
+	match index:
+		0:
+			return INTERLUDE_BOILER
+		1:
+			return INTERLUDE_CATACOMBS
+	return []
+
+
+## The whole story up to the last floor: the opening, and both interludes,
+## each after a card saying where it is.
+static func so_far() -> Array[Dictionary]:
+	var shots: Array[Dictionary] = []
+	shots.append_array(OPENING)
+	shots.append({"card": "А тем временем\nв логове Барона…"})
+	shots.append_array(INTERLUDE_BOILER)
+	shots.append({"card": "Тем же вечером…"})
+	shots.append_array(INTERLUDE_CATACOMBS)
+	return shots
+
+
 const ENDING: Array[Dictionary] = [
 	{"card": "Барон Когтев получил по заслугам…", "music": "menu"},
 	{"scene": "reunion", "seconds": 8.5},
@@ -74,6 +108,14 @@ const BARON_SPOT := Vector2(1960, 1010)
 const BARON_SIZE := 1.3
 ## Where the cage comes down on the girls.
 const CAGE_AT := Vector2(1150, 860)
+## The Baron's den and the boiler room: where their floors meet the wall,
+## where the Baron and the stove stand, the table with the telephone.
+const DEN_FLOOR := 760.0
+const DEN_BARON := Vector2(1340, 930)
+const DEN_TABLE := Vector2(780, 930)
+const DEN_CAGE := Vector2(520, 930)
+const FURNACE_FLOOR := 800.0
+const STOVE_AT := Vector2(1180, 950)
 ## The ending's ground, and its cage.
 const GROUND := 830.0
 const CAGE_END := Vector2(1300, 852)
@@ -112,6 +154,7 @@ var _props: Node2D
 var _fx: Node2D
 var _screen: Node2D
 var _set_drawn := ""
+var _set_frame := -1
 
 var _cam := Vector2(960, 540)
 var _zoom := 1.0
@@ -135,6 +178,8 @@ var _cage_ground := Vector2.ZERO
 var _cage_height := 0.0
 var _cage_squeeze := Vector2.ONE
 var _cage_shadow := 0.0
+var _stove: StoveBoss
+var _bat: BatEnemy
 
 
 ## The Baron as an actor: his eyes go where the scene sends them.
@@ -372,6 +417,30 @@ func _make_baron(at: Vector2) -> FilmBaron:
 	return baron
 
 
+func _make_stove(at: Vector2) -> StoveBoss:
+	var stove := StoveBoss.new()
+	stove.setup_boss(_room, RandomNumberGenerator.new(), 1)
+	stove.state = "recover"
+	stove.position = at
+	stove.scale = Vector2(1.35, 1.35)
+	_mask.add_child(stove)
+	stove.set_physics_process(false)
+	_cast.append(stove)
+	return stove
+
+
+func _make_bat(at: Vector2) -> BatEnemy:
+	var bat := BatEnemy.new()
+	bat.setup("bat", _room, RandomNumberGenerator.new())
+	bat._spawn = 0.0
+	bat.position = at
+	bat.scale = Vector2(1.6, 1.6)
+	_mask.add_child(bat)
+	bat.set_physics_process(false)
+	_cast.append(bat)
+	return bat
+
+
 func _make_kitten(at: Vector2) -> FilmKitten:
 	var kitten := FilmKitten.new()
 	kitten.setup("kitten", _room, RandomNumberGenerator.new())
@@ -439,6 +508,8 @@ func _clear_cast() -> void:
 	_younger = null
 	_baron = null
 	_cage = null
+	_stove = null
+	_bat = null
 	for bit in _fx.get_children():
 		bit.queue_free()
 
@@ -502,6 +573,21 @@ func _stage(scene: String) -> void:
 			_holes = [[HATCH, HATCH_R, true]]
 			_older = _brother("older", Vector2(1690, WALK), Vector2.RIGHT)
 			_younger = _brother("younger", Vector2(1830, WALK), Vector2.LEFT)
+		"phone":
+			_baron = _make_baron(DEN_BARON)
+			_kittens.append(_make_kitten(DEN_BARON + Vector2(260, 10)))
+		"furnace":
+			_stove = _make_stove(STOVE_AT)
+			_kittens.append(_make_kitten(STOVE_AT + Vector2(-330, 10)))
+		"lair":
+			_baron = _make_baron(DEN_BARON + Vector2(80, 0))
+			_kittens.append(_make_kitten(DEN_BARON + Vector2(380, 20)))
+			_make_cage(DEN_CAGE)
+			_girls = [_person(GIRLS[0], DEN_CAGE + Vector2(-70, -40), Vector2.DOWN),
+					_person(GIRLS[1], DEN_CAGE + Vector2(70, -40), Vector2.DOWN)]
+			for girl: BrotherLook in _girls:
+				girl.scale = Vector2(1.5, 1.5)
+			_bat = _make_bat(Vector2(2300, 400))
 		"reunion":
 			_older = _brother("older", Vector2(160, GROUND), Vector2.RIGHT)
 			_younger = _brother("younger", Vector2(320, GROUND), Vector2.RIGHT)
@@ -526,12 +612,22 @@ func _act() -> void:
 			_act_chase()
 		"reunion":
 			_act_reunion()
+		"phone":
+			_act_phone()
+		"furnace":
+			_act_furnace()
+		"lair":
+			_act_lair()
 	var key := "%s %.3f %.2f" % [_scene(), _lights, _lamp]
 	if key != _set_drawn:
 		_set_drawn = key
 		_lit.queue_redraw()
-	if _scene() == "reunion":
-		_set.queue_redraw()
+	if _scene() in ["reunion", "phone", "furnace", "lair"]:
+		# Candles flicker, the furnace roars, the sun turns: a new drawing
+		# on every drawing.
+		if _set_frame != _drawing:
+			_set_frame = _drawing
+			_set.queue_redraw()
 
 
 func _camera() -> void:
@@ -943,6 +1039,149 @@ func _act_chase() -> void:
 	_younger.aim = Vector2.RIGHT if _t > 0.5 and _t < 0.9 else Vector2.ZERO
 
 
+# --- between the floors ------------------------------------------------------------
+
+
+## The den. The Baron bows to his own portrait; the telephone rings; he
+## answers -- "Bruno's out cold!" -- shakes with rage, steam out of his ears,
+## and bawls for the stove.
+func _act_phone() -> void:
+	_cam = Vector2(960, 540).lerp(Vector2(1240, 560), _ease(5.6, 9.0))
+	_zoom = lerpf(1.0, 1.28, _ease(5.6, 9.0))
+	_baron.look = Vector2(-0.5, -0.9)
+	if _t < 0.4:
+		_baron.state = "recover"
+	elif _t < 1.9:
+		_baron.state = "wait"
+	elif _t < 3.3:
+		_baron.state = "recover"
+		_baron.look = Vector2(-1.0, -0.1)
+	elif _t < 4.6:
+		_baron.state = "phone"
+		_baron.look = Vector2(-0.6, 0.1)
+	elif _t < 6.0:
+		_baron.state = "roar"
+		_baron.look = Vector2(0, 0.2)
+	else:
+		_baron.state = "bags_windup"
+		_baron.look = Vector2(0.2, 0.6)
+	var kitten := _kittens[0]
+	kitten.look = (_baron.position + Vector2(0, -200) - kitten.position).normalized()
+	kitten.state = "crouch" if _t > 1.9 and _t < 3.3 else "creep"
+	kitten.leap(_hop(1.9, 2.25, 70.0) + _hop(4.6, 4.9, 50.0))
+	if _t > 6.0:
+		# Out of his way.
+		kitten.position = DEN_BARON + Vector2(260, 10) + Vector2(_ease(6.0, 6.8) * 500.0, 0)
+		kitten.look = Vector2.RIGHT
+	for k in 6:
+		if _on(1.9 + k * 0.25):
+			Sfx.play("select", -6.0, 0.0)
+	if _on(3.3):
+		Sfx.play("pickup", -8.0)
+	if _on(4.6):
+		Sfx.play("roar", -2.0)
+		_shake = 0.3
+	if _on(6.0):
+		Sfx.play("roar", 0.0)
+		_shake = 0.25
+
+
+## The boiler room: the stove stamps, takes a breath of fire, roars, and
+## glows red-hot ready for them.
+func _act_furnace() -> void:
+	_cam = Vector2(960, 540).lerp(Vector2(1060, 580), _ease(0.0, 5.6))
+	_zoom = lerpf(1.0, 1.12, _ease(0.0, 5.6))
+	if _t < 1.1:
+		_stove.state = "wait"
+	elif _t < 2.6:
+		_stove.state = "fire_windup"
+	elif _t < 3.6:
+		_stove.state = "roar"
+	else:
+		if _stove.state != "ring_windup":
+			_stove.state = "ring_windup"
+			_stove._t = 0.0
+		_stove._t += get_process_delta_time()
+	var kitten := _kittens[0]
+	kitten.look = (_stove.position + Vector2(0, -150) - kitten.position).normalized()
+	kitten.state = "crouch" if _t > 2.6 else "creep"
+	if _on(1.1):
+		Sfx.play("whistle_up", -4.0)
+	if _on(1.6):
+		Sfx.play("blast", -10.0)
+		_burst(_stove.position + Vector2(0, -130), "embers", 16, 1.4)
+	if _on(2.6):
+		Sfx.play("roar", -2.0)
+		_shake = 0.3
+	if _on(4.0):
+		Sfx.play("fuse", -6.0)
+
+
+## The den again. The Baron paces; a bat flies in and squeaks in his ear;
+## he boils over. The girls in their cage jump for joy -- "they're
+## coming!" -- and he turns to them, raises his hat: then he will put on a
+## show for them. The cane twirls, the cards spin round him.
+func _act_lair() -> void:
+	_cam = Vector2(960, 540).lerp(Vector2(1150, 560), _ease(7.2, 10.6))
+	_zoom = lerpf(1.0, 1.2, _ease(7.2, 10.6))
+	var home := DEN_BARON + Vector2(80, 0)
+	var pace := 0.0
+	if _t < 2.6:
+		pace = sin(_t * 2.4) * 170.0
+	_baron.position = home + Vector2(pace, 0)
+	_baron.state = "walk" if _t < 2.6 else "recover"
+	_baron.look = Vector2(signf(cos(_t * 2.4)), 0.3) if _t < 2.6 else Vector2(0.9, -0.2)
+	# The bat: in from the right, round his head, and off.
+	var bat_at := Vector2(2300, 420)
+	if _t > 2.2:
+		var k := _ease(2.2, 3.0)
+		bat_at = Vector2(2300, 420).lerp(home + Vector2(150, -330), k)
+	if _t > 3.0:
+		var a := (_t - 3.0) * 7.0
+		bat_at = home + Vector2(150 * cos(a * 0.3), -330 + sin(a) * 18.0)
+	if _t > 4.3:
+		bat_at = (home + Vector2(150 * cos(1.3 * 0.3 * 7.0), -330)).lerp(Vector2(2300, 200), _ease(4.3, 5.0))
+	_bat.position = bat_at
+	_bat.state = "squeak" if _t > 3.0 and _t < 4.3 else "flutter"
+	if _t >= 4.3 and _t < 5.4:
+		_baron.state = "roar"
+		_baron.look = Vector2(0, 0.2)
+	elif _t >= 5.4 and _t < 6.6:
+		_baron.look = Vector2(-1.0, 0.0)
+	elif _t >= 6.6 and _t < 8.8:
+		_baron.state = "wait"
+		_baron.look = Vector2(-1.0, -0.1)
+	elif _t >= 8.8:
+		if _baron.state != "ring_windup":
+			_baron.state = "ring_windup"
+			_baron._t = 0.0
+		_baron._t = minf(_baron._t + get_process_delta_time(), 0.85)
+		_baron.look = Vector2(0, 0.4)
+	# The girls: glum, then jumping for joy at the news.
+	for i in 2:
+		var girl := _girls[i]
+		girl.pose_shocked = _t > 4.3 and _t < 5.0
+		var joy := 0.0
+		if _t > 5.0 and _t < 7.0:
+			joy = absf(sin((_t - 5.0) * PI * 2.4 + i * 0.6)) * 40.0
+		girl.facing = Vector2.RIGHT if _t > 6.6 else Vector2.DOWN
+		_lift(girl, joy)
+	var kitten := _kittens[0]
+	kitten.look = (_baron.position - kitten.position).normalized()
+	kitten.state = "crouch" if _t > 4.3 and _t < 5.4 else "creep"
+	if _on(3.0):
+		Sfx.play("select", -10.0, 0.4)
+	if _on(3.5):
+		Sfx.play("select", -10.0, 0.4)
+	if _on(4.3):
+		Sfx.play("roar", -2.0)
+		_shake = 0.3
+	if _on(5.0):
+		Sfx.play("heart", 0.0, 0.0)
+	if _on(8.8):
+		Sfx.play("item", -6.0)
+
+
 # --- the ending -----------------------------------------------------------------
 
 
@@ -1014,6 +1253,13 @@ func _draw_set() -> void:
 				var at := Vector2(Toon.hash01(k, 1) * 1920.0, Toon.hash01(k, 2) * 1080.0)
 				Toon.spot(_set, at, Vector2(80, 24), Color(1, 1, 1, 0.025), 0, k)
 			Toon.glow(_set, Vector2(960, 540), Vector2(900, 620), Color(1, 0.85, 0.6, 0.12), 3)
+		"phone":
+			StorySet.lair(_set, _drawing, DEN_FLOOR)
+			StorySet.table(_set, DEN_TABLE)
+		"lair":
+			StorySet.lair(_set, _drawing, DEN_FLOOR)
+		"furnace":
+			StorySet.boiler(_set, _drawing, FURNACE_FLOOR, _lin(0.0, 4.5))
 		"reunion":
 			StorySet.sunburst(_set, Vector2(960, 330), Color("f0dcae"), Color("c79a5c"), _clock * 0.03)
 			StorySet.ground(_set, GROUND, Color("8a5a36"))
@@ -1125,6 +1371,15 @@ func _draw_props() -> void:
 			if _t > 4.7 and _t < 6.4:
 				_cry(HATCH + Vector2(0, -140 - _lin(4.7, 6.4) * 80.0), "Мы идём, девчонки!", 34,
 						sin(_lin(4.7, 6.4) * PI))
+		"phone":
+			_draw_phone()
+		"furnace":
+			if _t > 1.4 and _t < 3.6:
+				_bubble(STOVE_AT + Vector2(-420, -470), STOVE_AT + Vector2(-60, -240), "Поджарю! Хе-хе-хе!", 46, _t > 2.6)
+			if _t > 3.6:
+				_cry(STOVE_AT + Vector2(0, -420), "ПЫХ! ПЫХ!", 52, minf((_t - 3.6) / 0.3, 1.0))
+		"lair":
+			_draw_lair()
 		"reunion":
 			if _t > 2.5:
 				_pop_heart(Vector2(705, WALK - 300), _t - 2.5)
@@ -1138,6 +1393,57 @@ func _draw_props() -> void:
 				var a := _clock * 3.0 + TAU * i / 3.0
 				Toon.star(_props, Vector2(300, 960) + Vector2(cos(a) * 110.0, -150.0 + sin(a) * 24.0), 13.0, a,
 						Color("f2c14e"))
+
+
+## The telephone, its ringing, the receiver at the Baron's ear on its
+## cord, what it says, and what he says back.
+func _draw_phone() -> void:
+	var base := DEN_TABLE + Vector2(30, -172)
+	var ringing := _t > 1.9 and _t < 3.3
+	var answered := _t >= 3.3 and _t < 6.0
+	StorySet.telephone(_props, base, ringing, _drawing, answered)
+	var head := _baron.position + Vector2(0, -168) * BARON_SIZE
+	if _t > 0.5 and _t < 1.9:
+		_bubble(head + Vector2(-300, -170), head + Vector2(-40, -40), "Красавец!", 44)
+	if ringing:
+		_cry(base + Vector2(0, -200), "ДЗЫНЬ! ДЗЫНЬ!", 46, 1.0)
+	if answered:
+		var ear := _baron.position + Vector2(-66, -176) * BARON_SIZE
+		Toon.stroke(_props, Toon.bent(base + Vector2(-20, -100), ear + Vector2(0, 20), 90.0, 16), 4.0)
+		Toon.box(_props, ear + Vector2(-6, -6), Vector2(11, 26), Color("1e1a1c"), _drawing, 4, 4.0, 0.3)
+		if _t > 3.6:
+			_bubble(base + Vector2(-60, -340), base + Vector2(-10, -170), "Шеф! Бруно в нокауте!", 40, true)
+	if _t >= 4.6 and _t < 6.0:
+		_steam(head)
+		_cry(head + Vector2(0, -150), "!!!", 70, 1.0)
+	if _t >= 6.0:
+		_steam(head)
+		_bubble(head + Vector2(-380, -200), head + Vector2(-40, 10), "Пыхтун! Поджарь их!", 50, true)
+
+
+## The den: the bat's squeak, the steam, the girls' cry, his promise.
+func _draw_lair() -> void:
+	var head := _baron.position + Vector2(0, -168) * BARON_SIZE
+	if _t < 2.4:
+		_cry(head + Vector2(0, -150), "Хм-м-м…", 40, minf(_t / 0.4, 1.0) * (1.0 - _lin(2.1, 2.4)))
+	if _t > 3.0 and _t < 4.3:
+		_bubble(_bat.position + Vector2(-260, -150), _bat.position, "Пи-пи! Пыхтун потух!", 38)
+	if _t >= 4.3 and _t < 5.4:
+		_steam(head)
+	if _t > 5.0 and _t < 7.0:
+		_cry(DEN_CAGE + Vector2(0, -470), "Наши идут!", 48, 1.0)
+		_hearts(DEN_CAGE + Vector2(0, -360), 0)
+	if _t > 6.8 and _t < 9.0:
+		_bubble(head + Vector2(-520, -230), head + Vector2(-50, -20), "Что ж, голубки… будет им представление!", 38)
+
+
+## Steam puffing out of both ears: rage.
+func _steam(head: Vector2) -> void:
+	for side: float in [-1.0, 1.0]:
+		for k in 3:
+			var rise := fmod(_t * 2.2 + k / 3.0, 1.0)
+			var at := head + Vector2(side * (90.0 + rise * 70.0), -40.0 - rise * 90.0)
+			Toon.spot(_props, at, Vector2(20, 16) * (0.6 + rise), Color(1, 1, 1, 0.85 * (1.0 - rise)), _drawing, k)
 
 
 ## The cover: on the manhole, rattling, flying off and landing.
@@ -1323,6 +1629,10 @@ func _focus() -> Vector2:
 			return _world.transform * HOLE
 		"chase":
 			return _world.transform * HATCH
+		"phone", "lair":
+			return _world.transform * (_baron.position + Vector2(0, -230))
+		"furnace":
+			return _world.transform * (_stove.position + Vector2(0, -130))
 	return Vector2(960, 560)
 
 

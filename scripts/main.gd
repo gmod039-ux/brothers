@@ -438,6 +438,12 @@ func _descend() -> void:
 		_busy = false
 		_finish()
 		return
+	# Meanwhile, in the Baron's den: the first time down each trapdoor.
+	var bit := 1 << run.floor_index
+	if _recording and Records.interludes & bit == 0 and not Story.interlude(run.floor_index).is_empty():
+		await play_story(Story.interlude(run.floor_index))
+		Records.interludes |= bit
+		Records.save()
 	banner.clear()
 	run.descend()
 	room = run.room
@@ -673,7 +679,7 @@ func _open_options(from_select: bool) -> CardMenu:
 		if id == "quit":
 			get_tree().quit()
 		elif id == "story":
-			var story := play_story(Story.OPENING)
+			var story := play_story(Story.so_far())
 			card.close()
 			story.connect(func() -> void:
 				# Skipped in the middle of the Baron's scene, his record

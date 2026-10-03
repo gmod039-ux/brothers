@@ -373,6 +373,9 @@ func _draw_baron(boil: int, flash: bool) -> void:
 		"wait":
 			# Hat raised to the audience.
 			free_hand = Vector2(-40, -250)
+		"phone":
+			# Only in the story: a telephone receiver at his ear.
+			free_hand = Vector2(-66, -176)
 	if _ko >= 0.0:
 		free_hand = Vector2(-90, -200) if _ko < SHAKE_TIME else Vector2(-80, -20)
 		cane_hand = Vector2(90, -200) if _ko < SHAKE_TIME else Vector2(84, -24)

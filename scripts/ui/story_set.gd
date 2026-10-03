@@ -906,3 +906,270 @@ static func hat(ci: CanvasItem, at: Vector2, boil: int) -> void:
 	Toon.spot(ci, Vector2(24, -72), Vector2(6, 5), Color(1, 0.9, 0.7, 0.8))
 	Toon.shine(ci, Vector2(-40, -60), Vector2(6, 40), 0.3)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+# --- the Baron's lair and the boiler room, for the scenes between floors -----
+
+
+## Down in the catacombs, the Baron's den: a vault of dark stone, red
+## velvet hung from it, his own portrait in a gilt frame, candles in the
+## niches, a checkered dance floor -- he was a showman before he was a
+## crook. [param drawing] makes the candles flicker. The floor meets the
+## wall at [param floor_y].
+static func lair(ci: CanvasItem, drawing: int, floor_y: float) -> void:
+	var stone := Color("3a3c34")
+	ci.draw_rect(Rect2(-400, -400, 2720, floor_y + 400), stone)
+	# Blocks of the vault.
+	var row := 0
+	var y := -40.0
+	while y < floor_y:
+		var h := 70.0
+		var x := -400.0 + (60.0 if row % 2 == 1 else 0.0)
+		var k := 0
+		while x < 2320.0:
+			var w := 120.0 + Toon.hash01(row * 31 + k, 3) * 40.0
+			var shade := 0.06 * Toon.hash01(row * 17 + k, 4)
+			ci.draw_rect(Rect2(x + 3, y + 3, w - 6, h - 6), stone.lightened(shade))
+			ci.draw_rect(Rect2(x, y, w, h), Color(0, 0, 0, 0.35), false, 3.0)
+			x += w
+			k += 1
+		y += h
+		row += 1
+	# Two arched niches with candles burning in them.
+	for cx: float in [330.0, 1590.0]:
+		var arch := PackedVector2Array([Vector2(cx - 110, floor_y - 40)])
+		for k in 13:
+			var a := PI + PI * k / 12.0
+			arch.append(Vector2(cx + cos(a) * 110.0, floor_y - 330.0 + sin(a) * 110.0))
+		arch.append(Vector2(cx + 110, floor_y - 40))
+		Toon.shape(ci, Toon.grown(arch, 14.0), Color("57594d"), 4.0)
+		ci.draw_colored_polygon(arch, Color("15130f"))
+		for k in 3:
+			var at := Vector2(cx - 50 + k * 50, floor_y - 140 - (k % 2) * 30)
+			_candle(ci, at, drawing + k * 3, 0.8 + 0.2 * (k % 2))
+	# The portrait: the Baron, smug, in a gilt oval.
+	var middle := Vector2(960, 230)
+	Toon.glow(ci, middle, Vector2(260, 220), Color(1, 0.8, 0.45, 0.12), 2)
+	Toon.blob(ci, middle, Vector2(150, 175), Color("c9a03a"), 0, 9, 6.0)
+	Toon.blob(ci, middle, Vector2(124, 148), Color("4a2a3a"), 0, 10, 4.0)
+	var face := middle + Vector2(0, 20)
+	var fur := BaronBoss.FUR
+	for sx: float in [-1.0, 1.0]:
+		Toon.shape(ci, PackedVector2Array([face + Vector2(sx * 60, -4), face + Vector2(sx * 22, -42),
+				face + Vector2(sx * 62, -72)]), fur, 4.0)
+		Toon.shape(ci, PackedVector2Array([face + Vector2(sx * 54, -14), face + Vector2(sx * 34, -36),
+				face + Vector2(sx * 56, -56)]), Color("e8a8a0"), 0.0)
+	Toon.ball(ci, face, Vector2(66, 54), fur, 0, 11)
+	for k in 3:
+		Toon.stroke(ci, Toon.bent(face + Vector2(-16 + k * 16, -52), face + Vector2(-14 + k * 14, -34), 3.0), 5.0,
+				BaronBoss.FUR_DARK)
+	Toon.blob(ci, face + Vector2(0, 20), Vector2(34, 20), BaronBoss.MUZZLE, 0, 12, 4.0)
+	for sx: float in [-1.0, 1.0]:
+		for k in 3:
+			Toon.stroke(ci, PackedVector2Array([face + Vector2(sx * 26, 16 + k * 6), face + Vector2(sx * 70, 8 + k * 10)]), 2.4)
+	Toon.blob(ci, face + Vector2(0, 8), Vector2(10, 7), Color("c86a6a"), 0, 16, 3.0)
+	for sx: float in [-1.0, 1.0]:
+		var e := face + Vector2(sx * 24, -14)
+		Toon.blob(ci, e, Vector2(11, 13), Toon.WHITE, 0, 13, 3.0)
+		Toon.spot(ci, e + Vector2(sx * -2, 4), Vector2(5, 6), Toon.INK)
+		# Half shut: smug.
+		ci.draw_colored_polygon(PackedVector2Array([e + Vector2(-14, 0), e + Vector2(14, 0), e + Vector2(14, -16),
+				e + Vector2(-14, -16)]), fur)
+		Toon.stroke(ci, PackedVector2Array([e + Vector2(-13, 0), e + Vector2(13, 0)]), 3.5)
+	ci.draw_arc(face + Vector2(24, -14), 17.0, 0.0, TAU, 24, Color("e8b83a"), 4.0, true)
+	var grin := PackedVector2Array()
+	for k in 9:
+		var u := k / 8.0
+		grin.append(face + Vector2(-24 + 48 * u, 24 + sin(u * PI) * 10.0))
+	Toon.stroke(ci, grin, 4.0)
+	Toon.box(ci, face + Vector2(8, 30), Vector2(4.5, 5), Color("e8b83a"), 0, 17, 2.0)
+	Toon.box(ci, face + Vector2(0, -100), Vector2(40, 40), Toon.INK, 0, 14, 3.0)
+	Toon.box(ci, face + Vector2(0, -60), Vector2(62, 9), Toon.INK, 0, 15, 3.0)
+	ci.draw_rect(Rect2(face + Vector2(-40, -78), Vector2(80, 10)), Color("c8392b"))
+	# A brass plate under it.
+	ci.draw_rect(Rect2(middle + Vector2(-70, 166), Vector2(140, 30)).grow(3), Toon.INK)
+	ci.draw_rect(Rect2(middle + Vector2(-70, 166), Vector2(140, 30)), Color("c9a03a"))
+	ci.draw_string(Ui.font(), middle + Vector2(-70, 188), "БАРОН", HORIZONTAL_ALIGNMENT_CENTER, 140, 20, Toon.INK)
+	# Velvet: a scalloped valance along the top, drapes tied back each side.
+	var red := Color("8f1f22")
+	for side: float in [-1.0, 1.0]:
+		var edge := 960.0 + side * 1000.0
+		var drape := PackedVector2Array([Vector2(edge, -60), Vector2(edge - side * 330, -60),
+				Vector2(edge - side * 240, floor_y * 0.45), Vector2(edge - side * 150, floor_y + 60),
+				Vector2(edge, floor_y + 60)])
+		Toon.shape(ci, drape, red, 6.0)
+		for k in 4:
+			var u := (k + 1) / 5.0
+			Toon.stroke(ci, Toon.bent(Vector2(edge - side * 330 * (1.0 - u * 0.5), -40),
+					Vector2(edge - side * 150 * (1.0 - u * 0.6), floor_y + 40), side * 30.0), 3.0, red.darkened(0.3))
+		var tie := Vector2(edge - side * 235, floor_y * 0.45)
+		Toon.blob(ci, tie, Vector2(20, 12), Color("e0b23a"), 0, 20, 3.0)
+	var swags := 7
+	for k in swags:
+		var x0 := -40.0 + k * 2000.0 / swags
+		var x1 := x0 + 2000.0 / swags
+		var swag := PackedVector2Array([Vector2(x0, -60), Vector2(x1, -60)])
+		for s in 9:
+			var u := 1.0 - float(s) / 8.0
+			swag.append(Vector2(lerpf(x0, x1, u), 40.0 + sin(u * PI) * 40.0))
+		Toon.shape(ci, swag, red, 5.0)
+		for s in 6:
+			var u := (s + 0.5) / 6.0
+			var at := Vector2(lerpf(x0, x1, u), 44.0 + sin(u * PI) * 40.0)
+			ci.draw_line(at, at + Vector2(0, 16), Color("e0b23a"), 4.0)
+	# The dance floor: black and cream squares going back to the wall, the
+	# lines between them running to a point far behind it.
+	ci.draw_rect(Rect2(-400, floor_y, 2720, 900), Color("1c1714"))
+	var vanish := Vector2(960, floor_y - 900.0)
+	var rows := 8
+	var cols := 26
+	for r in rows:
+		var y0 := floor_y + pow(float(r) / rows, 1.7) * 480.0
+		var y1 := floor_y + pow(float(r + 1) / rows, 1.7) * 480.0
+		for c in cols:
+			if (c + r) % 2 == 1:
+				continue
+			var near0 := -1500.0 + c * 4880.0 / cols
+			var near1 := -1500.0 + (c + 1) * 4880.0 / cols
+			var quad := PackedVector2Array()
+			for corner: Vector2 in [Vector2(near0, y0), Vector2(near1, y0), Vector2(near1, y1), Vector2(near0, y1)]:
+				# Where the line from this column's foot at the bottom of the
+				# screen to the vanishing point crosses the row's line.
+				var foot := Vector2(corner.x, floor_y + 480.0)
+				var k := (corner.y - vanish.y) / (foot.y - vanish.y)
+				quad.append(Vector2(lerpf(vanish.x, foot.x, k), corner.y))
+			ci.draw_colored_polygon(quad, Color("d9ccb0"))
+	ci.draw_polygon(PackedVector2Array([Vector2(-400, floor_y), Vector2(2320, floor_y), Vector2(2320, floor_y + 120),
+			Vector2(-400, floor_y + 120)]), PackedColorArray([Color(0, 0, 0, 0.55), Color(0, 0, 0, 0.55), Color(0, 0, 0, 0),
+			Color(0, 0, 0, 0)]))
+	Toon.hand_line(ci, Vector2(-400, floor_y), Vector2(2320, floor_y), 6.0, 41)
+
+
+## A little round table with a candlestick telephone on it -- the phone
+## itself is the props' business, it jumps when it rings.
+static func table(ci: CanvasItem, at: Vector2) -> void:
+	var wood := Color("5a3424")
+	Toon.spot(ci, at + Vector2(0, 6), Vector2(90, 18), Color(0, 0, 0, 0.35))
+	Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -150), at]), 18.0)
+	Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -150), at]), 10.0, wood)
+	Toon.ball(ci, at + Vector2(0, -2), Vector2(60, 12), wood, 0, 1, 4.0)
+	Toon.ball(ci, at + Vector2(0, -160), Vector2(110, 24), wood.lightened(0.1), 0, 2, 5.0)
+	ci.draw_rect(Rect2(at + Vector2(-110, -160), Vector2(220, 18)), wood.darkened(0.1))
+	Toon.hand_line(ci, at + Vector2(-110, -142), at + Vector2(110, -142), 4.0, 3)
+
+
+## A candlestick telephone of the period standing on [param base]: a
+## brass stem, the mouthpiece on top, the earpiece on its hook. Shakes
+## when [param ringing].
+static func telephone(ci: CanvasItem, base: Vector2, ringing: bool, drawing: int, off_hook: bool) -> void:
+	var jump := Vector2.ZERO
+	if ringing:
+		jump = Vector2((Toon.hash01(drawing, 1) - 0.5) * 10.0, -absf(sin(drawing * 1.7)) * 14.0)
+	var at := base + jump
+	var black := Color("1e1a1c")
+	Toon.ball(ci, at + Vector2(0, -6), Vector2(34, 12), black, drawing, 1, 4.0)
+	Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -10), at + Vector2(0, -120)]), 14.0)
+	Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -10), at + Vector2(0, -120)]), 7.0, Color("c9a03a"))
+	Toon.ball(ci, at + Vector2(0, -128), Vector2(22, 14), black, drawing, 2, 4.0)
+	Toon.box(ci, at + Vector2(10, -150), Vector2(18, 12), black, drawing, 3, 4.0, -0.4)
+	if not off_hook:
+		Toon.stroke(ci, PackedVector2Array([at + Vector2(-8, -100), at + Vector2(-28, -100)]), 6.0)
+		Toon.box(ci, at + Vector2(-34, -96), Vector2(9, 22), black, drawing, 4, 3.5)
+	if ringing:
+		for side: float in [-1.0, 1.0]:
+			for k in 2:
+				var r := 40.0 + k * 22.0
+				ci.draw_arc(at + Vector2(0, -120), r, -PI * 0.5 + side * 0.4 - 0.35, -PI * 0.5 + side * 0.4 + 0.35, 8,
+						Toon.INK, 4.0, true)
+
+
+## A candle with its flame flickering by [param drawing].
+static func _candle(ci: CanvasItem, at: Vector2, drawing: int, size: float) -> void:
+	var wax := Color("efe6cf")
+	Toon.glow(ci, at + Vector2(0, -50 * size), Vector2(60, 60) * size, Color(1, 0.8, 0.4, 0.25), 2)
+	Toon.box(ci, at + Vector2(0, -20 * size), Vector2(9, 22) * size, wax, 0, 1, 3.0)
+	var flick := (Toon.hash01(drawing, int(at.x)) - 0.5) * 4.0
+	var flame := PackedVector2Array([at + Vector2(-6, -44) * size, at + Vector2(flick, -66 * size),
+			at + Vector2(6, -44) * size, at + Vector2(0, -40) * size])
+	Toon.shape(ci, flame, Color("f2c14e"), 2.5)
+	Toon.spot(ci, at + Vector2(0, -48) * size, Vector2(2.5, 5) * size, Color("fff6c8"))
+
+
+## The boiler room proper: a wall of riveted iron plates crossed by pipes,
+## a pressure gauge, the great furnace with its door glowing, a heap of
+## coal and a shovel stuck in it. [param heat] brightens the glow.
+static func boiler(ci: CanvasItem, drawing: int, floor_y: float, heat: float) -> void:
+	var iron := Color("4c5260")
+	ci.draw_rect(Rect2(-400, -400, 2720, floor_y + 400), iron)
+	for r in 6:
+		for c in 12:
+			var plate := Rect2(-400 + c * 240 + (120 if r % 2 == 1 else 0), -60 + r * 140, 240, 140)
+			ci.draw_rect(plate.grow(-3), iron.lightened(0.04 * Toon.hash01(r, c)))
+			ci.draw_rect(plate, Color(0, 0, 0, 0.4), false, 3.0)
+			for k in 5:
+				ci.draw_circle(plate.position + Vector2(20 + k * 50, 14), 4.0, Color(0, 0, 0, 0.45))
+	# Pipes across the wall, with joints and a valve wheel.
+	for p in 2:
+		var y := 120.0 + p * 110.0
+		Toon.stroke(ci, PackedVector2Array([Vector2(-400, y), Vector2(2320, y)]), 40.0)
+		Toon.stroke(ci, PackedVector2Array([Vector2(-400, y), Vector2(2320, y)]), 30.0, Color("8a6a4a") if p == 0 else Color("6d6a70"))
+		ci.draw_line(Vector2(-400, y - 8), Vector2(2320, y - 8), Color(1, 1, 1, 0.15), 4.0)
+		for k in 8:
+			var x := -200.0 + k * 320.0 + p * 140.0
+			ci.draw_rect(Rect2(x - 10, y - 22, 20, 44).grow(3), Toon.INK)
+			ci.draw_rect(Rect2(x - 10, y - 22, 20, 44), Color("5d5c64"))
+	var gauge := Vector2(1450, 420)
+	Toon.ball(ci, gauge, Vector2(56, 56), Color("c9a03a"), 0, 5, 5.0)
+	Toon.blob(ci, gauge, Vector2(44, 44), Color("efe6cf"), 0, 6, 3.0)
+	for k in 9:
+		var a := PI * 0.8 + PI * 1.4 * k / 8.0
+		ci.draw_line(gauge + Vector2(cos(a), sin(a)) * 34.0, gauge + Vector2(cos(a), sin(a)) * 40.0, Toon.INK, 3.0)
+	ci.draw_arc(gauge, 37.0, PI * 1.9, PI * 2.2, 8, Color("c8392b"), 6.0)
+	var needle := PI * 0.85 + PI * 1.3 * clampf(0.5 + 0.5 * heat + (Toon.hash01(drawing, 3) - 0.5) * 0.08, 0.0, 1.0)
+	Toon.stroke(ci, PackedVector2Array([gauge, gauge + Vector2(cos(needle), sin(needle)) * 34.0]), 4.0, Color("c8392b"))
+	# The furnace: a brick front, a round-topped iron door glowing at the
+	# seams, fire through its grille.
+	var furnace := Rect2(300, floor_y - 470, 520, 470)
+	ci.draw_rect(furnace.grow(6), Toon.INK)
+	ci.draw_rect(furnace, Color("7a3a2a"))
+	for r in 9:
+		for c in 6:
+			var b := Rect2(furnace.position + Vector2(c * 88 + (44 if r % 2 == 1 else 0) - 20, r * 52), Vector2(84, 48))
+			b = b.intersection(furnace)
+			if b.has_area():
+				ci.draw_rect(b, Color(0, 0, 0, 0.3), false, 3.0)
+	var door := Rect2(furnace.position + Vector2(120, 160), Vector2(280, 230))
+	var glow := 0.6 + 0.4 * heat + (Toon.hash01(drawing, 9) - 0.5) * 0.15
+	Toon.glow(ci, door.get_center(), Vector2(420, 300), Color(1, 0.5, 0.15, 0.35 * glow), 3)
+	ci.draw_rect(door.grow(6), Toon.INK)
+	ci.draw_rect(door, Color("2c2a30"))
+	var grille := Rect2(door.position + Vector2(40, 60), Vector2(200, 110))
+	ci.draw_rect(grille, Color("f08a24").lerp(Color("ffd84a"), glow * 0.5))
+	for k in 6:
+		var x := grille.position.x + 16 + k * 34.0
+		ci.draw_rect(Rect2(x, grille.position.y, 12, grille.size.y), Color("2c2a30"))
+	for k in 4:
+		var fx := grille.position.x + 30 + k * 48.0
+		var lick := (Toon.hash01(drawing, k + 20) - 0.5) * 20.0
+		Toon.shape(ci, PackedVector2Array([Vector2(fx - 14, grille.end.y), Vector2(fx + lick, grille.position.y + 8),
+				Vector2(fx + 14, grille.end.y)]), Color("ffd84a"), 0.5)
+	ci.draw_rect(Rect2(door.end.x - 30, door.position.y + 100, 20, 40), Color("8a8890"))
+	# Coal heaped up on the right, a shovel stuck in it.
+	var heap := Vector2(1680, floor_y + 10)
+	for k in 14:
+		var at := heap + Vector2((Toon.hash01(k, 1) - 0.5) * 320.0, -Toon.hash01(k, 2) * 140.0 * (1.0 - absf(Toon.hash01(k, 1) - 0.5)))
+		Toon.blob(ci, at, Vector2(36, 28), Color("2a2626"), 0, k, 4.0, Toon.hash01(k, 3) * 3.0)
+	Toon.stroke(ci, PackedVector2Array([heap + Vector2(70, -110), heap + Vector2(130, -330)]), 12.0)
+	Toon.stroke(ci, PackedVector2Array([heap + Vector2(70, -110), heap + Vector2(130, -330)]), 6.0, Color("8a5a36"))
+	Toon.shape(ci, PackedVector2Array([heap + Vector2(40, -150), heap + Vector2(100, -130), heap + Vector2(80, -60),
+			heap + Vector2(40, -70)]), Color("5d5c64"), 4.0)
+	# The floor: iron plates, the furnace's light on them.
+	ci.draw_rect(Rect2(-400, floor_y, 2720, 900), Color("3c3f48"))
+	for r in 5:
+		var y := floor_y + 30.0 + r * r * 14.0 + r * 40.0
+		ci.draw_line(Vector2(-400, y), Vector2(2320, y), Color(0, 0, 0, 0.35), 3.0)
+	Toon.glow(ci, Vector2(560, floor_y + 60), Vector2(520, 110), Color(1, 0.5, 0.15, 0.3 * glow), 3)
+	ci.draw_polygon(PackedVector2Array([Vector2(-400, floor_y), Vector2(2320, floor_y), Vector2(2320, floor_y + 100),
+			Vector2(-400, floor_y + 100)]), PackedColorArray([Color(0, 0, 0, 0.5), Color(0, 0, 0, 0.5), Color(0, 0, 0, 0),
+			Color(0, 0, 0, 0)]))
+	Toon.hand_line(ci, Vector2(-400, floor_y), Vector2(2320, floor_y), 6.0, 42)
