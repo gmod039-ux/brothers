@@ -5,7 +5,8 @@ extends RefCounted
 ## the start, a room at a time, never next to more than one room already
 ## there -- so the floor branches instead of clumping -- with the boss in the
 ## dead end furthest from the start, the treasure room in another and, when
-## there is a third, a shop. Below the first floor both are locked.
+## there is a third, a shop. Below the first floor both are locked. Dead
+## ends to spare get an arcade with a slot machine and a challenge room.
 ##
 ## And, as in Isaac, a secret room: in a gap between two or three rooms,
 ## behind a wall with a crack in it. It is not on the plan's [member rooms]
@@ -25,7 +26,8 @@ const OPPOSITE := {"top": "bottom", "bottom": "top", "left": "right", "right": "
 
 class RoomInfo:
 	var cell := Vector2i.ZERO
-	## "start", "normal", "boss", "treasure" or "shop".
+	## "start", "normal", "boss", "treasure", "shop", "arcade",
+	## "challenge" or "secret".
 	var kind := "normal"
 	var layout_name := ""
 	var rows := PackedStringArray()
@@ -43,6 +45,8 @@ class RoomInfo:
 	var prize := ""
 	## A shop's wares: [kind, item, price] each; bought ones are removed.
 	var stock: Array = []
+	## The Baron's contract in a beaten boss's room: [item, hearts] each.
+	var deal: Array = []
 	## Things left lying on the floor when the brothers walked out:
 	## [kind, item, price, position in the room].
 	var pickups: Array = []
@@ -57,6 +61,10 @@ var boss := Vector2i.ZERO
 var treasure := Vector2i.ZERO
 ## No shop when the floor has only two dead ends: (-1, -1).
 var shop := Vector2i(-1, -1)
+## The arcade (a slot machine) and the challenge room, in dead ends left
+## over: (-1, -1) for none.
+var arcade := Vector2i(-1, -1)
+var challenge := Vector2i(-1, -1)
 ## The secret room, (-1, -1) for none; its info, kept off [member rooms]
 ## while it is hidden.
 var secret := Vector2i(-1, -1)
@@ -117,6 +125,21 @@ static func _grow(rng: RandomNumberGenerator, target: int) -> FloorPlan:
 	ends.erase(plan.treasure)
 	if not ends.is_empty():
 		plan.shop = ends[rng.randi() % ends.size()]
+		ends.erase(plan.shop)
+	# Then, in any dead ends left, an arcade and a challenge -- which first
+	# is a toss of a coin.
+	var extras := ["arcade", "challenge"]
+	if rng.randf() < 0.5:
+		extras.reverse()
+	for extra: String in extras:
+		if ends.is_empty():
+			break
+		var end := ends[rng.randi() % ends.size()]
+		ends.erase(end)
+		if extra == "arcade":
+			plan.arcade = end
+		else:
+			plan.challenge = end
 	for cell: Vector2i in depth:
 		var info := RoomInfo.new()
 		info.cell = cell
@@ -197,9 +220,13 @@ func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
 			info.kind = "treasure"
 		elif cell == shop:
 			info.kind = "shop"
+		elif cell == arcade:
+			info.kind = "arcade"
+		elif cell == challenge:
+			info.kind = "challenge"
 		if info.kind != "normal":
 			info.layout_name = "@" + info.kind
-			info.cleared = info.kind != "boss"
+			info.cleared = not info.kind in ["boss", "challenge"]
 			info.locked = index > 0 and info.kind in ["treasure", "shop"]
 		else:
 			# Deal layouts from a shuffled deck, so a floor repeats one only

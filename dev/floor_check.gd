@@ -83,6 +83,8 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 	var largest := 0
 	var shops := 0
 	var secrets := 0
+	var arcades := 0
+	var challenges := 0
 	for seed_value in SEEDS:
 		rng.seed = seed_value
 		var plan := FloorPlan.generate(rng, floor_index, layouts)
@@ -115,6 +117,20 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 			shops += 1
 			var shop := plan.info(plan.shop)
 			_expect(shop.kind == "shop" and plan.doors(plan.shop).size() == 1, "a shop is a dead end (seed %d)" % seed_value)
+		for extra: Array in [[plan.arcade, "arcade"], [plan.challenge, "challenge"]]:
+			var at: Vector2i = extra[0]
+			if at == Vector2i(-1, -1):
+				continue
+			if extra[1] == "arcade":
+				arcades += 1
+			else:
+				challenges += 1
+			_expect(plan.info(at).kind == extra[1] and plan.doors(at).size() == 1,
+					"the %s is a dead end of its own (seed %d)" % [extra[1], seed_value])
+			_expect(not at in [plan.boss, plan.treasure, plan.shop, plan.start], "the %s takes nobody's place (seed %d)"
+					% [extra[1], seed_value])
+		_expect(plan.challenge == Vector2i(-1, -1) or not plan.info(plan.challenge).cleared,
+				"a challenge waits to be fought (seed %d)" % seed_value)
 		for cell: Vector2i in plan.rooms:
 			var info := plan.info(cell)
 			_expect(info.rows.size() == Room.ROWS, "room %s has a layout (seed %d)" % [cell, seed_value])
@@ -122,8 +138,9 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 				_expect(info.depth <= boss.depth, "no dead end deeper than the boss (seed %d)" % seed_value)
 		if _failures > 20:
 			break
-	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%, a secret room on %d%%" % [floor_index + 1, SEEDS,
-			smallest, largest, shops * 100 / SEEDS, secrets * 100 / SEEDS])
+	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%, a secret room on %d%%, an arcade on %d%%, a challenge on %d%%"
+			% [floor_index + 1, SEEDS, smallest, largest, shops * 100 / SEEDS, secrets * 100 / SEEDS, arcades * 100 / SEEDS,
+			challenges * 100 / SEEDS])
 
 
 func _expect(ok: bool, what: String) -> void:

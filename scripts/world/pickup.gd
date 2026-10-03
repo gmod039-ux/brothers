@@ -26,6 +26,11 @@ var kind := "heart"
 var item := ""
 ## Coins it costs; 0 is free.
 var price := 0
+## Hearts it costs, for good: the Baron's contract. A brother keeps one
+## heart whatever he signs away.
+var hearts_price := 0
+## Behind the bars of a challenge room until its fight is won.
+var caged := false
 var room: Room
 var gone := false
 ## Left by a brother taking another item in its place: waits until nobody
@@ -43,7 +48,7 @@ var _clock := 0.0
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
-	if gone or _clock < 0.4:
+	if gone or _clock < 0.4 or caged:
 		return
 	if wait_clear:
 		for brother in room.brothers:
@@ -60,6 +65,8 @@ func _physics_process(delta: float) -> void:
 			short = "coins"
 		elif kind == "gold_chest" and brother.keys <= 0:
 			short = "key"
+		elif hearts_price > 0 and brother.stats.hearts <= hearts_price:
+			short = "hearts"
 		elif price > 0 and kind in ["heart", "half_heart"] and brother.hp >= brother.stats.max_hp():
 			short = "full"
 		if _use(brother):
@@ -89,6 +96,13 @@ func _physics_process(delta: float) -> void:
 func _use(brother: Brother) -> bool:
 	if brother.coins < price:
 		return false
+	if hearts_price > 0:
+		if brother.stats.hearts <= hearts_price:
+			return false
+		brother.stats.hearts -= hearts_price
+		brother.hp = mini(brother.hp, brother.stats.max_hp())
+		brother.health_changed.emit(brother.hp, brother.stats.max_hp())
+		Sfx.play("hurt", -6.0, 0.0)
 	match kind:
 		"half_heart", "heart":
 			if brother.hp >= brother.stats.max_hp():
@@ -146,6 +160,20 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## Iron bars round the pedestal, a padlock on them: a challenge's prize.
+func _cage(up: float) -> void:
+	var top := -170.0 - up * 0.3
+	for k in 7:
+		var x := -48.0 + k * 16.0
+		Toon.stroke(self, PackedVector2Array([Vector2(x, top + absf(x) * 0.3), Vector2(x, 4)]), 7.0)
+		Toon.stroke(self, PackedVector2Array([Vector2(x, top + absf(x) * 0.3), Vector2(x, 4)]), 3.0, Color("6d6a70"))
+	for y: float in [top + 20.0, -40.0]:
+		Toon.stroke(self, PackedVector2Array([Vector2(-54, y), Vector2(54, y)]), 8.0)
+		Toon.stroke(self, PackedVector2Array([Vector2(-54, y), Vector2(54, y)]), 3.5, Color("6d6a70"))
+	draw_arc(Vector2(0, -52), 8.0, PI, TAU, 10, Toon.INK, 4.0, true)
+	Toon.box(self, Vector2(0, -42), Vector2(10, 9), Color("e0b23a"), 0, 70, 2.5)
+
+
 ## A fluted stone column, a red velvet cushion on it with gold tassels at the
 ## corners.
 func _pedestal() -> void:
@@ -199,6 +227,18 @@ func _draw() -> void:
 		# Now and then a glint runs over it.
 		if drawing % 18 < 2:
 			Toon.star(self, Vector2(10, -34 - up), 6.0 + (drawing % 18) * 3.0, 0.3, Color("fffbe8"))
+	if caged:
+		_cage(up)
+	if hearts_price > 0:
+		# A contract's tag: red, a heart on it, the number signed away.
+		var tag := Vector2(sin(_nope * 60.0) * 7.0 * _nope / 0.4, 34)
+		Toon.stroke(self, PackedVector2Array([Vector2(-6, 8), tag + Vector2(-20, -12)]), 2.0, Color(Toon.INK, 0.7))
+		var paper := PackedVector2Array([tag + Vector2(-34, -14), tag + Vector2(30, -16), tag + Vector2(32, 14),
+				tag + Vector2(-32, 16), tag + Vector2(-42, 1)])
+		Toon.shape(self, paper, Color("8f1f22"), 3.5)
+		Toon.heart(self, tag + Vector2(-12, 1), 18.0, 0, RED, Color("f4ead2"))
+		draw_string(Ui.font(), tag + Vector2(4, 11), "×%d" % hearts_price, HORIZONTAL_ALIGNMENT_LEFT, -1, 24,
+				Color("f4ead2"))
 	if price > 0:
 		# A paper tag on a string, tilted, with the price in coins.
 		var tag := Vector2(sin(_nope * 60.0) * 7.0 * _nope / 0.4, 34)

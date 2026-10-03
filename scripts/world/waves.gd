@@ -19,6 +19,9 @@ var list: Array = []
 var current := 0
 var done := false
 var kills := 0
+## Called with each enemy as it comes in, if set: the run makes them
+## tougher on deeper floors.
+var on_spawn := Callable()
 
 var _pause := 0.7
 var _running := false
@@ -72,6 +75,8 @@ func _spawn_wave(wave: Dictionary) -> void:
 			var enemy := spawn(kind, room, rng, room.tile_center(cell))
 			if enemy != null:
 				enemy.knocked_out.connect(func(_e: Enemy) -> void: kills += 1)
+				if on_spawn.is_valid():
+					on_spawn.call(enemy)
 
 
 ## A new enemy of [param kind], not set up yet; null for no such kind.

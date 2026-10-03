@@ -27,6 +27,7 @@ extends Node
 ##   at C R        stand the brother on tile column C, row R
 ##   secret        into the room by the floor's hidden secret room, at the
 ##                 cracked wall
+##   deal          the Baron's notary in this (beaten boss's) room
 ##   give ID       put item ID into the brother's hands or stats
 ##   use           use the item in his hands
 ##   *.png         save the screen there
@@ -159,6 +160,15 @@ func _tour(words: PackedStringArray) -> void:
 					placed.global_position = placed.room.tile_center(Vector2i(int(value),
 							int(words[i + 2]) if i + 2 < words.size() else 3))
 				i += 3
+			"deal":
+				var dealer := main.get("run") as Run
+				if dealer != null:
+					var here := dealer.plan.info(dealer.cell)
+					if here.deal.is_empty():
+						for k in 2:
+							here.deal.append([dealer.draw_item(), 1])
+						dealer.call("_lay_out_deal", here)
+				i += 1
 			"give":
 				var given := main.get("brother") as Brother
 				if given != null:

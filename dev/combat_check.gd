@@ -52,6 +52,7 @@ func _run() -> void:
 	await _deep_enemies()
 	await _obstacles()
 	await _new_items()
+	await _special_rooms()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -716,6 +717,103 @@ func _new_items() -> void:
 	opener.global_position = gold.global_position
 	await _steps(4)
 	_expect(not is_instance_valid(gold) and opener.keys == 0, "a key opens it")
+
+
+## The slot machine pays as its reels say; the challenge room holds its
+## prize behind bars until three waves are beaten; the Baron's notary sells
+## for a heart.
+func _special_rooms() -> void:
+	# Slot machine: a coin in, three reels, a payout or a raspberry.
+	await _fresh_room(EMPTY)
+	var gambler := _brother(Vector2i(6, 5))
+	var machine := SlotMachine.new()
+	machine.room = room
+	room.actors.add_child(machine)
+	machine.global_position = room.tile_center(Vector2i(6, 2)) + Vector2(0, 30)
+	var won := [""]
+	machine.paid.connect(func(what: String) -> void: won[0] = what)
+	gambler.coins = 3
+	gambler.global_position = machine.global_position + Vector2(0, 70)
+	await _steps(4)
+	_expect(gambler.coins == 2 and machine.spins == 1, "stepping up to the slot machine spends a coin")
+	await _steps(5)
+	_expect(gambler.coins == 2 and machine.spins == 1, "and only one, standing there")
+	machine._spinning = -1.0
+	machine._reels = [0, 0, 0]
+	var before := room.actors.get_children().size()
+	machine._pay()
+	await _steps(2)
+	_expect(won[0] == "coin" and room.actors.get_children().size() == before + 5, "three coins pay five")
+	machine._reels = [1, 3, 4]
+	machine._pay()
+	_expect(won[0] == "", "nothing alike pays nothing")
+	# Challenge and deal: on a real run, floors gone down until each turns up.
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	var tries := 0
+	while run.plan.challenge == Vector2i(-1, -1) and tries < 30:
+		run.start_floor(mini(run.floor_index + 1, Run.FLOORS - 1) if tries % 3 != 2 else 0)
+		tries += 1
+		await _steps(1)
+	_expect(run.plan.challenge != Vector2i(-1, -1), "a floor with a challenge room (%d tries)" % tries)
+	run.teleport("challenge")
+	await _steps(30)
+	var prize: Pickup = null
+	for node in run.room.actors.get_children():
+		if node is Pickup and (node as Pickup).kind == "item":
+			prize = node
+	_expect(prize != null and prize.caged, "the challenge's prize sits behind bars")
+	brother.global_position = run.room.tile_center(Vector2i(6, 5))
+	await _steps(20)
+	_expect(not run.room.open_doors.values().has(true), "stepping up to it shuts the doors")
+	# Each wave knocked out as it comes in.
+	for i in 400:
+		for enemy in run.room.enemies.duplicate():
+			if enemy.can_be_hit():
+				enemy.knock_out()
+		await _steps(1)
+		if run.plan.info(run.cell).cleared:
+			break
+	_expect(run.plan.info(run.cell).cleared, "three waves beaten, the room is won")
+	_expect(is_instance_valid(prize) and not prize.caged, "and the bars are down")
+	# The notary: an item for a heart; not the last one.
+	run.teleport("boss")
+	await _steps(5)
+	var info := run.plan.info(run.cell)
+	for boss in run.bosses:
+		boss.hp = 1.0
+		boss.knock_out()
+	await _steps(10)
+	if info.deal.is_empty():
+		# He turns up only now and then: here, he does.
+		info.deal = [[run.draw_item(), 1]]
+		run._lay_out_deal(info)
+	var ware: Pickup = null
+	for node in run.room.actors.get_children():
+		if node is Pickup and (node as Pickup).hearts_price > 0:
+			ware = node
+	_expect(ware != null, "the Baron's notary lays out his ware")
+	if ware != null:
+		var hearts := brother.stats.hearts
+		await _steps(30)
+		brother.global_position = ware.global_position
+		await _steps(4)
+		_expect(brother.stats.hearts == hearts - 1 and not is_instance_valid(ware), "it costs a heart for good")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
 
 
 func _fresh_room(layout: Array) -> void:

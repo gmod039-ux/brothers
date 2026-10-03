@@ -262,6 +262,17 @@ func _draw_map() -> void:
 				ItemIcon.draw(self, "coin", at, 18.0, 0)
 			"secret":
 				draw_string(Ui.font(), at + Vector2(-10, 8), "?", HORIZONTAL_ALIGNMENT_CENTER, 20, 20, Toon.INK)
+			"arcade":
+				# A cherry pair: the slot machine.
+				for sx: float in [-1.0, 1.0]:
+					Toon.spot(self, at + Vector2(sx * 3.5, 3), Vector2(3.5, 3.5), Color("b8322a"))
+				draw_line(at + Vector2(-3, 1), at + Vector2(1, -6), Toon.INK, 1.5)
+				draw_line(at + Vector2(3, 1), at + Vector2(1, -6), Toon.INK, 1.5)
+			"challenge":
+				# Crossed swords.
+				for sx: float in [-1.0, 1.0]:
+					draw_line(at + Vector2(-6 * sx, 6), at + Vector2(6 * sx, -6), Toon.INK, 2.5)
+					draw_line(at + Vector2(-6 * sx, 6) + Vector2(sx * 2, -2) * 0.0, at + Vector2(-4 * sx, 2), Color("e0b23a"), 3.0)
 		if info.locked:
 			# A little padlock on the corner: a key opens it.
 			var lock := at + Vector2(MAP_CELL.x * 0.5 - 4, MAP_CELL.y * 0.5 - 4)

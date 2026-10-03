@@ -30,6 +30,11 @@ const BOSS_INTRO := 2.0
 const ARENAS := ["ring", "boiler", "cabaret"]
 ## What a shop sells, and for how much.
 const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5}
+## What each floor's challenge room throws in, wave after wave.
+const CHALLENGERS := [["fly", "walker", "shooter", "pup"], ["stoker", "ember", "fly", "walker"],
+		["ghost", "skeleton", "bat", "kitten"]]
+## The chance of the Baron's notary turning up after a boss (not the last).
+const DEAL_CHANCE := 0.5
 ## Seconds a knocked-out brother lies there once the room is clear, before
 ## his brother gets him up.
 const REVIVE_AFTER := 1.2
@@ -290,7 +295,7 @@ func _remember(left: Room) -> void:
 	info.pickups.clear()
 	for node in left.actors.get_children():
 		var pickup := node as Pickup
-		if pickup != null and not pickup.gone and pickup.price == 0:
+		if pickup != null and not pickup.gone and pickup.price == 0 and pickup.hearts_price == 0 and not pickup.caged:
 			info.pickups.append([pickup.kind, pickup.item, 0, pickup.global_position - left.global_position])
 
 
@@ -313,6 +318,17 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		"secret":
 			_stock_secret(info)
 			return
+		"arcade":
+			var machine := SlotMachine.new()
+			machine.room = room
+			machine.rng = rng
+			room.actors.add_child(machine)
+			machine.global_position = room.tile_center(Vector2i(6, 2)) + Vector2(0, 30)
+			room.block_tile(Vector2i(6, 2))
+			return
+		"challenge":
+			_open_challenge(info)
+			return
 	if info.cleared:
 		if info.kind == "boss":
 			# Back in a beaten boss's room: the way down is still open. It
@@ -320,6 +336,7 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 			# out to finish the floor.
 			_place_trapdoor()
 			room.calm()
+			_lay_out_deal(info)
 		return
 	if info.kind == "boss":
 		_start_boss()
@@ -334,6 +351,87 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		_toughen(enemy)
 	_fighting = true
 	_slam_doors()
+
+
+## The challenge: a prize behind bars in the middle and a sign. Step up to
+## it and the doors bang shut and three waves come in; beat them and the
+## bars drop. Won once, it stays won.
+func _open_challenge(info: FloorPlan.RoomInfo) -> void:
+	if info.prize == "" and not info.looted:
+		info.prize = draw_item()
+	if info.looted or info.prize == "":
+		return
+	var prize := _drop("item", room.tile_center(Vector2i(6, 3)), info.prize)
+	prize.taken.connect(func(_by: Brother) -> void: info.looted = true)
+	if info.cleared:
+		return
+	prize.caged = true
+	var here := room
+	var waves := Waves.new()
+	waves.on_spawn = _toughen
+	here.add_child(waves)
+	# Watched from a timer of the room's own: it goes with the room.
+	var watch := Timer.new()
+	watch.wait_time = 0.1
+	watch.autostart = true
+	here.add_child(watch)
+	watch.timeout.connect(func() -> void:
+		if not is_instance_valid(prize) or busy or room != here:
+			return
+		for brother in brothers:
+			if not brother.dead and brother.global_position.distance_to(prize.global_position) < 230.0:
+				watch.stop()
+				_slam_doors()
+				Sfx.play("roar", -6.0, 0.0)
+				waves.begin(here, rng, _challenge_waves())
+				return)
+	waves.cleared.connect(func() -> void:
+		info.cleared = true
+		rooms_cleared += 1
+		here.set_doors_open(true)
+		Sfx.play("clear", -2.0, 0.0)
+		for brother in brothers:
+			brother.add_charge()
+		if is_instance_valid(prize):
+			prize.caged = false
+			Fx.burst(here, prize.global_position + Vector2(0, -90), "stars", 10, 1.2)
+		room_cleared.emit(info))
+
+
+## Three waves of this floor's own, each bigger than the last.
+func _challenge_waves() -> Array:
+	var kinds: Array = CHALLENGERS[mini(floor_index, CHALLENGERS.size() - 1)]
+	var list := []
+	for w in 3:
+		var wave := {}
+		for k in 2:
+			var kind: String = kinds[rng.randi() % kinds.size()]
+			wave[kind] = int(wave.get(kind, 0)) + 1 + (1 if w == 2 else 0)
+		list.append(wave)
+	return list
+
+
+## The Baron's notary in a beaten boss's room, and what he has to sign
+## away: two items, a heart each, for good.
+func _lay_out_deal(info: FloorPlan.RoomInfo) -> void:
+	if info.deal.is_empty():
+		return
+	var desk := Contract.new()
+	room.actors.add_child(desk)
+	desk.global_position = room.tile_center(Vector2i(10, 1)) + Vector2(0, 40)
+	room.block_tile(Vector2i(10, 1))
+	var cols := [9, 11]
+	for i in mini(info.deal.size(), cols.size()):
+		var deal: Array = info.deal[i]
+		var ware := _drop("item", room.tile_center(Vector2i(cols[i], 3)), deal[0])
+		ware.hearts_price = int(deal[1])
+		ware.taken.connect(func(_by: Brother) -> void:
+			info.deal.erase(deal)
+			if is_instance_valid(desk):
+				desk.say("Приятно иметь дело!"))
+		ware.refused.connect(func(_why: String) -> void:
+			if is_instance_valid(desk):
+				desk.say("Сердечек маловато!"))
 
 
 ## Bang: the doors shut behind the brothers, dust out of every doorway.
@@ -480,6 +578,14 @@ func _on_boss_down(beaten: Enemy) -> void:
 	if prize != "":
 		_drop("item", room.tile_center(Vector2i(6, 1)), prize)
 	_drop("heart", room.tile_center(Vector2i(4, 3)))
+	# Sometimes the Baron's notary turns up with a contract.
+	if not is_last_floor() and rng.randf() < DEAL_CHANCE:
+		var info := plan.info(cell)
+		for i in 2:
+			var item := draw_item()
+			if item != "":
+				info.deal.append([item, 1])
+		_lay_out_deal(info)
 
 
 ## The hatch down to the next floor, in the middle of the boss's room.
