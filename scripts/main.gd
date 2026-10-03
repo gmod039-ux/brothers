@@ -352,6 +352,8 @@ func start_run(seed_value: int) -> void:
 			var text := str(item.get("text", ""))
 			if item.has("active"):
 				text += "   ·   Пробел / RB"
+			elif item.get("trinket", false):
+				text += "   ·   брелок"
 			banner.caption(str(item.get("name", id)), text))
 		one.active_changed.connect(hud.queue_redraw)
 		brothers.append(one)
@@ -593,6 +595,8 @@ func _items() -> Array[String]:
 		all.append_array(one.items)
 		if one.active != "":
 			all.append(one.active)
+		if one.trinket != "":
+			all.append(one.trinket)
 	return all
 
 

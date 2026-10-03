@@ -62,10 +62,15 @@ func _deeds() -> void:
 	Unlocks.everything = false
 	Unlocks.recording = true
 	var open_at_start := 0
+	var trinkets_at_start := 0
 	for id: String in GameData.items():
 		if Unlocks.is_open(id):
-			open_at_start += 1
+			if GameData.items()[id].get("trinket", false):
+				trinkets_at_start += 1
+			else:
+				open_at_start += 1
 	_check(open_at_start == 21, "21 items are open from the start (%d)" % open_at_start)
+	_check(trinkets_at_start == 6, "and 6 trinkets (%d)" % trinkets_at_start)
 	_check(Unlocks.is_open("pepper") and not Unlocks.is_open("chick"), "the pepper is open, the chick is not")
 	_check(not Unlocks.is_open("@evil"), "no evil mode before the Baron is beaten")
 	var opened := Unlocks.achieve("miniboss")

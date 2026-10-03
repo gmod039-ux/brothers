@@ -35,7 +35,7 @@ const BOSS_INTRO := 2.0
 ## Each boss's own room, floor by floor.
 const ARENAS := ["ring", "boiler", "cabaret"]
 ## What a shop sells, and for how much.
-const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5}
+const PRICES := {"item": 15, "heart": 3, "bomb": 5, "key": 5, "trinket": 8}
 ## What each floor's challenge room throws in, wave after wave.
 const CHALLENGERS := [["fly", "walker", "shooter", "pup"], ["stoker", "ember", "fly", "walker"],
 		["ghost", "skeleton", "bat", "kitten"]]
@@ -63,6 +63,8 @@ var bosses_beaten := 0
 var minibosses_beaten := 0
 ## Items not yet offered this run: each turns up once at most.
 var pool: Array[String] = []
+## Trinkets likewise.
+var trinkets: Array[String] = []
 
 var _revive_in := 0.0
 ## The camera sliding to the next room, and the room being left.
@@ -79,20 +81,28 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	brothers = brothers_
 	for id: String in GameData.items():
 		if Unlocks.is_open(id):
-			pool.append(id)
+			if GameData.items()[id].get("trinket", false):
+				trinkets.append(id)
+			else:
+				pool.append(id)
 	pool.sort()
+	trinkets.sort()
 	for brother in brothers:
 		brother.item_taken.connect(func(_id: String) -> void: _reveal_if_glasses())
 	start_floor(0)
 
 
-## With the glasses on, the floor's whole map.
+## With the glasses on, the floor's whole map; with the compass, its
+## special rooms and where the secret room is.
 func _reveal_if_glasses() -> void:
+	if plan == null:
+		return
 	for brother in brothers:
-		if brother.stats.has("map") and plan != null:
+		if brother.stats.has("map"):
 			plan.reveal_all()
-			map_changed.emit()
-			return
+		if brother.stats.has("compass"):
+			plan.reveal_special()
+	map_changed.emit()
 
 
 func floor_name() -> String:
@@ -110,6 +120,13 @@ func start_floor(index: int) -> void:
 	layouts = RoomLayouts.for_floor(index)
 	plan = FloorPlan.generate(rng, index, layouts)
 	_reveal_if_glasses()
+	# What the trinkets bring each floor: a bomb, a key.
+	for brother in brothers:
+		if index > 0 and brother.stats.has("matches"):
+			brother.bombs += 1
+		if index > 0 and brother.stats.has("pouch"):
+			brother.keys += 1
+		brother.inventory_changed.emit()
 	bosses.clear()
 	trapdoor = null
 	_fighting = false
@@ -527,6 +544,10 @@ func _open_shop(info: FloorPlan.RoomInfo) -> void:
 		info.stock.append(["heart", "", PRICES["heart"]])
 		info.stock.append(["bomb", "", PRICES["bomb"]])
 		info.stock.append(["key", "", PRICES["key"]])
+		if rng.randf() < 0.5:
+			var trinket := draw_trinket()
+			if trinket != "":
+				info.stock.append(["trinket", trinket, PRICES["trinket"]])
 		# Stocked once: what is bought is gone for good.
 		info.looted = true
 	var keeper_row := 5 if room.doors.has("top") else 1
@@ -535,7 +556,7 @@ func _open_shop(info: FloorPlan.RoomInfo) -> void:
 	keeper.global_position = room.tile_center(Vector2i(6, keeper_row)) + Vector2(0, 44)
 	for col: int in [5, 6, 7]:
 		room.block_tile(Vector2i(col, keeper_row))
-	var cols := [3, 5, 7, 9]
+	var cols := [3, 5, 7, 9] if info.stock.size() <= 4 else [2, 4, 6, 8, 10]
 	for i in info.stock.size():
 		var ware: Array = info.stock[i]
 		var pickup := _drop(ware[0], room.tile_center(Vector2i(cols[i], 3)), ware[1])
@@ -566,11 +587,14 @@ func _stock_secret(info: FloorPlan.RoomInfo) -> void:
 		if item != "":
 			_drop("item", middle, item)
 			return
-	if roll < 0.6:
+	if roll < 0.55:
 		_drop("bomb", middle + Vector2(-40, 0))
 		_drop("key", middle + Vector2(40, 0))
-	elif roll < 0.8:
+	elif roll < 0.7:
 		_drop("gold_chest", middle)
+	elif roll < 0.85:
+		var found := draw_trinket()
+		_drop("trinket" if found != "" else "heart", middle, found)
 	else:
 		_drop("heart", middle)
 
@@ -685,7 +709,10 @@ func _physics_process(delta: float) -> void:
 			Sfx.play("clear", -6.0, 0.0)
 			_reward()
 		for brother in brothers:
-			brother.add_charge()
+			# The whistle: every so often a room counts double.
+			brother.add_charge(2 if brother.stats.has("whistle") and rng.randf() < 0.5 else 1)
+			if brother.stats.has("pennies") and not brother.dead:
+				_drop("coin", brother.global_position + Vector2(40, 20))
 		room_cleared.emit(info)
 	_revive_knocked(delta)
 	for brother in brothers:
@@ -748,6 +775,11 @@ func _reward() -> void:
 		# Now and then a chest, gold one time in three.
 		_drop("gold_chest" if rng.randf() < 0.33 else "chest", at)
 		return
+	if rng.randf() < 0.03:
+		var found := draw_trinket()
+		if found != "":
+			_drop("trinket", at, found)
+			return
 	var roll := rng.randf()
 	if roll < 0.45:
 		for i in rng.randi_range(1, 3):
@@ -758,6 +790,16 @@ func _reward() -> void:
 		_drop("bomb", at)
 	else:
 		_drop("key", at)
+
+
+## A trinket not yet seen this run, or "" when they are all out.
+func draw_trinket() -> String:
+	if trinkets.is_empty():
+		return ""
+	var i := rng.randi() % trinkets.size()
+	var id := trinkets[i]
+	trinkets.remove_at(i)
+	return id
 
 
 ## Something on the floor at [param at], from anywhere: a hat's tricks.

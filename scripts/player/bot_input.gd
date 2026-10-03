@@ -176,6 +176,8 @@ func _next_stop(room: Room, brother: Brother) -> Vector2:
 				useful = false
 			if pickup.hearts_price > 0 or pickup.caged:
 				useful = false
+			if pickup.kind == "trinket" and brother.trinket != "":
+				useful = false
 			if useful:
 				return _walk_to(room, brother, room.tile_at(pickup.global_position), pickup.global_position)
 	var run := room.run

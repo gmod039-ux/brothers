@@ -64,6 +64,27 @@ func apply(item: Dictionary) -> void:
 	damage = maxf(damage, 0.5)
 
 
+## Takes back what [method apply] gave for [param item]: its "add" numbers
+## and its flags (a trinket swapped for another). Items with "mult" numbers
+## are never taken back, so those are left alone.
+func unapply(item: Dictionary) -> void:
+	var add: Dictionary = item.get("add", {})
+	hearts -= int(add.get("hearts", 0))
+	speed -= float(add.get("speed", 0.0))
+	damage -= float(add.get("damage", 0.0))
+	tears -= float(add.get("tears", 0.0))
+	range_tiles -= float(add.get("range", 0.0))
+	shot_speed -= float(add.get("shot_speed", 0.0))
+	luck -= float(add.get("luck", 0.0))
+	for flag: String in item.get("flags", []):
+		flags.erase(flag)
+	speed = clampf(speed, 0.5, 2.0)
+	tears = maxf(tears, 0.5)
+	range_tiles = maxf(range_tiles, 2.0)
+	shot_speed = maxf(shot_speed, 0.5)
+	damage = maxf(damage, 0.5)
+
+
 func has(flag: String) -> bool:
 	return flags.has(flag)
 

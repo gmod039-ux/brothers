@@ -329,6 +329,91 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 			Toon.spot(ci, at + Vector2(-2, -4) * k, Vector2(15, 15) * k, Color(0.8, 0.9, 1.0, 0.35))
 			Toon.spot(ci, at + Vector2(-8, -10) * k, Vector2(4, 3) * k, Color(1, 1, 1, 0.8))
 			Toon.stroke(ci, Toon.bent(at + Vector2(12, 8) * k, at + Vector2(20, 30) * k, -6.0 * k), 2.0 * k, GOLD)
+		"rabbit_foot":
+			# A white rabbit's foot on a gold cap and ring.
+			Toon.stroke(ci, _ring(at + Vector2(0, -26) * k, 6.0 * k), 2.5 * k, GOLD)
+			Toon.box(ci, at + Vector2(0, -16) * k, Vector2(9, 6) * k, GOLD, boil, 120, 3.0)
+			Toon.blob(ci, at + Vector2(0, 6) * k, Vector2(14, 20) * k, Color("efe8de"), boil, 121, 4.0)
+			for j in 3:
+				Toon.blob(ci, at + Vector2(-8 + j * 8, 24) * k, Vector2(5, 5) * k, Color("efe8de"), boil, 122 + j, 3.0)
+			Toon.spot(ci, at + Vector2(-5, 0) * k, Vector2(3, 7) * k, Color(1, 1, 1, 0.6))
+		"lucky_button":
+			Toon.ball(ci, at, Vector2(24, 24) * k, RED, boil, 125)
+			Toon.blob(ci, at, Vector2(17, 17) * k, RED.darkened(0.12), boil, 126, 2.0)
+			for j in 4:
+				var hole := at + Vector2(-5 + (j % 2) * 10, -5 + (j / 2) * 10) * k
+				Toon.spot(ci, hole, Vector2(2.6, 2.6) * k, Toon.INK)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-5, -5) * k, at + Vector2(5, 5) * k]), 1.6 * k, CREAM)
+		"thimble":
+			var cup := PackedVector2Array([at + Vector2(-16, 20) * k, at + Vector2(-13, -12) * k, at + Vector2(-6, -22) * k,
+					at + Vector2(6, -22) * k, at + Vector2(13, -12) * k, at + Vector2(16, 20) * k])
+			Toon.shape(ci, cup, SILVER, 3.5)
+			for r in 4:
+				for j in 4:
+					Toon.spot(ci, at + Vector2(-9 + j * 6, -12 + r * 7) * k, Vector2(1.6, 1.4) * k, Color(0, 0, 0, 0.35))
+			Toon.box(ci, at + Vector2(0, 20) * k, Vector2(17, 3) * k, SILVER.darkened(0.15), boil, 127, 2.5)
+			Toon.spot(ci, at + Vector2(-8, -6) * k, Vector2(2.5, 9) * k, Color(1, 1, 1, 0.6))
+		"rusty_nail":
+			var rust := Color("b0603a")
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-14, -20) * k, at + Vector2(4, 4) * k, at + Vector2(16, 24) * k]),
+					8.0 * k)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-14, -20) * k, at + Vector2(4, 4) * k, at + Vector2(16, 24) * k]),
+					4.0 * k, rust)
+			Toon.box(ci, at + Vector2(-15, -22) * k, Vector2(9, 3) * k, rust.darkened(0.2), boil, 128, 3.0, 0.9)
+			for j in 3:
+				Toon.spot(ci, at + Vector2(-8 + j * 8, -10 + j * 12) * k, Vector2(2.4, 1.8) * k, Color("6a3218"))
+		"compass":
+			Toon.ball(ci, at, Vector2(24, 24) * k, GOLD, boil, 129)
+			Toon.blob(ci, at, Vector2(18, 18) * k, CREAM, boil, 130, 2.5)
+			ci.draw_string(Ui.font(), at + Vector2(-6, -9) * k, "С", HORIZONTAL_ALIGNMENT_LEFT, -1, int(11 * k), Toon.INK)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(-3, 0) * k, at + Vector2(0, -14) * k, at + Vector2(3, 0) * k]), RED, 1.5)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(-3, 0) * k, at + Vector2(0, 14) * k, at + Vector2(3, 0) * k]),
+					SILVER, 1.5)
+			Toon.blob(ci, at + Vector2(0, -26) * k, Vector2(5, 4) * k, GOLD, boil, 131, 2.5)
+		"matchbox":
+			Toon.box(ci, at + Vector2(0, 6) * k, Vector2(24, 15) * k, Color("3f6fb5"), boil, 132, 3.5)
+			Toon.box(ci, at + Vector2(0, 6) * k, Vector2(14, 9) * k, CREAM, boil, 133, 0.0)
+			Toon.star(ci, at + Vector2(0, 6) * k, 6.0 * k, 0.0, RED)
+			ci.draw_rect(Rect2(at + Vector2(-24, 18) * k, Vector2(48, 4) * k), Color("6a3a24"))
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(10, -8) * k, at + Vector2(22, -26) * k]), 3.5 * k, Color("e3c47a"))
+			Toon.blob(ci, at + Vector2(23, -28) * k, Vector2(4, 5) * k, RED, boil, 134, 2.0)
+		"tuning_fork":
+			for sx: float in [-1.0, 1.0]:
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(sx * 7, -26) * k, at + Vector2(sx * 7, 0) * k]), 7.0 * k)
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(sx * 7, -26) * k, at + Vector2(sx * 7, 0) * k]), 3.5 * k, SILVER)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-7, 0) * k, at + Vector2(7, 0) * k, -6.0 * k), 7.0 * k)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-7, 0) * k, at + Vector2(7, 0) * k, -6.0 * k), 3.5 * k, SILVER)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 4) * k, at + Vector2(0, 26) * k]), 7.0 * k)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 4) * k, at + Vector2(0, 26) * k]), 3.5 * k, SILVER)
+			for sx: float in [-1.0, 1.0]:
+				ci.draw_arc(at + Vector2(0, -14) * k, 18.0 * k, PI * (0.5 - sx * 0.5) - 0.4, PI * (0.5 - sx * 0.5) + 0.4, 6,
+						Toon.INK, 2.0 * k)
+		"whistle":
+			Toon.ball(ci, at + Vector2(4, 4) * k, Vector2(16, 14) * k, GOLD, boil, 135)
+			Toon.box(ci, at + Vector2(-14, -2) * k, Vector2(12, 6) * k, GOLD, boil, 136, 3.0)
+			Toon.spot(ci, at + Vector2(8, 0) * k, Vector2(4, 3) * k, Toon.INK)
+			Toon.stroke(ci, _ring(at + Vector2(16, -12) * k, 6.0 * k), 2.5 * k, SILVER)
+			Toon.stroke(ci, Toon.bent(at + Vector2(16, -18) * k, at + Vector2(-4, -28) * k, 4.0 * k), 2.0 * k, RED)
+		"pouch":
+			Toon.ball(ci, at + Vector2(0, 6) * k, Vector2(20, 18) * k, Color("9a6a40"), boil, 137)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(-10, -10) * k, at + Vector2(10, -10) * k, at + Vector2(14, -22) * k,
+					at + Vector2(-14, -22) * k]), Color("9a6a40"), 3.0)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-11, -10) * k, at + Vector2(11, -10) * k, 3.0 * k), 3.0 * k, RED)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(6, -10) * k, at + Vector2(14, 0) * k]), 2.5 * k, RED)
+			Toon.spot(ci, at + Vector2(-7, 2) * k, Vector2(4, 6) * k, Color(1, 1, 1, 0.3))
+		"feather":
+			var vane := PackedVector2Array()
+			for j in 9:
+				var u := j / 8.0
+				vane.append(at + Vector2(-16 + 30 * u, 22 - 46 * u) * k + Vector2(-sin(u * PI) * 10.0, -sin(u * PI) * 6.0) * k)
+			for j in 9:
+				var u := 1.0 - j / 8.0
+				vane.append(at + Vector2(-16 + 30 * u, 22 - 46 * u) * k + Vector2(sin(u * PI) * 8.0, sin(u * PI) * 8.0) * k)
+			Toon.shape(ci, vane, CREAM, 3.0)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-20, 28) * k, at + Vector2(14, -24) * k]), 2.5 * k)
+			for j in 4:
+				var p := (at + Vector2(-12, 16) * k).lerp(at + Vector2(10, -16) * k, j / 3.0)
+				Toon.stroke(ci, PackedVector2Array([p, p + Vector2(-8, -2) * k]), 1.4 * k, Color(Toon.INK, 0.4))
 		"chest", "gold_chest":
 			var gold := id == "gold_chest"
 			var wood := Color("c9a03a") if gold else Color("8a5a36")

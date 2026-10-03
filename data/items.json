@@ -196,5 +196,65 @@
 		"name": "Цилиндр фокусника",
 		"text": "алле-оп! мелочь из шляпы",
 		"active": 3
+	},
+	"rabbit_foot": {
+		"name": "Кроличья лапка",
+		"text": "везёт чуть больше",
+		"trinket": true,
+		"add": {"luck": 1.0}
+	},
+	"lucky_button": {
+		"name": "Счастливая пуговица",
+		"text": "монетка за каждую комнату",
+		"trinket": true,
+		"flags": ["pennies"]
+	},
+	"thimble": {
+		"name": "Напёрсток",
+		"text": "иногда удар мимо",
+		"trinket": true,
+		"flags": ["thimble"]
+	},
+	"rusty_nail": {
+		"name": "Ржавый гвоздь",
+		"text": "урон чуть выше",
+		"trinket": true,
+		"add": {"damage": 0.4}
+	},
+	"compass": {
+		"name": "Компас",
+		"text": "видно особые комнаты и тайник",
+		"trinket": true,
+		"flags": ["compass"]
+	},
+	"matchbox": {
+		"name": "Спичечный коробок",
+		"text": "бомба на каждом этаже",
+		"trinket": true,
+		"flags": ["matches"]
+	},
+	"tuning_fork": {
+		"name": "Камертон",
+		"text": "стреляешь чуть чаще",
+		"trinket": true,
+		"add": {"tears": 0.3}
+	},
+	"whistle": {
+		"name": "Свисток",
+		"text": "предмет в руках заряжается быстрее",
+		"trinket": true,
+		"flags": ["whistle"]
+	},
+	"pouch": {
+		"name": "Мешочек",
+		"text": "ключ на каждом этаже",
+		"trinket": true,
+		"flags": ["pouch"]
+	},
+	"feather": {
+		"name": "Перо",
+		"text": "легче на ногу",
+		"trinket": true,
+		"add": {"speed": 0.15, "shot_speed": 0.1}
 	}
 }

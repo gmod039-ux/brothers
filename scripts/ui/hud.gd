@@ -178,6 +178,16 @@ func _draw_pockets(top: float) -> void:
 	var y := top + 22.0
 	var brother := brothers[0]
 	var counts := [["coin", brother.coins], ["bomb", brother.bombs], ["key", brother.keys]]
+	# Each brother's trinket under them, on a gold-rimmed medallion.
+	var trinket_x := 78.0
+	for one in brothers:
+		if one.trinket == "":
+			continue
+		var at := Vector2(trinket_x, y + 3 * 50.0 + 4.0)
+		Toon.blob(self, at, Vector2(23, 23), Color("e0b23a"), 0, 70 + one.player, 4.0)
+		Toon.blob(self, at, Vector2(18, 18), Color(CREAM, 0.95), 0, 72 + one.player, 0.0)
+		ItemIcon.draw(self, one.trinket, at, 32.0, 0)
+		trinket_x += 56.0
 	for i in counts.size():
 		var at := Vector2(78, y + i * 50.0)
 		# Each on a little cream medallion, so a black bomb reads on a dark
@@ -198,6 +208,9 @@ func _draw_map() -> void:
 			cells.append(cell)
 	if cells.is_empty():
 		return
+	var hint := plan.secret_hinted and plan.is_hidden_secret(plan.secret)
+	if hint:
+		cells.append(plan.secret)
 	# The rooms round the one the brothers are in, as many as fit.
 	var step := MAP_CELL + Vector2(MAP_GAP, MAP_GAP)
 	var span := Vector2i(int(MAP_MOST.x / step.x), int(MAP_MOST.y / step.y))
@@ -238,6 +251,18 @@ func _draw_map() -> void:
 				var bar := Vector2(MAP_GAP + 4, 8) if side == "right" else Vector2(10, MAP_GAP + 4)
 				draw_rect(Rect2(mid - bar * 0.5, bar), Color(CREAM, 0.6))
 	for cell in shown:
+		if hint and cell == plan.secret:
+			# Where the compass points: a dashed outline and a question mark.
+			var spot := origin + Vector2(cell - low) * step
+			var dash := Rect2(spot - MAP_CELL * 0.5, MAP_CELL)
+			for k in 6:
+				var u := k / 6.0
+				draw_line(dash.position + Vector2(dash.size.x * u, 0), dash.position + Vector2(dash.size.x * (u + 0.09), 0),
+						Color(CREAM, 0.7), 2.0)
+				draw_line(Vector2(dash.position.x + dash.size.x * u, dash.end.y),
+						Vector2(dash.position.x + dash.size.x * (u + 0.09), dash.end.y), Color(CREAM, 0.7), 2.0)
+			draw_string(Ui.font(), spot + Vector2(-10, 8), "?", HORIZONTAL_ALIGNMENT_CENTER, 20, 20, Color(CREAM, 0.8))
+			continue
 		var info := plan.info(cell)
 		var at := origin + Vector2(cell - low) * step
 		var rect := Rect2(at - MAP_CELL * 0.5, MAP_CELL)

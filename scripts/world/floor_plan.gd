@@ -73,6 +73,8 @@ var miniboss := Vector2i(-1, -1)
 ## while it is hidden.
 var secret := Vector2i(-1, -1)
 var secret_info: RoomInfo
+## The compass points at the hidden secret room: the map shows where.
+var secret_hinted := false
 
 
 ## Grows floor [param floor_index] (0 is the first): more rooms deeper down.
@@ -203,6 +205,16 @@ func reveal_all() -> void:
 	for cell: Vector2i in rooms:
 		var room_info: RoomInfo = rooms[cell]
 		room_info.seen = true
+
+
+## The special rooms on the map, and where the secret room is (shown with
+## a question mark while still hidden): the compass.
+func reveal_special() -> void:
+	for cell: Vector2i in rooms:
+		var room_info: RoomInfo = rooms[cell]
+		if not room_info.kind in ["normal", "start"]:
+			room_info.seen = true
+	secret_hinted = secret_info != null
 
 
 ## The wall is down: the secret room joins the floor.

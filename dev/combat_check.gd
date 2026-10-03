@@ -54,6 +54,7 @@ func _run() -> void:
 	await _new_items()
 	await _special_rooms()
 	await _minibosses()
+	await _trinkets()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -880,6 +881,76 @@ func _minibosses() -> void:
 			if node is Pickup and (node as Pickup).kind == "gold_chest":
 				chest = true
 		_expect(chest, "it leaves a gold chest")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
+
+
+## A trinket goes in its own pocket, one at a time: a new one leaves the old
+## on the floor and takes what it did with it.
+func _trinkets() -> void:
+	await _fresh_room(EMPTY)
+	var pocket := _brother(Vector2i(3, 3))
+	var damage := pocket.stats.damage
+	var found := Pickup.new()
+	found.kind = "trinket"
+	found.item = "rusty_nail"
+	found.room = room
+	room.actors.add_child(found)
+	found.global_position = room.tile_center(Vector2i(6, 3))
+	await _steps(30)
+	pocket.global_position = found.global_position
+	await _steps(3)
+	_expect(pocket.trinket == "rusty_nail" and not pocket.items.has("rusty_nail"), "a trinket goes in its own pocket")
+	_expect(is_equal_approx(pocket.stats.damage, damage + 0.4), "the rusty nail adds its damage")
+	pocket.take_trinket("feather")
+	_expect(pocket.trinket == "feather" and is_equal_approx(pocket.stats.damage, damage),
+			"a new one takes the old one's damage away")
+	var left := false
+	for node in room.actors.get_children():
+		if node is Pickup and (node as Pickup).kind == "trinket" and (node as Pickup).item == "rusty_nail":
+			left = true
+	_expect(left, "and the old one is left on the floor")
+	pocket.take_item("thimble")
+	_expect(pocket.trinket == "thimble" and not pocket.items.has("thimble"), "given as an item, a trinket still goes in the pocket")
+	# The thimble turns aside about one hit in seven.
+	seed(42)
+	pocket.god = true
+	var turned := 0
+	for i in 400:
+		pocket._invulnerable = 0.0
+		if not pocket.hurt(1, pocket.global_position + Vector2.RIGHT):
+			turned += 1
+	_expect(turned > 400 * 0.08 and turned < 400 * 0.24, "the thimble turns aside some hits (%d of 400)" % turned)
+	# The matchbox and the pouch: a bomb and a key on every floor below.
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	_expect(not run.pool.has("feather") and run.trinkets.has("feather"), "trinkets are dealt apart from items")
+	brother.take_trinket("matchbox")
+	var bombs := brother.bombs
+	run.start_floor(1)
+	await _steps(2)
+	_expect(brother.bombs == bombs + 1, "the matchbox brings a bomb each floor")
+	brother.take_trinket("pouch")
+	var keys := brother.keys
+	run.start_floor(2)
+	await _steps(2)
+	_expect(brother.keys == keys + 1, "the pouch brings a key each floor")
+	brother.take_trinket("compass")
+	_expect(run.plan.info(run.plan.boss).seen and (run.plan.secret_info == null or run.plan.secret_hinted),
+			"the compass shows the special rooms and points to the secret")
 	run.queue_free()
 	camera.queue_free()
 	await process_frame

@@ -24,6 +24,8 @@ const ACCEL := 4200.0
 ## Slower than the acceleration: letting go of a key slides a little.
 const FRICTION := 2600.0
 const INVULNERABLE := 1.0
+## The share of hits the thimble turns aside.
+const THIMBLE_CHANCE := 0.15
 const KNOCKBACK := 560.0
 ## Height above the floor shots leave from: the hands, roughly.
 const SHOT_HEIGHT := 46.0
@@ -75,6 +77,8 @@ var killed_by := ""
 ## rooms of charge it has.
 var active := ""
 var charge := 0
+## The trinket in his pocket, "" for none: one at a time.
+var trinket := ""
 ## Seconds left of the fizz of a soda: quicker feet and hands.
 var boost := 0.0
 
@@ -201,6 +205,9 @@ func place_bomb() -> Bomb:
 ## goes there, charged, and the one he had before is left on the floor.
 func take_item(id: String) -> void:
 	var item: Dictionary = GameData.items().get(id, {})
+	if item.get("trinket", false):
+		take_trinket(id)
+		return
 	if item.has("active"):
 		var old := active
 		active = id
@@ -249,6 +256,28 @@ func is_charged() -> bool:
 	return active != "" and charge >= max_charge()
 
 
+## Puts trinket [param id] in his pocket; the one he had is left on the
+## floor, and what it did goes with it.
+func take_trinket(id: String) -> void:
+	var items_data := GameData.items()
+	if trinket != "":
+		stats.unapply(items_data.get(trinket, {}))
+		if room != null:
+			var left := Pickup.new()
+			left.kind = "trinket"
+			left.item = trinket
+			left.room = room
+			left.wait_clear = true
+			room.actors.add_child(left)
+			left.global_position = global_position + Vector2(0, -10)
+	trinket = id
+	stats.apply(items_data.get(id, {}))
+	hp = mini(hp, stats.max_hp())
+	health_changed.emit(hp, stats.max_hp())
+	inventory_changed.emit()
+	item_taken.emit(id)
+
+
 ## One more beaten room towards the item in his hands.
 func add_charge(rooms := 1) -> void:
 	if active == "" or charge >= max_charge():
@@ -288,6 +317,13 @@ func _touch_enemies() -> void:
 ## one.
 func hurt(amount: int, from: Vector2, source := "") -> bool:
 	if dead or _invulnerable > 0.0:
+		return false
+	if stats.has("thimble") and randf() < THIMBLE_CHANCE:
+		# The thimble takes it: a clink, a moment's grace, nothing lost.
+		_invulnerable = INVULNERABLE * 0.5
+		Sfx.play("hit", -6.0, 0.4)
+		if room != null:
+			Fx.burst(room, global_position + Vector2(0, -90), "sparks", 5, 0.6)
 		return false
 	_invulnerable = INVULNERABLE
 	_knock = (global_position - from).normalized() * KNOCKBACK

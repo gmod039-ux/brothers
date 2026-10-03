@@ -19,8 +19,8 @@ signal refused(why: String)
 const REACH := 48.0
 const RED := Color("d8412f")
 
-## "half_heart", "heart", "coin", "bomb", "key", "item", "chest" or
-## "gold_chest".
+## "half_heart", "heart", "coin", "bomb", "key", "item", "trinket",
+## "chest" or "gold_chest".
 var kind := "heart"
 ## For an item: its id in data/items.json.
 var item := ""
@@ -72,7 +72,7 @@ func _physics_process(delta: float) -> void:
 		if _use(brother):
 			gone = true
 			var sound: String = {"coin": "coin", "half_heart": "heart", "heart": "heart", "item": "item",
-					"chest": "door", "gold_chest": "door"}.get(kind, "pickup")
+					"trinket": "item", "chest": "door", "gold_chest": "door"}.get(kind, "pickup")
 			Sfx.play(sound, -4.0, 0.03)
 			if price > 0:
 				# The till.
@@ -116,6 +116,8 @@ func _use(brother: Brother) -> bool:
 			brother.keys += 1
 		"item":
 			brother.take_item(item)
+		"trinket":
+			brother.take_trinket(item)
 		"chest", "gold_chest":
 			if kind == "gold_chest":
 				if brother.keys <= 0:
@@ -136,6 +138,10 @@ func _spill() -> void:
 		var prize := room.run.draw_item()
 		if prize != "":
 			spill.append(["item", prize])
+	if gold and room.run != null and dice.randf() < 0.3:
+		var trinket := room.run.draw_trinket()
+		if trinket != "":
+			spill.append(["trinket", trinket])
 	var odds := ["coin", "coin", "coin", "coin", "bomb", "key", "half_heart", "heart"]
 	for i in dice.randi_range(3, 5) if gold else dice.randi_range(2, 3):
 		spill.append([odds[dice.randi() % odds.size()], ""])
@@ -152,7 +158,7 @@ func _spill() -> void:
 		out.room = room
 		room.actors.add_child(out)
 		out.global_position = at
-		out.wait_clear = thing[0] == "item"
+		out.wait_clear = thing[0] in ["item", "trinket"]
 
 
 func _process(delta: float) -> void:
@@ -222,6 +228,14 @@ func _draw() -> void:
 			"chest", "gold_chest":
 				var shake := Vector2(sin(_nope * 60.0) * 6.0 * _nope / 0.4, 0)
 				ItemIcon.draw(self, kind, Vector2(0, -26 - up * 0.3) + shake, 70.0, drawing)
+			"trinket":
+				# On a little lace doily, a gold ring of light round it.
+				Toon.blob(self, Vector2(0, 2), Vector2(30, 10), Color("f4ead2"), drawing, 3, 2.5)
+				for k in 8:
+					var a := TAU * k / 8.0
+					Toon.spot(self, Vector2(cos(a) * 30.0, 2.0 + sin(a) * 10.0), Vector2(4, 2), Color("f4ead2"))
+				Toon.glow(self, Vector2(0, -26 - up), Vector2(40, 36), Color(1, 0.88, 0.45, 0.3), 2)
+				ItemIcon.draw(self, item, Vector2(0, -26 - up), 50.0, drawing)
 			_:
 				ItemIcon.draw(self, kind, Vector2(0, -22 - up), 46.0, drawing)
 		# Now and then a glint runs over it.
