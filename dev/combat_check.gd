@@ -51,6 +51,7 @@ func _run() -> void:
 	await _secret_room()
 	await _deep_enemies()
 	await _obstacles()
+	await _new_items()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -600,6 +601,121 @@ func _obstacles() -> void:
 	bomb.global_position = room.tile_center(Vector2i(5, 3))
 	await _steps(30)
 	_expect(boom.has(Vector2i(6, 3)), "a bomb sets a keg off")
+
+
+## The second lot of items, and chests.
+func _new_items() -> void:
+	# The rubber ball: a shot off the wall comes back.
+	await _fresh_room(EMPTY)
+	var bouncer := _brother(Vector2i(10, 3))
+	bouncer.take_item("rubber_ball")
+	var back := await _fire(bouncer, Vector2.RIGHT)
+	var bounced := [false]
+	await _until(func() -> bool:
+		if is_instance_valid(back) and back.velocity.x < 0.0:
+			bounced[0] = true
+		return bounced[0] or not is_instance_valid(back), 120)
+	_expect(bounced[0], "with the rubber ball a shot bounces off the wall")
+	# Scissors: a hit splits a shot in two.
+	await _fresh_room(EMPTY)
+	var cutter := _brother(Vector2i(2, 3))
+	cutter.take_item("scissors")
+	_enemy("walker", Vector2i(5, 3)).hp = 999.0
+	var whole := await _fire(cutter, Vector2.RIGHT)
+	await _finish(whole, 120)
+	var halves := 0
+	for node in room.actors.get_children():
+		if node is Shot and not (node as Shot).hostile:
+			halves += 1
+	_expect(halves == 2, "with the scissors a hit splits the shot in two (%d)" % halves)
+	# The ice lolly freezes, the firecracker goes bang -- sure things here.
+	await _fresh_room(EMPTY)
+	var icy := _brother(Vector2i(2, 3))
+	icy.take_item("icecream")
+	icy.take_item("firecracker")
+	var target := _enemy("walker", Vector2i(6, 3))
+	target.hp = 999.0
+	var cold := await _fire(icy, Vector2.RIGHT)
+	cold.chance = 1.0
+	await _finish(cold, 120)
+	await _steps(2)
+	_expect(target.is_dazed(), "the ice lolly freezes what it hits")
+	_expect(target.hp < 999.0 - icy.stats.damage * 1.5, "the firecracker's bang hurts on top of the hit")
+	# The chick shoots every other time.
+	await _fresh_room(EMPTY)
+	var mother := _brother(Vector2i(2, 3))
+	mother.take_item("chick")
+	var before := room.actors.get_children().size()
+	await _fire(mother, Vector2.RIGHT)
+	await _steps(int(mother.stats.fire_interval() * 60) + 2)
+	await _fire(mother, Vector2.RIGHT)
+	var shots := 0
+	for node in room.actors.get_children():
+		if node is Shot:
+			shots += 1
+	_expect(shots == 3, "the chick fires one of its own every other shot (%d shots)" % shots)
+	_expect(room.actors.get_children().size() > before, "and is in the room")
+	# Galoshes on spikes, a helmet in a blast, an umbrella under coal.
+	await _fresh_room([".............", ".............", ".............", "....^........",
+			".............", ".............", "............."])
+	var dry := _brother(Vector2i(4, 3))
+	dry.god = false
+	dry.take_item("galoshes")
+	dry.take_item("helmet")
+	dry.take_item("umbrella")
+	var full := dry.hp
+	await _steps(5)
+	_expect(dry.hp == full, "galoshes walk the spikes")
+	dry.place_bomb()
+	await _steps(int(Bomb.FUSE * 60) + 5)
+	_expect(dry.hp == full, "a helmet takes the bomb")
+	var lump := Falling.new()
+	lump.room = room
+	room.effects.add_child(lump)
+	lump.global_position = dry.global_position
+	await _steps(int((Falling.WARN + 0.2) * 60))
+	_expect(dry.hp == full, "an umbrella takes the coal")
+	# What items give: coins, bombs, keys, a full heal.
+	var rich := _brother(Vector2i(8, 3))
+	var coins := rich.coins
+	rich.take_item("piggy")
+	rich.take_item("bomb_bag")
+	rich.take_item("keyring")
+	_expect(rich.coins == coins + 15, "the piggy bank gives fifteen coins")
+	rich.hp = 1
+	rich.take_item("locket")
+	_expect(rich.hp == rich.stats.max_hp(), "the locket fills every heart")
+	# A wooden chest opens at a touch; a gold one wants a key.
+	await _fresh_room(EMPTY)
+	var opener := _brother(Vector2i(2, 3))
+	opener.keys = 0
+	var chest := Pickup.new()
+	chest.kind = "chest"
+	chest.room = room
+	room.actors.add_child(chest)
+	chest.global_position = room.tile_center(Vector2i(6, 3))
+	var gold := Pickup.new()
+	gold.kind = "gold_chest"
+	gold.room = room
+	room.actors.add_child(gold)
+	gold.global_position = room.tile_center(Vector2i(9, 3))
+	await _steps(30)
+	opener.global_position = chest.global_position
+	await _steps(4)
+	var spilled := 0
+	for node in room.actors.get_children():
+		if node is Pickup and not (node as Pickup).gone and node != gold:
+			spilled += 1
+	_expect(not is_instance_valid(chest) and spilled >= 2, "a chest opens and spills its lot (%d)" % spilled)
+	opener.global_position = gold.global_position
+	await _steps(4)
+	_expect(is_instance_valid(gold) and not gold.gone, "a gold chest stays shut without a key")
+	opener.keys = 1
+	opener.global_position += Vector2(200, 0)
+	await _steps(2)
+	opener.global_position = gold.global_position
+	await _steps(4)
+	_expect(not is_instance_valid(gold) and opener.keys == 0, "a key opens it")
 
 
 func _fresh_room(layout: Array) -> void:

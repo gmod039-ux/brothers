@@ -5,16 +5,22 @@ extends Node2D
 ## bobbing, and goes when a brother who can use it walks over it. A full
 ## brother leaves hearts where they are, as in Isaac. In a shop it has a
 ## price and waits for someone with the coins.
+##
+## Or a chest: a wooden one flies open at a touch, a gold one wants a key;
+## out of either come coins, bombs, keys and hearts -- and out of a gold
+## one, often, an item.
 
 signal taken(by: Brother)
 ## Someone stepped up to a ware and did not get it: [param why] is "coins"
-## (short of them) or "full" (a heart, and his hearts are full).
+## (short of them), "full" (a heart, and his hearts are full) or "key" (a
+## gold chest, and he has none).
 signal refused(why: String)
 
 const REACH := 48.0
 const RED := Color("d8412f")
 
-## "half_heart", "heart", "coin", "bomb", "key" or "item".
+## "half_heart", "heart", "coin", "bomb", "key", "item", "chest" or
+## "gold_chest".
 var kind := "heart"
 ## For an item: its id in data/items.json.
 var item := ""
@@ -52,11 +58,14 @@ func _physics_process(delta: float) -> void:
 			continue
 		if price > 0 and brother.coins < price:
 			short = "coins"
+		elif kind == "gold_chest" and brother.keys <= 0:
+			short = "key"
 		elif price > 0 and kind in ["heart", "half_heart"] and brother.hp >= brother.stats.max_hp():
 			short = "full"
 		if _use(brother):
 			gone = true
-			var sound: String = {"coin": "coin", "half_heart": "heart", "heart": "heart", "item": "item"}.get(kind, "pickup")
+			var sound: String = {"coin": "coin", "half_heart": "heart", "heart": "heart", "item": "item",
+					"chest": "door", "gold_chest": "door"}.get(kind, "pickup")
 			Sfx.play(sound, -4.0, 0.03)
 			if price > 0:
 				# The till.
@@ -93,9 +102,43 @@ func _use(brother: Brother) -> bool:
 			brother.keys += 1
 		"item":
 			brother.take_item(item)
+		"chest", "gold_chest":
+			if kind == "gold_chest":
+				if brother.keys <= 0:
+					return false
+				brother.keys -= 1
+			_spill()
 	brother.coins -= price
 	brother.inventory_changed.emit()
 	return true
+
+
+## What comes out of an opened chest, thrown out round it.
+func _spill() -> void:
+	var dice := room.run.rng if room.run != null else RandomNumberGenerator.new()
+	var gold := kind == "gold_chest"
+	var spill: Array = []
+	if room.run != null and dice.randf() < (0.45 if gold else 0.06):
+		var prize := room.run.draw_item()
+		if prize != "":
+			spill.append(["item", prize])
+	var odds := ["coin", "coin", "coin", "coin", "bomb", "key", "half_heart", "heart"]
+	for i in dice.randi_range(3, 5) if gold else dice.randi_range(2, 3):
+		spill.append([odds[dice.randi() % odds.size()], ""])
+	Fx.burst(room, global_position + Vector2(0, -30), "stars", 6, 0.8)
+	for i in spill.size():
+		var thing: Array = spill[i]
+		var a := TAU * i / spill.size() + dice.randf() * 0.5
+		var at := global_position + (Vector2(cos(a) * 80.0, sin(a) * 50.0) if thing[0] != "item" else Vector2(0, 30))
+		var floor_rect := room.floor_rect().grow(-40.0)
+		at = at.clamp(floor_rect.position, floor_rect.end)
+		var out := Pickup.new()
+		out.kind = thing[0]
+		out.item = thing[1]
+		out.room = room
+		room.actors.add_child(out)
+		out.global_position = at
+		out.wait_clear = thing[0] == "item"
 
 
 func _process(delta: float) -> void:
@@ -148,6 +191,9 @@ func _draw() -> void:
 		match kind:
 			"half_heart", "heart":
 				Toon.heart(self, Vector2(0, -22 - up), size, 1 if kind == "half_heart" else 2, RED, Color("4a2c22"))
+			"chest", "gold_chest":
+				var shake := Vector2(sin(_nope * 60.0) * 6.0 * _nope / 0.4, 0)
+				ItemIcon.draw(self, kind, Vector2(0, -26 - up * 0.3) + shake, 70.0, drawing)
 			_:
 				ItemIcon.draw(self, kind, Vector2(0, -22 - up), 46.0, drawing)
 		# Now and then a glint runs over it.

@@ -5,7 +5,7 @@ extends Node2D
 ##
 ##     godot --path . -- items shot dev/out/items.png 40
 
-const COLS := 6
+const COLS := 8
 
 
 func _ready() -> void:
@@ -33,26 +33,26 @@ func _ready() -> void:
 	for i in ids.size():
 		var id: String = ids[i]
 		var item: Dictionary = GameData.items()[id]
-		var at := Vector2(180 + (i % COLS) * 312.0, 190 + (i / COLS) * 230.0)
+		var at := Vector2(130 + (i % COLS) * 237.0, 150 + (i / COLS) * 192.0)
 		var icon := Node2D.new()
 		icon.position = at
 		icon.draw.connect(func() -> void:
-			Toon.blob(icon, Vector2.ZERO, Vector2(52, 52), Color(1, 1, 1, 0.35), 0, i, 3.0)
-			ItemIcon.draw(icon, id, Vector2.ZERO, 80.0, 0))
+			Toon.blob(icon, Vector2.ZERO, Vector2(44, 44), Color(1, 1, 1, 0.35), 0, i, 3.0)
+			ItemIcon.draw(icon, id, Vector2.ZERO, 66.0, 0))
 		add_child(icon)
-		var lines := [[str(item.get("name", id)), 26, Color("3a2418")], [str(item.get("text", "")), 19,
+		var lines := [[str(item.get("name", id)), 22, Color("3a2418")], [str(item.get("text", "")), 16,
 				Color("6a4a30")]]
 		if item.has("active"):
-			lines.append(["Пробел · заряд %d комнаты" % int(item["active"]), 19, Color("9a2f24")])
+			lines.append(["Пробел · заряд %d" % int(item["active"]), 16, Color("9a2f24")])
 		for k in lines.size():
 			var line: Array = lines[k]
 			var size: int = line[1]
 			# Shrunk to fit its column.
 			var wide := Ui.font().get_string_size(str(line[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			if wide > 296.0:
-				size = int(size * 296.0 / wide)
+			if wide > 226.0:
+				size = int(size * 226.0 / wide)
 			var style := Ui.text(size, line[2])
 			style.outline_size = 0
-			var label := Ui.label(str(line[0]), style, 300)
-			label.position = at + Vector2(-150, 58 + k * 30 + (8 if k > 0 else 0))
+			var label := Ui.label(str(line[0]), style, 230)
+			label.position = at + Vector2(-115, 44 + k * 24 + (4 if k > 0 else 0))
 			add_child(label)

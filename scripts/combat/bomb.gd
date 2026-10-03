@@ -62,7 +62,8 @@ func _explode() -> void:
 		if enemy != thrower and enemy.can_be_hit() and enemy.global_position.distance_to(at) < reach + enemy.radius * 0.5:
 			enemy.hurt(damage, (enemy.global_position - at).normalized(), 2.0)
 	for brother in room.brothers:
-		if not friendly and not brother.dead and brother.global_position.distance_to(at) < reach * 0.8:
+		if not friendly and not brother.dead and not brother.stats.has("helmet") \
+				and brother.global_position.distance_to(at) < reach * 0.8:
 			brother.hurt(2, at, source if source != "" else "своя же бомба")
 	for row in Room.ROWS:
 		for col in Room.COLS:

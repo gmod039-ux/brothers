@@ -172,6 +172,8 @@ func _next_stop(room: Room, brother: Brother) -> Vector2:
 			if pickup.kind == "item" and brother.active != "" \
 					and GameData.items().get(pickup.item, {}).has("active"):
 				useful = false
+			if pickup.kind == "gold_chest" and brother.keys <= 0:
+				useful = false
 			if useful:
 				return _walk_to(room, brother, room.tile_at(pickup.global_position), pickup.global_position)
 	var run := room.run

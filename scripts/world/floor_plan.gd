@@ -32,6 +32,8 @@ class RoomInfo:
 	## Steps from the start.
 	var depth := 0
 	var visited := false
+	## On the map without having been near it: the glasses show it.
+	var seen := false
 	var cleared := false
 	## The treasure room's prize has been picked up.
 	var looted := false
@@ -168,6 +170,14 @@ func is_hidden_secret(cell: Vector2i) -> bool:
 	return secret_info != null and cell == secret and not rooms.has(secret)
 
 
+## Every room on the map, as with the glasses on: all but a secret room
+## still hidden.
+func reveal_all() -> void:
+	for cell: Vector2i in rooms:
+		var room_info: RoomInfo = rooms[cell]
+		room_info.seen = true
+
+
 ## The wall is down: the secret room joins the floor.
 func reveal_secret() -> void:
 	if secret_info != null and not rooms.has(secret):
@@ -229,7 +239,7 @@ func known(cell: Vector2i) -> bool:
 	var here: RoomInfo = rooms.get(cell)
 	if here == null:
 		return false
-	if here.visited:
+	if here.visited or here.seen:
 		return true
 	for step: Vector2i in SIDES.values():
 		var next: RoomInfo = rooms.get(cell + step)

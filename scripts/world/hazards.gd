@@ -40,7 +40,7 @@ func _physics_process(_delta: float) -> void:
 	if spikes.is_empty() or room == null:
 		return
 	for brother in room.brothers:
-		if brother.dead:
+		if brother.dead or brother.stats.has("galoshes"):
 			continue
 		var feet := brother.global_position
 		var cell := room.tile_at(feet)

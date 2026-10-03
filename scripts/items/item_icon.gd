@@ -196,6 +196,155 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 			Toon.box(ci, at + Vector2(0, 12) * k, Vector2(17, 4) * k, RED, boil, 60, 2.5)
 			Toon.spot(ci, at + Vector2(-9, -2) * k, Vector2(3, 10) * k, Color(1, 1, 1, 0.3))
 			Toon.star(ci, at + Vector2(10, -24) * k, 9.0 * k, boil * 0.5, GOLD)
+		"rubber_ball":
+			# A red and blue ball, a bounce line under it.
+			Toon.ball(ci, at + Vector2(0, -6) * k, Vector2(20, 20) * k, RED, boil, 70)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-18, -10) * k, at + Vector2(16, -2) * k, -8.0 * k), 6.0 * k, Color("3f6fb5"))
+			Toon.spot(ci, at + Vector2(-7, -14) * k, Vector2(5, 3) * k, Color(1, 1, 1, 0.7))
+			for sx: float in [-1.0, 1.0]:
+				Toon.stroke(ci, Toon.bent(at + Vector2(sx * 10, 22) * k, at + Vector2(sx * 20, 28) * k, 2.0 * k), 3.0 * k)
+		"firecracker":
+			# A red tube with a gold band, a sparking fuse.
+			Toon.box(ci, at + Vector2(0, 4) * k, Vector2(9, 22) * k, RED, boil, 71, 3.5, 0.25)
+			draw_band(ci, at + Vector2(1, -6) * k, k)
+			draw_band(ci, at + Vector2(-2, 12) * k, k)
+			Toon.stroke(ci, Toon.bent(at + Vector2(5, -18) * k, at + Vector2(14, -30) * k, 5.0 * k), 2.5 * k, BROWN)
+			for i in 3:
+				Toon.star(ci, at + Vector2(15 + i * 3, -32 - i * 4) * k, (4.0 + (boil + i) % 3 * 2.0) * k, boil * 0.7 + i,
+						Color("fff1a8") if i % 2 == 0 else GOLD)
+		"icecream":
+			# An eskimo on a stick, a bite out of it, frost on it.
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 14) * k, at + Vector2(0, 30) * k]), 6.0 * k, Color("d9b878"))
+			Toon.box(ci, at + Vector2(0, -6) * k, Vector2(14, 22) * k, Color("6b3a24"), boil, 72, 3.5)
+			Toon.blob(ci, at + Vector2(12, -22) * k, Vector2(7, 7) * k, Color("7fb8d8"), boil, 73, 0.0)
+			Toon.box(ci, at + Vector2(0, -8) * k, Vector2(9, 16) * k, Color("efe6cf"), boil, 74, 0.0)
+			for i in 3:
+				Toon.star(ci, at + Vector2(-16 + i * 16, -30 + (i % 2) * 8) * k, 5.0 * k, i * 0.7, Color("cfe8f4"))
+		"scissors":
+			# Open blades, two finger loops.
+			for sx: float in [-1.0, 1.0]:
+				var tip := at + Vector2(sx * 14, -28) * k
+				Toon.shape(ci, PackedVector2Array([at + Vector2(0, 2) * k, tip, at + Vector2(sx * 6, 0) * k]), SILVER, 3.0)
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(0, 2) * k, at + Vector2(sx * 12, 16) * k]), 5.0 * k)
+				Toon.blob(ci, at + Vector2(sx * 14, 20) * k, Vector2(8, 8) * k, RED, boil, 75 + int(sx), 3.5)
+				Toon.blob(ci, at + Vector2(sx * 14, 20) * k, Vector2(3.5, 3.5) * k, CREAM, boil, 77 + int(sx), 0.0)
+			Toon.blob(ci, at + Vector2(0, 2) * k, Vector2(3, 3) * k, Toon.INK, boil, 79, 0.0)
+		"harmonica":
+			# A mouth organ: a silver cover, a row of holes, notes coming off.
+			Toon.box(ci, at + Vector2(-4, 6) * k, Vector2(24, 9) * k, SILVER, boil, 80, 3.5, -0.15)
+			Toon.box(ci, at + Vector2(-4, 6) * k, Vector2(22, 3) * k, Color("8a5a36"), boil, 81, 0.0, -0.15)
+			for i in 6:
+				Toon.spot(ci, at + Vector2(-20 + i * 7, 9 - i * 1.0) * k, Vector2(1.6, 1.4) * k, Toon.INK)
+			for i in 2:
+				var note := at + Vector2(10 + i * 12, -14 - i * 10) * k
+				Toon.blob(ci, note, Vector2(5, 4) * k, Toon.INK, boil, 82 + i, 0.0, -0.4)
+				Toon.stroke(ci, PackedVector2Array([note + Vector2(4, 0) * k, note + Vector2(4, -14) * k]), 2.0 * k)
+		"chick":
+			Toon.ball(ci, at + Vector2(-2, 8) * k, Vector2(18, 15) * k, Color("f2c84a"), boil, 84)
+			Toon.ball(ci, at + Vector2(8, -12) * k, Vector2(13, 12) * k, Color("f2c84a"), boil, 85)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(19, -13) * k, at + Vector2(29, -9) * k, at + Vector2(19, -6) * k]),
+					Color("e0782a"), 2.0)
+			Toon.spot(ci, at + Vector2(12, -15) * k, Vector2(2.5, 3.2) * k, Toon.INK)
+			Toon.box(ci, at + Vector2(5, -24) * k, Vector2(12, 3) * k, CREAM, boil, 86, 2.0)
+			Toon.ball(ci, at + Vector2(5, -28) * k, Vector2(10, 5) * k, CREAM, boil, 87, 2.0)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-6, -25) * k, at + Vector2(-12, -18) * k]), 2.5 * k, Color("3f6fb5"))
+		"umbrella":
+			var canopy := PackedVector2Array()
+			for i in 13:
+				var a := PI + PI * i / 12.0
+				canopy.append(at + Vector2(cos(a) * 28.0, sin(a) * 20.0 - 4.0) * k)
+			for i in 4:
+				var u := 1.0 - (i + 0.5) / 4.0
+				canopy.append(at + Vector2(-28.0 + 56.0 * u, -1.0) * k)
+			Toon.shape(ci, canopy, RED, 3.5)
+			for i in 3:
+				var x := -14.0 + i * 14.0
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -24) * k, at + Vector2(x, -2) * k]), 2.0 * k, RED.darkened(0.3))
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(0, -26) * k, at + Vector2(0, 22) * k]), 3.5 * k)
+			Toon.stroke(ci, Toon.bent(at + Vector2(0, 22) * k, at + Vector2(-10, 22) * k, -6.0 * k), 3.5 * k, BROWN)
+		"galoshes":
+			for i in 2:
+				var c := at + Vector2(-10 + i * 18, 6 - i * 4) * k
+				Toon.box(ci, c + Vector2(0, -8) * k, Vector2(8, 14) * k, Color("2a2a30"), boil, 88 + i, 3.0)
+				Toon.blob(ci, c + Vector2(6, 8) * k, Vector2(14, 7) * k, Color("2a2a30"), boil, 90 + i, 3.0)
+				Toon.box(ci, c + Vector2(0, -21) * k, Vector2(9, 3) * k, RED, boil, 92 + i, 2.0)
+				Toon.spot(ci, c + Vector2(-3, -6) * k, Vector2(2, 6) * k, Color(1, 1, 1, 0.4))
+		"helmet":
+			# A tin hat, dented, with a strap.
+			var dome := PackedVector2Array()
+			for i in 13:
+				var a := PI + PI * i / 12.0
+				dome.append(at + Vector2(cos(a) * 22.0, sin(a) * 22.0 + 6.0) * k)
+			Toon.shape(ci, dome, Color("7a8a5a"), 3.5)
+			Toon.box(ci, at + Vector2(0, 8) * k, Vector2(30, 4) * k, Color("6a7a4a"), boil, 94, 3.0)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-16, 10) * k, at + Vector2(16, 10) * k, 14.0 * k), 2.5 * k, BROWN)
+			Toon.spot(ci, at + Vector2(-8, -8) * k, Vector2(4, 7) * k, Color(1, 1, 1, 0.35), 0, 0, -0.4)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(6, -10) * k, at + Vector2(10, -4) * k]), 2.0 * k)
+		"glasses":
+			for sx: float in [-1.0, 1.0]:
+				Toon.blob(ci, at + Vector2(sx * 14, 0) * k, Vector2(11, 11) * k, Color(0.8, 0.9, 1.0, 0.5), boil, 95 + int(sx), 4.0)
+				Toon.spot(ci, at + Vector2(sx * 14 - 4, -4) * k, Vector2(3, 2) * k, Color(1, 1, 1, 0.8))
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(sx * 25, -2) * k, at + Vector2(sx * 30, -12) * k]), 2.5 * k)
+			Toon.stroke(ci, Toon.bent(at + Vector2(-3, -2) * k, at + Vector2(3, -2) * k, -3.0 * k), 2.5 * k)
+		"piggy":
+			Toon.ball(ci, at + Vector2(0, 4) * k, Vector2(24, 18) * k, Color("e8a0a8"), boil, 97)
+			Toon.blob(ci, at + Vector2(22, 2) * k, Vector2(6, 7) * k, Color("d88890"), boil, 98, 3.0)
+			for i in 2:
+				Toon.spot(ci, at + Vector2(21 + i * 3, 2) * k, Vector2(1.2, 2) * k, Toon.INK)
+			Toon.shape(ci, PackedVector2Array([at + Vector2(6, -12) * k, at + Vector2(12, -22) * k, at + Vector2(16, -12) * k]),
+					Color("e8a0a8"), 2.5)
+			Toon.spot(ci, at + Vector2(10, -4) * k, Vector2(2, 2.5) * k, Toon.INK)
+			for sx: float in [-1.0, 1.0]:
+				Toon.box(ci, at + Vector2(sx * 12, 22) * k, Vector2(4, 4) * k, Color("d88890"), boil, 99, 2.0)
+			ci.draw_rect(Rect2(at + Vector2(-6, -15) * k, Vector2(12, 3) * k), Toon.INK)
+			draw(ci, "coin", at + Vector2(0, -24) * k, 26.0 * k, boil)
+		"bomb_bag":
+			Toon.ball(ci, at + Vector2(0, 8) * k, Vector2(22, 20) * k, Color("b89a6a"), boil, 100)
+			Toon.stroke(ci, PackedVector2Array([at + Vector2(-10, -10) * k, at + Vector2(10, -10) * k]), 3.0 * k, BROWN)
+			for i in 3:
+				var c := at + Vector2(-12 + i * 12, -16 - (i % 2) * 6) * k
+				Toon.blob(ci, c, Vector2(8, 8) * k, Toon.INK, boil, 101 + i, 2.5)
+			Toon.star(ci, at + Vector2(12, -30) * k, 5.0 * k, boil * 0.8, GOLD)
+			ci.draw_string(Ui.font(), at + Vector2(-8, 18) * k, "5", HORIZONTAL_ALIGNMENT_LEFT, -1, int(22 * k), Toon.INK)
+		"keyring":
+			Toon.stroke(ci, _ring(at + Vector2(0, -20) * k, 11.0 * k), 3.5 * k, SILVER)
+			for i in 3:
+				draw(ci, "key", at + Vector2(-14 + i * 14, 8 + (i % 2) * 6) * k, 34.0 * k, boil + i)
+		"locket":
+			Toon.stroke(ci, Toon.bent(at + Vector2(-16, -26) * k, at + Vector2(16, -26) * k, -10.0 * k), 2.0 * k, GOLD)
+			ci.draw_colored_polygon(Toon.heart_points(at + Vector2(0, 4) * k, 46.0 * k), Toon.INK)
+			ci.draw_colored_polygon(Toon.heart_points(at + Vector2(0, 4) * k, 38.0 * k), GOLD)
+			ci.draw_colored_polygon(Toon.heart_points(at + Vector2(0, 4) * k, 22.0 * k), RED)
+			Toon.spot(ci, at + Vector2(-8, -4) * k, Vector2(3, 2) * k, Color(1, 1, 1, 0.8))
+		"chocolate":
+			# A bar half out of its wrapper.
+			Toon.box(ci, at + Vector2(0, -6) * k, Vector2(16, 24) * k, Color("5a3020"), boil, 104, 3.5)
+			for r in 3:
+				ci.draw_line(at + Vector2(-14, -22 + r * 10) * k, at + Vector2(14, -22 + r * 10) * k, Color(0, 0, 0, 0.35), 2.0 * k)
+			ci.draw_line(at + Vector2(0, -28) * k, at + Vector2(0, 14) * k, Color(0, 0, 0, 0.35), 2.0 * k)
+			Toon.box(ci, at + Vector2(0, 14) * k, Vector2(18, 13) * k, RED, boil, 105, 3.0)
+			Toon.box(ci, at + Vector2(0, 14) * k, Vector2(10, 5) * k, CREAM, boil, 106, 0.0)
+		"monocle":
+			Toon.stroke(ci, _ring(at + Vector2(-2, -4) * k, 18.0 * k), 6.0 * k, GOLD)
+			Toon.spot(ci, at + Vector2(-2, -4) * k, Vector2(15, 15) * k, Color(0.8, 0.9, 1.0, 0.35))
+			Toon.spot(ci, at + Vector2(-8, -10) * k, Vector2(4, 3) * k, Color(1, 1, 1, 0.8))
+			Toon.stroke(ci, Toon.bent(at + Vector2(12, 8) * k, at + Vector2(20, 30) * k, -6.0 * k), 2.0 * k, GOLD)
+		"chest", "gold_chest":
+			var gold := id == "gold_chest"
+			var wood := Color("c9a03a") if gold else Color("8a5a36")
+			var trim := Color("e8d488") if gold else Color("5d5c64")
+			Toon.box(ci, at + Vector2(0, 8) * k, Vector2(28, 16) * k, wood, boil, 107, 4.0)
+			var lid := PackedVector2Array()
+			for i in 9:
+				var a := PI + PI * i / 8.0
+				lid.append(at + Vector2(cos(a) * 28.0, sin(a) * 12.0 - 8.0) * k)
+			Toon.shape(ci, lid, wood.lightened(0.08), 4.0)
+			for x: float in [-18.0, 18.0]:
+				Toon.stroke(ci, PackedVector2Array([at + Vector2(x, -20) * k, at + Vector2(x, 24) * k]), 5.0 * k, trim)
+			Toon.box(ci, at + Vector2(0, -6) * k, Vector2(6, 7) * k, trim, boil, 108, 2.5)
+			Toon.spot(ci, at + Vector2(0, -5) * k, Vector2(1.5, 2.5) * k, Toon.INK)
+			if gold:
+				Toon.star(ci, at + Vector2(-20, -20) * k, (4.0 + boil % 3) * k, boil * 0.4, Color("fffbe8"))
 		"coin":
 			# Spins: its width goes in and out drawing by drawing.
 			var turn: float = [1.0, 0.7, 0.3, 0.7][boil % 4]
@@ -220,6 +369,14 @@ static func draw(ci: CanvasItem, id: String, at: Vector2, size: float, boil: int
 				Toon.stroke(ci, PackedVector2Array([p, p + Vector2(7, -7) * k]), 3.0 * k, GOLD)
 		_:
 			Toon.blob(ci, at, Vector2(18, 18) * k, SILVER, boil, 32)
+
+
+static func _ring(center: Vector2, r: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 25:
+		var a := TAU * i / 24.0
+		points.append(center + Vector2(cos(a), sin(a)) * r)
+	return points
 
 
 ## The paper band round a stick of dynamite.

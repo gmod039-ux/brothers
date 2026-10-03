@@ -45,6 +45,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_landed = true
 	for brother in room.brothers:
+		if brother.stats.has("umbrella") and brother.global_position.distance_to(global_position) < REACH:
+			# Bounces off the brolly.
+			Sfx.play("hit", -10.0, 0.3)
+			continue
 		if not _harmless and not brother.dead and brother.global_position.distance_to(global_position) < REACH:
 			var by := source if source != "" else ("Пыхтун" if look == "coal" else "Барон Когтев")
 			brother.hurt(1, global_position, by)

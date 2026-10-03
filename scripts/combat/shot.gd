@@ -36,12 +36,23 @@ var homing := false
 var pierce := false
 var spectral := false
 var knockback := 1.0
+## More item powers: bounces off walls (this many times more); may go
+## off like a little bomb on a hit; may freeze what it hits; splits in two
+## on a hit; flies in a wave.
+var bounces := 0
+var boom := false
+var freeze := false
+var split := false
+var wave := false
+## The chance of a boom or a freeze, per hit.
+var chance := 0.25
 ## A colour of its own (a fireball), or clear for the usual ink or spit.
 var tint := Color(0, 0, 0, 0)
 ## How it is drawn: "" a drop, "card" a spinning playing card.
 var look := ""
 
 var _hit := {}
+var _wave_at := 0.0
 
 var _vz := 0.0
 var _clock := 0.0
@@ -67,6 +78,11 @@ func _physics_process(delta: float) -> void:
 	var step := velocity * delta
 	global_position += step
 	travelled += step.length()
+	if wave:
+		# Sideways, on a sine of how far it has gone.
+		var sway := sin(travelled / 46.0) * 24.0
+		global_position += velocity.orthogonal().normalized() * (sway - _wave_at)
+		_wave_at = sway
 	if not falling and travelled >= reach * FALL_AT:
 		falling = true
 	if falling:
@@ -78,6 +94,9 @@ func _physics_process(delta: float) -> void:
 			return
 	if room.blocks_shot(global_position, spectral):
 		room.hit_tile(global_position)
+		if bounces > 0:
+			_bounce(step)
+			return
 		_end("wall")
 		return
 	if hostile:
@@ -96,12 +115,60 @@ func _physics_process(delta: float) -> void:
 			if enemy.can_be_hit() and global_position.distance_to(enemy.global_position) \
 					< radius + enemy.radius:
 				enemy.hurt(damage, velocity.normalized(), knockback)
+				_on_hit(enemy)
 				if pierce:
 					# On through, but never twice into the same one.
 					_hit[enemy] = true
 					continue
 				_end("enemy")
 				return
+
+
+## Off the wall it ran into: back to where it was, and the way it was
+## going turned about on whichever side it crossed. A bounce gives it
+## back some of its range.
+func _bounce(step: Vector2) -> void:
+	var before := global_position - step
+	var flip := Vector2.ONE
+	if room.blocks_shot(Vector2(global_position.x, before.y), spectral):
+		flip.x = -1.0
+	if room.blocks_shot(Vector2(before.x, global_position.y), spectral):
+		flip.y = -1.0
+	if flip == Vector2.ONE:
+		flip = -Vector2.ONE
+	velocity *= flip
+	global_position = before
+	bounces -= 1
+	travelled = maxf(travelled - reach * 0.35, 0.0)
+	falling = false
+	Sfx.play("hit", -16.0, 0.3)
+
+
+## What its item powers do to [param enemy] it has just hit.
+func _on_hit(enemy: Enemy) -> void:
+	if hostile:
+		return
+	if freeze and randf() < chance and not enemy.dead:
+		enemy.daze(0.3 if enemy is Boss else 1.2)
+		Fx.burst(room, enemy.global_position + Vector2(0, -enemy.radius), "sparks", 4, 0.5)
+	if boom and randf() < chance:
+		var bang := Bomb.new()
+		bang.room = room
+		bang.friendly = true
+		bang.fuse = 0.0
+		bang.reach = 85.0
+		bang.damage = damage * 1.5
+		bang.visible = false
+		room.effects.add_child(bang)
+		bang.global_position = global_position
+	if split:
+		for turn: float in [-0.6, 0.6]:
+			var half := Shot.new()
+			room.actors.add_child(half)
+			half.launch(room, global_position, height, velocity.rotated(turn) * 0.9, Room.TILE * 2.6,
+					damage * 0.5, radius * 0.7, false)
+			half.tint = tint
+			half._hit[enemy] = true
 
 
 ## Bends the flight a little towards the nearest enemy ahead, keeping the

@@ -80,6 +80,93 @@
 		"add": {"damage": 0.5},
 		"mult": {"knockback": 2.2}
 	},
+	"rubber_ball": {
+		"name": "Резиновый мячик",
+		"text": "выстрелы отскакивают от стен",
+		"flags": ["bounce"]
+	},
+	"firecracker": {
+		"name": "Петарда",
+		"text": "выстрелы иногда взрываются",
+		"add": {"damage": 0.3},
+		"flags": ["boom"]
+	},
+	"icecream": {
+		"name": "Эскимо",
+		"text": "выстрелы морозят врагов",
+		"flags": ["freeze"]
+	},
+	"scissors": {
+		"name": "Ножницы",
+		"text": "выстрел разлетается надвое",
+		"flags": ["split"]
+	},
+	"harmonica": {
+		"name": "Губная гармошка",
+		"text": "выстрелы волной, бьют больнее",
+		"add": {"damage": 0.5},
+		"flags": ["wave"]
+	},
+	"chick": {
+		"name": "Цыплёнок",
+		"text": "друг стреляет вместе с тобой",
+		"flags": ["chick"]
+	},
+	"umbrella": {
+		"name": "Зонтик",
+		"text": "сверху ничего не прилетит",
+		"add": {"shot_speed": 0.1},
+		"flags": ["umbrella"]
+	},
+	"galoshes": {
+		"name": "Галоши",
+		"text": "шипы нипочём, ноги быстрее",
+		"add": {"speed": 0.1},
+		"flags": ["galoshes"]
+	},
+	"helmet": {
+		"name": "Каска",
+		"text": "взрывы не страшны",
+		"add": {"hearts": 1},
+		"flags": ["helmet"]
+	},
+	"glasses": {
+		"name": "Очки",
+		"text": "видна вся карта этажа",
+		"add": {"range": 1.0},
+		"flags": ["map"]
+	},
+	"piggy": {
+		"name": "Копилка",
+		"text": "пятнадцать монет!",
+		"give": {"coins": 15}
+	},
+	"bomb_bag": {
+		"name": "Мешок бомб",
+		"text": "пять бомб",
+		"give": {"bombs": 5}
+	},
+	"keyring": {
+		"name": "Связка ключей",
+		"text": "три ключа",
+		"give": {"keys": 3}
+	},
+	"locket": {
+		"name": "Медальон",
+		"text": "сердце, и все сердца полны",
+		"add": {"hearts": 1},
+		"heal": true
+	},
+	"chocolate": {
+		"name": "Шоколадка",
+		"text": "быстрее руки и ноги",
+		"add": {"tears": 0.35, "speed": 0.1}
+	},
+	"monocle": {
+		"name": "Монокль",
+		"text": "урон и дальность вверх",
+		"add": {"damage": 0.6, "range": 1.0}
+	},
 	"camera": {
 		"name": "Фотоаппарат со вспышкой",
 		"text": "вспышка слепит и жжёт всех в комнате",

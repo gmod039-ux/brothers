@@ -14,6 +14,8 @@ signal inventory_changed
 signal item_taken(id: String)
 ## The item in his hands was used, or charged up.
 signal active_changed
+## A shot has just gone, along [param aim].
+signal fired(aim: Vector2)
 
 ## The body on the floor: feet, not the whole drawing. Heads may overlap
 ## walls and enemies' tops, as in Isaac; feet may not.
@@ -82,6 +84,8 @@ var _cooldown := 0.0
 var _invulnerable := 0.0
 ## Shots alternate hands, a few pixels apart.
 var _hand := 0
+## The chick that follows him about, once he has one.
+var _chick: Chick
 
 
 func setup(character_id: String, room_: Room, input_: PlayerInput) -> void:
@@ -162,10 +166,21 @@ func fire(aim: Vector2) -> Shot:
 		shot.pierce = stats.has("pierce")
 		shot.spectral = stats.has("spectral")
 		shot.knockback = stats.knockback
+		shot.bounces = 1 if stats.has("bounce") else 0
+		shot.boom = stats.has("boom")
+		shot.freeze = stats.has("freeze")
+		shot.split = stats.has("split")
+		shot.wave = stats.has("wave")
+		shot.chance = clampf(0.25 + stats.luck * 0.03, 0.25, 0.6)
+		if shot.freeze:
+			shot.tint = Color("7fb8d8")
+		elif shot.boom:
+			shot.tint = Color("b8402a")
 		if middle == null:
 			middle = shot
 	look.recoil(aim)
 	shots_fired += 1
+	fired.emit(aim)
 	Sfx.play("shot", -9.0)
 	return middle
 
@@ -208,6 +223,16 @@ func take_item(id: String) -> void:
 	items.append(id)
 	if stats.max_hp() > old_max:
 		hp = mini(hp + stats.max_hp() - old_max, stats.max_hp())
+	if item.get("heal", false):
+		hp = stats.max_hp()
+	var give: Dictionary = item.get("give", {})
+	coins += int(give.get("coins", 0))
+	bombs += int(give.get("bombs", 0))
+	keys += int(give.get("keys", 0))
+	if stats.has("chick") and _chick == null:
+		_chick = Chick.new()
+		_chick.brother = self
+		add_child(_chick)
 	health_changed.emit(hp, stats.max_hp())
 	inventory_changed.emit()
 	item_taken.emit(id)

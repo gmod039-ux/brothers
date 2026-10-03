@@ -68,7 +68,18 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	for id: String in GameData.items():
 		pool.append(id)
 	pool.sort()
+	for brother in brothers:
+		brother.item_taken.connect(func(_id: String) -> void: _reveal_if_glasses())
 	start_floor(0)
+
+
+## With the glasses on, the floor's whole map.
+func _reveal_if_glasses() -> void:
+	for brother in brothers:
+		if brother.stats.has("map") and plan != null:
+			plan.reveal_all()
+			map_changed.emit()
+			return
 
 
 func floor_name() -> String:
@@ -85,6 +96,7 @@ func start_floor(index: int) -> void:
 	_floor_seed = rng.randi()
 	layouts = RoomLayouts.for_floor(index)
 	plan = FloorPlan.generate(rng, index, layouts)
+	_reveal_if_glasses()
 	bosses.clear()
 	trapdoor = null
 	_fighting = false
@@ -381,9 +393,11 @@ func _stock_secret(info: FloorPlan.RoomInfo) -> void:
 		if item != "":
 			_drop("item", middle, item)
 			return
-	if roll < 0.75:
+	if roll < 0.6:
 		_drop("bomb", middle + Vector2(-40, 0))
 		_drop("key", middle + Vector2(40, 0))
+	elif roll < 0.8:
+		_drop("gold_chest", middle)
 	else:
 		_drop("heart", middle)
 
@@ -548,6 +562,10 @@ func _reward() -> void:
 	var nothing := clampf(0.4 - luck * 0.06, 0.1, 0.4)
 	var at := room.tile_center(_open_tile_near(Vector2i(6, 3)))
 	if rng.randf() < nothing:
+		return
+	if rng.randf() < 0.1:
+		# Now and then a chest, gold one time in three.
+		_drop("gold_chest" if rng.randf() < 0.33 else "chest", at)
 		return
 	var roll := rng.randf()
 	if roll < 0.45:
