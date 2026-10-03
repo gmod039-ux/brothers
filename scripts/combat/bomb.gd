@@ -68,7 +68,7 @@ func _explode() -> void:
 		for col in Room.COLS:
 			var cell := Vector2i(col, row)
 			if room.is_rock(cell) and room.tile_center(cell).distance_to(at) < reach + 30.0:
-				room.break_rock(cell)
+				room.blow(cell)
 	room.blast(at, reach)
 	Sfx.play("blast", 0.0)
 	if friendly:

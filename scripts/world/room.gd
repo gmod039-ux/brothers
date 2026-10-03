@@ -130,6 +130,10 @@ var arena := ""
 var _blockers := {}
 var _doors_set := false
 var _rocks := {}
+## Kegs of powder still standing: cell -> [Barrel, body].
+var _barrels := {}
+## The pits and spikes, and what draws them.
+var hazards: Hazards
 ## Doors that stay shut until someone brings a key: side -> true.
 var locked := {}
 
@@ -178,6 +182,11 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 	props.seed_value = seed_value
 	add_child(props)
 	_add_walls()
+	hazards = Hazards.new()
+	hazards.name = "Hazards"
+	hazards.room = self
+	hazards.style = style
+	add_child(hazards)
 	decals = Node2D.new()
 	decals.name = "Decals"
 	add_child(decals)
@@ -199,8 +208,19 @@ func build(layout: PackedStringArray, seed_value: int, doors_ := {}, broken := {
 	for row in mini(layout.size(), ROWS):
 		var line := layout[row]
 		for col in mini(line.length(), COLS):
-			if line[col] == "#" and not broken.has(Vector2i(col, row)):
-				_add_rock(Vector2i(col, row))
+			var at := Vector2i(col, row)
+			match line[col]:
+				"#":
+					if not broken.has(at):
+						_add_rock(at)
+				"x":
+					if not broken.has(at):
+						_add_barrel(at)
+				"o":
+					_add_pit(at)
+				"^":
+					hazards.spikes[at] = true
+	hazards.queue_redraw()
 
 
 func palette() -> Dictionary:
@@ -224,8 +244,36 @@ func in_floor(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < COLS and cell.y < ROWS
 
 
+## What a tile holds, in [member _solid].
+const OPEN := 0
+const SOLID := 1
+const PIT := 2
+const BARREL := 3
+
+
+## True where a shot stops and nobody walks: a rock, a keg, a counter.
 func is_rock(cell: Vector2i) -> bool:
-	return in_floor(cell) and _solid[cell.y * COLS + cell.x] != 0
+	if not in_floor(cell):
+		return false
+	var what := _solid[cell.y * COLS + cell.x]
+	return what == SOLID or what == BARREL
+
+
+## True where nobody can stand: a rock, a keg, a counter, or a pit.
+func is_blocked(cell: Vector2i) -> bool:
+	return in_floor(cell) and _solid[cell.y * COLS + cell.x] != OPEN
+
+
+func is_pit(cell: Vector2i) -> bool:
+	return in_floor(cell) and _solid[cell.y * COLS + cell.x] == PIT
+
+
+func is_spike(cell: Vector2i) -> bool:
+	return hazards != null and hazards.spikes.has(cell)
+
+
+func is_barrel(cell: Vector2i) -> bool:
+	return _barrels.has(cell)
 
 
 ## True when a shot at world point [param at] has hit something solid: a
@@ -246,13 +294,14 @@ func center() -> Vector2:
 	return global_position + SIZE * 0.5
 
 
-## Open floor tiles, for spawning things on.
+## Open floor tiles, for spawning things on: no rock, no pit, no spikes.
 func free_tiles() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for row in ROWS:
 		for col in COLS:
-			if not is_rock(Vector2i(col, row)):
-				cells.append(Vector2i(col, row))
+			var cell := Vector2i(col, row)
+			if not is_blocked(cell) and not is_spike(cell):
+				cells.append(cell)
 	return cells
 
 
@@ -317,8 +366,14 @@ func exit_side(at: Vector2) -> String:
 
 
 ## A path over open tiles from [param from] to [param to], both included,
-## or an empty one if there is none.
+## or an empty one if there is none. Round the spikes if there is a way
+## round them; over them if not.
 func path_to(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	var safe := _path(from, to, true)
+	return safe if not safe.is_empty() else _path(from, to, false)
+
+
+func _path(from: Vector2i, to: Vector2i, round_spikes: bool) -> Array[Vector2i]:
 	var path: Array[Vector2i] = []
 	if not in_floor(from) or not in_floor(to):
 		return path
@@ -330,7 +385,8 @@ func path_to(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 			break
 		for step: Vector2i in FloorPlan.SIDES.values():
 			var next := here + step
-			if in_floor(next) and not is_rock(next) and not came.has(next):
+			if in_floor(next) and not is_blocked(next) and not came.has(next) \
+					and not (round_spikes and is_spike(next) and next != to):
 				came[next] = here
 				queue.append(next)
 	if not came.has(to):
@@ -588,9 +644,9 @@ static func _box(rect: Rect2) -> CollisionShape2D:
 ## Makes a tile solid without a rock drawn on it: something else stands
 ## there (a shop counter).
 func block_tile(cell: Vector2i) -> void:
-	if not in_floor(cell) or is_rock(cell):
+	if not in_floor(cell) or is_blocked(cell):
 		return
-	_solid[cell.y * COLS + cell.x] = 1
+	_solid[cell.y * COLS + cell.x] = SOLID
 	var body := StaticBody2D.new()
 	body.collision_layer = ROCK_LAYER
 	body.collision_mask = 0
@@ -603,11 +659,40 @@ func block_tile(cell: Vector2i) -> void:
 	add_child(body)
 
 
+## What a blast does to tile [param cell]: a rock breaks, a keg goes off
+## (a moment later, so kegs go off one after another), anything else stays.
+func blow(cell: Vector2i) -> void:
+	if _barrels.has(cell):
+		var keg: Barrel = _barrels[cell][0]
+		keg.detonate(Barrel.CHAIN_DELAY)
+	elif _rocks.has(cell):
+		break_rock(cell)
+
+
+## A shot ended against whatever stands at [param at]: a keg takes the hit.
+func hit_tile(at: Vector2) -> void:
+	var cell := tile_at(at)
+	if _barrels.has(cell):
+		var keg: Barrel = _barrels[cell][0]
+		keg.hit()
+
+
+## A keg has gone up: its tile is floor again, and stays so.
+func barrel_gone(cell: Vector2i) -> void:
+	if not _barrels.has(cell):
+		return
+	_solid[cell.y * COLS + cell.x] = OPEN
+	var body: Node = _barrels[cell][1]
+	body.queue_free()
+	_barrels.erase(cell)
+	rock_broken.emit(cell)
+
+
 ## Blows a rock away: gone from the floor, the collision and the drawing.
 func break_rock(cell: Vector2i) -> void:
-	if not is_rock(cell):
+	if not _rocks.has(cell):
 		return
-	_solid[cell.y * COLS + cell.x] = 0
+	_solid[cell.y * COLS + cell.x] = OPEN
 	var parts: Array = _rocks.get(cell, [])
 	for part: Node in parts:
 		part.queue_free()
@@ -620,8 +705,42 @@ func break_rock(cell: Vector2i) -> void:
 	rock_broken.emit(cell)
 
 
+## A hole in the floor: walked round, flown and shot over.
+func _add_pit(cell: Vector2i) -> void:
+	_solid[cell.y * COLS + cell.x] = PIT
+	hazards.pits[cell] = true
+	add_child(_solid_body(cell, Vector2(TILE, TILE) * 0.9))
+
+
+func _add_barrel(cell: Vector2i) -> void:
+	_solid[cell.y * COLS + cell.x] = BARREL
+	var keg := Barrel.new()
+	keg.room = self
+	keg.cell = cell
+	keg.style = style
+	keg.position = tile_center(cell) - global_position
+	actors.add_child(keg)
+	var body := _solid_body(cell, Vector2(TILE, TILE) * 0.7)
+	add_child(body)
+	_barrels[cell] = [keg, body]
+
+
+## A body nothing on foot gets through, over tile [param cell].
+func _solid_body(cell: Vector2i, size: Vector2) -> StaticBody2D:
+	var body := StaticBody2D.new()
+	body.collision_layer = ROCK_LAYER
+	body.collision_mask = 0
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = size
+	shape.shape = rect
+	body.add_child(shape)
+	body.position = tile_center(cell) - global_position
+	return body
+
+
 func _add_rock(cell: Vector2i) -> void:
-	_solid[cell.y * COLS + cell.x] = 1
+	_solid[cell.y * COLS + cell.x] = SOLID
 	var rock := Rock.new()
 	rock.seed_value = _layout_seed * 131 + cell.x * 17 + cell.y * 5
 	rock.style = style

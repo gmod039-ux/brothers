@@ -3,7 +3,8 @@ extends SceneTree
 ## - each floor has its own dozen fights or more (data/rooms/*.txt);
 ## - every room layout is 13 by 7, uses only known letters, leaves the tiles
 ##   in front of doors open, and has all its open tiles connected, so no
-##   enemy is walled off and every door is reachable from every other;
+##   enemy is walled off and every door is reachable from every other --
+##   without treading on spikes;
 ## - on 1000 seeds for each floor, the plan has as many rooms as it should,
 ##   the boss sits in a dead end at least two rooms from the start and as far
 ##   as any dead end, the treasure room in another dead end, and every room
@@ -36,31 +37,44 @@ func _check_layouts(layouts: RoomLayouts) -> void:
 		var rows := layouts.get_rows(name)
 		_expect(rows.size() == Room.ROWS, "%s has %d rows" % [name, Room.ROWS])
 		var open := {}
+		var safe := {}
 		for r in rows.size():
 			_expect(rows[r].length() == Room.COLS, "%s row %d is %d wide" % [name, r, Room.COLS])
 			for c in rows[r].length():
 				var letter := rows[r][c]
-				_expect(letter in [".", "#"] or RoomLayouts.ENEMIES.has(letter),
+				_expect(letter in [".", "#", "o", "x", "^"] or RoomLayouts.ENEMIES.has(letter),
 						"%s: unknown tile '%s'" % [name, letter])
-				if letter != "#":
+				if not letter in ["#", "o", "x"]:
 					open[Vector2i(c, r)] = true
+					if letter != "^":
+						safe[Vector2i(c, r)] = true
 		for side: String in RoomLayouts.DOOR_TILES:
-			_expect(open.has(RoomLayouts.DOOR_TILES[side]), "%s keeps the %s door clear" % [name, side])
-		# Flood from one open tile: it must reach them all.
-		var first: Vector2i = open.keys()[0]
-		var reached := {first: true}
-		var queue: Array[Vector2i] = [first]
-		while not queue.is_empty():
-			var at: Vector2i = queue.pop_front()
-			for step: Vector2i in FloorPlan.SIDES.values():
-				if open.has(at + step) and not reached.has(at + step):
-					reached[at + step] = true
-					queue.append(at + step)
+			_expect(safe.has(RoomLayouts.DOOR_TILES[side]), "%s keeps the %s door clear" % [name, side])
+		# Flood from one open tile: it must reach them all; and from a door
+		# without stepping on spikes, every other door.
+		var reached := _flood(open, open.keys()[0])
 		_expect(reached.size() == open.size(), "%s: all %d open tiles connected (%d reached)"
 				% [name, open.size(), reached.size()])
+		var dry := _flood(safe, RoomLayouts.DOOR_TILES["top"])
+		for side: String in RoomLayouts.DOOR_TILES:
+			_expect(dry.has(RoomLayouts.DOOR_TILES[side]), "%s: the %s door is reachable round the spikes" % [name, side])
 		if not name.begins_with("@"):
 			_expect(not RoomLayouts.enemies_in(rows).is_empty(), "%s has enemies" % name)
 	print("floor: %d layouts, %d fights" % [layouts.rooms.size(), layouts.fights().size()])
+
+
+## The tiles of [param tiles] reachable from [param first], stepping
+## between neighbours.
+static func _flood(tiles: Dictionary, first: Vector2i) -> Dictionary:
+	var reached := {first: true}
+	var queue: Array[Vector2i] = [first]
+	while not queue.is_empty():
+		var at: Vector2i = queue.pop_front()
+		for step: Vector2i in FloorPlan.SIDES.values():
+			if tiles.has(at + step) and not reached.has(at + step):
+				reached[at + step] = true
+				queue.append(at + step)
+	return reached
 
 
 func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:

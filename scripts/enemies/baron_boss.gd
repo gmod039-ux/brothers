@@ -257,7 +257,7 @@ func _reappear() -> void:
 	var best_d := -1.0
 	for i in 12:
 		var cell := Vector2i(rng.randi_range(1, Room.COLS - 2), rng.randi_range(1, Room.ROWS - 2))
-		if room.is_rock(cell):
+		if room.is_blocked(cell):
 			continue
 		var at := room.tile_center(cell)
 		var d := at.distance_to(t.global_position) if t != null else 0.0

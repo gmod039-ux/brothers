@@ -63,6 +63,22 @@ func _danger(room: Room, me: Vector2) -> Vector2:
 			var side := shot.velocity.orthogonal().normalized()
 			away += side * signf(side.dot(me - shot.global_position) + 0.01) * 1.5
 	away += _apart(room, me)
+	# Off the spikes, and clear of a keg about to go.
+	var here := room.tile_at(me)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var cell := here + Vector2i(dx, dy)
+			var gap := me - room.tile_center(cell)
+			if room.is_spike(cell) and gap.length() < Room.TILE * 0.95:
+				away += gap.normalized() * 1.2
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var cell := here + Vector2i(dx, dy)
+			if room.is_barrel(cell):
+				var keg: Barrel = room._barrels[cell][0]
+				var gap := me - room.tile_center(cell)
+				if keg.hits > 0 and gap.length() < Barrel.REACH * 1.2:
+					away += gap.normalized()
 	var inside := room.floor_rect().grow(-80.0)
 	if not inside.has_point(me):
 		away += (inside.get_center() - me).normalized() * 0.8
@@ -137,7 +153,7 @@ static func _firing_tile(room: Room, here: Vector2i, enemy: Vector2i) -> Vector2
 			return tile
 		for step: Vector2i in FloorPlan.SIDES.values():
 			var next := tile + step
-			if room.in_floor(next) and not room.is_rock(next) and not seen.has(next):
+			if room.in_floor(next) and not room.is_blocked(next) and not room.is_spike(next) and not seen.has(next):
 				seen[next] = true
 				queue.append(next)
 	return Vector2i(-1, -1)

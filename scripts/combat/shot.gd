@@ -77,6 +77,7 @@ func _physics_process(delta: float) -> void:
 			_end("floor")
 			return
 	if room.blocks_shot(global_position, spectral):
+		room.hit_tile(global_position)
 		_end("wall")
 		return
 	if hostile:

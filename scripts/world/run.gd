@@ -117,6 +117,18 @@ func _stop_slide() -> void:
 ## walking there: for screenshots and trying things out.
 func teleport(kind: String) -> void:
 	_stop_slide()
+	if layouts.rooms.has(kind) and not kind.begins_with("@"):
+		# A layout this floor did not deal: the first fight room gets it.
+		var dealt := false
+		for at: Vector2i in plan.rooms:
+			dealt = dealt or plan.info(at).layout_name == kind
+		if not dealt:
+			for at: Vector2i in plan.rooms:
+				var info := plan.info(at)
+				if info.kind == "normal" and not info.visited:
+					info.layout_name = kind
+					info.rows = layouts.get_rows(kind)
+					break
 	for at: Vector2i in plan.rooms:
 		var info := plan.info(at)
 		# "normal" or a layout's own name: a fight room.

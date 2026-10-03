@@ -50,6 +50,7 @@ func _run() -> void:
 	await _key_opens_door()
 	await _secret_room()
 	await _deep_enemies()
+	await _obstacles()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -532,6 +533,73 @@ func _deep_enemies() -> void:
 	_expect(room.floor_rect().has_point(ghost.global_position), "it turns up again on the floor")
 	_expect(ghost.global_position.distance_to(haunted.global_position) < 320.0, "close to the brother")
 	_expect(ghost.can_be_hit(), "and can be hit as it appears")
+
+
+## Pits, spikes and kegs of powder.
+func _obstacles() -> void:
+	# A pit: nobody walks in, shots fly over.
+	await _fresh_room([".............", ".............", ".............", "....o........",
+			".............", ".............", "............."])
+	var brother := _brother(Vector2i(2, 3))
+	var pit := Vector2i(4, 3)
+	_expect(room.is_blocked(pit) and not room.is_rock(pit), "a pit is in the way of feet, not of shots")
+	_expect(not room.free_tiles().has(pit), "nothing is put down in a pit")
+	brother.input = BotInput.new()
+	var walker := _enemy("walker", Vector2i(7, 3))
+	var before := walker.hp
+	brother.input = PlayerInput.new()
+	var shot := await _fire(brother, Vector2.RIGHT)
+	await _finish(shot, 120)
+	_expect(walker.hp < before, "a shot flies over the pit and hits")
+	walker.knock_out()
+	brother.input.move = Vector2.RIGHT
+	await _steps(60)
+	brother.input.move = Vector2.ZERO
+	_expect(room.tile_at(brother.global_position) != pit and brother.global_position.x < room.tile_center(pit).x,
+			"walking into the pit stops at its edge")
+	var path := room.path_to(Vector2i(2, 3), Vector2i(6, 3))
+	_expect(not path.is_empty() and not path.has(pit), "a path goes round it")
+	# Spikes: a step on them costs half a heart; a path goes round them.
+	await _fresh_room([".............", ".............", ".............", "....^........",
+			".............", ".............", "............."])
+	var walker2 := _brother(Vector2i(4, 3))
+	walker2.god = false
+	var full := walker2.hp
+	await _steps(3)
+	_expect(walker2.hp == full - 1, "spikes cost half a heart (hp %d → %d)" % [full, walker2.hp])
+	var around := room.path_to(Vector2i(2, 3), Vector2i(6, 3))
+	_expect(not around.has(Vector2i(4, 3)), "a path goes round the spikes")
+	_expect(not room.free_tiles().has(Vector2i(4, 3)), "nothing is put down on spikes")
+	# A keg: three shots set it off; it hurts, breaks the rock by it and
+	# sets off the next keg; it stays gone.
+	await _fresh_room([".............", ".............", ".............", ".....xx#.....",
+			".............", ".............", "............."])
+	var gone := {}
+	room.rock_broken.connect(func(c: Vector2i) -> void: gone[c] = true)
+	var shooter := _brother(Vector2i(1, 3))
+	var fly := _enemy("fly", Vector2i(5, 2))
+	for i in Barrel.HITS:
+		var keg_shot := await _fire(shooter, Vector2.RIGHT)
+		await _finish(keg_shot, 120)
+		await _steps(int(shooter.stats.fire_interval() * 60) + 2)
+	await _steps(30)
+	_expect(gone.has(Vector2i(5, 3)), "three shots set the keg off")
+	_expect(gone.has(Vector2i(6, 3)), "and it sets off the keg next to it")
+	_expect(not room.is_rock(Vector2i(7, 3)), "the blasts break the rock beyond")
+	_expect(not is_instance_valid(fly) or fly.dead or fly.hp < fly.max_hp, "and hurt what was near")
+	_expect(not room.is_blocked(Vector2i(5, 3)), "where the keg stood is floor now")
+	# A bomb sets a keg off too.
+	await _fresh_room([".............", ".............", ".............", "......x......",
+			".............", ".............", "............."])
+	var boom := {}
+	room.rock_broken.connect(func(c: Vector2i) -> void: boom[c] = true)
+	var bomb := Bomb.new()
+	bomb.room = room
+	bomb.fuse = 0.0
+	room.effects.add_child(bomb)
+	bomb.global_position = room.tile_center(Vector2i(5, 3))
+	await _steps(30)
+	_expect(boom.has(Vector2i(6, 3)), "a bomb sets a keg off")
 
 
 func _fresh_room(layout: Array) -> void:
