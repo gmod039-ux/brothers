@@ -39,6 +39,12 @@ static func is_open(id: String) -> bool:
 	return deed == "" or Records.deeds.has(deed)
 
 
+## A brother always; a girl once the deed that opens the girls is done.
+static func character_open(id: String) -> bool:
+	var lock := str(GameData.character(id).get("lock", ""))
+	return lock == "" or is_open(lock)
+
+
 static func is_done(deed: String) -> bool:
 	return Records.deeds.has(deed)
 

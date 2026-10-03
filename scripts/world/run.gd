@@ -87,8 +87,13 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	rng = rng_
 	camera = camera_
 	brothers = brothers_
+	var held: Array[String] = []
+	for brother in brothers:
+		held.append_array(brother.items)
+		held.append(brother.active)
 	for id: String in GameData.items():
-		if Unlocks.is_open(id):
+		# Not what somebody starts out with, either.
+		if Unlocks.is_open(id) and not held.has(id):
 			if GameData.items()[id].get("trinket", false):
 				trinkets.append(id)
 			else:

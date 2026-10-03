@@ -31,6 +31,7 @@ func _run() -> void:
 	await _chain_and_jackpot()
 	await _album()
 	await _evil()
+	await _girls()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH))
 	print("unlock: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -157,6 +158,50 @@ func _evil() -> void:
 	Records.best_evil = 0.0
 	Records.add_run(true, 900.0, 3, 50, 3, [], true)
 	_check(Records.best_evil == 900.0 and Records.best_time == 0.0, "an evil way out has its own record")
+	await process_frame
+
+
+## The girls: not on the poster until the Baron is beaten, then either side
+## of the brothers and going together; Ромашка starts with her sandwich, so
+## it is not dealt to her again; in their story the brothers are caged.
+func _girls() -> void:
+	Unlocks.everything = false
+	Unlocks.recording = true
+	Records.deeds.clear()
+	_check(not Unlocks.character_open("rose") and Unlocks.character_open("older"),
+			"the girls are locked at first, the brothers are not")
+	var poster := BrotherSelect.new()
+	_check(",".join(poster.ids) == "older,younger", "the poster has the brothers (%s)" % [poster.ids])
+	poster.free()
+	Unlocks.achieve("beat_baron")
+	poster = BrotherSelect.new()
+	_check(",".join(poster.ids) == "rose,older,younger,daisy",
+			"beating the Baron puts the girls either side of them (%s)" % [poster.ids])
+	poster.select(0)
+	poster.together = true
+	_check(poster._lit(3) and not poster._lit(1) and not poster._lit(2), "Роза goes together with Ромашка")
+	poster.free()
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var daisy := Brother.new()
+	daisy.setup("daisy", null, PlayerInput.new())
+	daisy.god = true
+	_check(daisy.active == "sandwich" and daisy.charge == int(GameData.items()["sandwich"]["active"]),
+			"Ромашка starts with her sandwich, charged")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	run.begin(rng, camera, [daisy] as Array[Brother])
+	await process_frame
+	_check(not run.pool.has("sandwich"), "and it is not dealt to her again")
+	run.queue_free()
+	camera.queue_free()
+	var story := Story.new()
+	story.turn_about()
+	_check(story.heroes[0] == "rose" and story.captives[0] == "older", "in the girls' story the brothers are caged")
+	story.free()
+	Unlocks.everything = true
 	await process_frame
 
 

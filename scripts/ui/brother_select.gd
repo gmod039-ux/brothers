@@ -4,16 +4,30 @@ extends Node2D
 ## sunburst behind the title in a marquee of lamps, both brothers on the
 ## boards with the chosen one in the spotlight, each with his playbill card
 ## of numbers. Between them on the boards, once there is anything to
-## write on it, a board with the records.
+## write on it, a board with the records. Once the girls are open they are
+## on the poster too, each beside her sweetheart, and the company stands
+## closer together.
 
-## [param id] is the first player's brother; [param both] brings the other
-## one along for a second player.
+## [param id] is the first player's choice; [param both] brings their
+## partner along for a second player (the brothers go together, and the
+## girls).
 signal chosen(id: String, both: bool)
 ## Esc: the settings card, over this.
 signal options_wanted
 
-const IDS := ["older", "younger"]
-const SPOTS := [Vector2(620, 700), Vector2(1300, 700)]
+## Everyone who can be played, left to right: the girls, when they are
+## open, either side of the brothers.
+const ORDER := ["rose", "older", "younger", "daisy"]
+## Where they stand, the size of the figures, of the playbills and of the
+## records board (and how far up the stage it stands), and how far the
+## curtains are drawn: for two on the poster, and for four.
+const LAYOUTS := {
+	2: {"x": [620.0, 1300.0], "figure": 2.3, "card": 1.0, "board": 1.0, "board_y": 548.0, "curtain": 250.0},
+	4: {"x": [370.0, 760.0, 1160.0, 1550.0], "figure": 2.0, "card": 0.72, "board": 0.72, "board_y": 470.0,
+			"curtain": 210.0},
+}
+## Where their feet are.
+const FEET := 700.0
 const BAR := Color("c8392b")
 ## The paper of title cards and dev sheets.
 const CARD := Color("efe0bd")
@@ -35,6 +49,8 @@ const BARS := [
 	["Дальность", "range", 9.0],
 ]
 
+## Who is on the poster, left to right.
+var ids: Array[String] = []
 var index := 0
 ## The evil mode is on: a red ribbon with a skull says so.
 var evil := false:
@@ -57,10 +73,25 @@ var _sub: Label
 var _taken := false
 var _clock := 0.0
 var _drawing := -1
+var _layout: Dictionary
 
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	for id: String in ORDER:
+		if Unlocks.character_open(id):
+			ids.append(id)
+	_layout = LAYOUTS.get(ids.size(), LAYOUTS[2])
+
+
+## Where [param i] stands on the boards.
+func spot(i: int) -> Vector2:
+	return Vector2(float(_layout["x"][i]), FEET)
+
+
+## The middle of [param i]'s figure: where the iris closes.
+func focus(i: int) -> Vector2:
+	return spot(i) + Vector2(0, -65.0 * float(_layout["figure"]))
 
 
 func _ready() -> void:
@@ -72,30 +103,41 @@ func _ready() -> void:
 	_sub = Ui.label("кого ведём в подвал?", sub_style, 1920)
 	_sub.position = Vector2(0, 282)
 	add_child(_sub)
-	for i in IDS.size():
-		var character := GameData.character(IDS[i])
+	var card := float(_layout["card"])
+	for i in ids.size():
+		var character := GameData.character(ids[i])
 		var look := BrotherLook.new()
 		look.configure(character.get("look", {}))
-		look.position = SPOTS[i]
-		look.scale = Vector2(2.3, 2.3)
+		look.position = spot(i)
+		look.scale = Vector2.ONE * float(_layout["figure"])
 		add_child(look)
 		_looks.append(look)
-		var x: float = (SPOTS[i] as Vector2).x
-		var name_text := str(character.get("name", IDS[i]))
+		# The words on the playbill, at its size: laid out for the big one
+		# and shrunk about its top edge.
+		var top := Vector2(spot(i).x, 740)
+		var name_text := str(character.get("name", ids[i]))
 		var name_label := Ui.label(name_text, Ui.title(58, Color("f6e7c1"), false), 520)
-		name_label.position = Vector2(x - 260, 742)
+		_shrink(name_label, top + Vector2(-260, 2), top, card)
 		add_child(name_label)
 		_names.append(name_label)
 		var about_style := Ui.text(26, Color("3a2418"))
 		about_style.outline_size = 0
 		var about := Ui.label(str(character.get("about", "")), about_style, 520)
-		about.position = Vector2(x - 260, 818)
+		_shrink(about, top + Vector2(-260, 78), top, card)
 		add_child(about)
 	var hint := Ui.label("←  →  выбрать   ·   ↑  ↓  один или вдвоём   ·   Пробел — в бой   ·   Esc — настройки",
 			Ui.text(28), 1920)
 	hint.position = Vector2(0, 992)
 	add_child(hint)
 	_show()
+
+
+## Puts [param label] where it would be at [param at] on a full-size
+## playbill, shrunk by [param s] with the playbill about [param top]. (A
+## label grows and shrinks about its middle.)
+func _shrink(label: Label, at: Vector2, top: Vector2, s: float) -> void:
+	label.position = top + (at + label.size * 0.5 - top) * s - label.size * 0.5
+	label.scale = Vector2.ONE * s
 
 
 func _process(delta: float) -> void:
@@ -107,8 +149,9 @@ func _process(delta: float) -> void:
 	if _taken or not active:
 		return
 	var step := _nav.step(delta)
-	if step.x != 0 and index != (0 if step.x < 0 else 1):
-		index = 0 if step.x < 0 else 1
+	var next := clampi(index + signi(step.x), 0, ids.size() - 1)
+	if step.x != 0 and next != index:
+		index = next
 		Sfx.play("select", -6.0, 0.0)
 		_show()
 	elif step.y != 0:
@@ -133,17 +176,18 @@ func pick() -> void:
 		return
 	_taken = true
 	Sfx.play("confirm", -4.0, 0.0)
-	chosen.emit(IDS[index], together)
+	chosen.emit(ids[index], together)
 
 
 func select(i: int) -> void:
-	index = clampi(i, 0, IDS.size() - 1)
+	index = clampi(i, 0, ids.size() - 1)
 	_show()
 
 
-## Lit and in the spotlight: the chosen brother, or both going together.
+## Lit and in the spotlight: the chosen one, and their partner when they
+## go together.
 func _lit(i: int) -> bool:
-	return together or i == index
+	return i == index or (together and ids[i] == GameData.character(ids[index]).get("partner", ""))
 
 
 func _show() -> void:
@@ -161,11 +205,11 @@ func _show() -> void:
 func _draw() -> void:
 	_backdrop()
 	_stage()
-	for i in IDS.size():
+	for i in ids.size():
 		_spotlight(i)
 	_marquee()
 	Frames.ribbon(self, Vector2(960, 312), 560.0, 66.0)
-	for i in IDS.size():
+	for i in ids.size():
 		_playbill(i)
 	_records()
 	_curtains()
@@ -231,14 +275,16 @@ func _stage() -> void:
 	Toon.hand_line(self, Vector2(0, top), Vector2(1920, top), 5.0, 390)
 
 
-## A cone of light from the flies down onto a brother, and the pool it makes
-## on the boards. Bright on the chosen one, a glimmer on the other.
+## A cone of light from the flies down onto each of them, and the pool it
+## makes on the boards. Bright on the chosen one, a glimmer on the others.
 func _spotlight(i: int) -> void:
-	var spot: Vector2 = SPOTS[i]
+	var at := spot(i)
 	var on := _lit(i)
 	var strength := 0.3 if on else 0.07
 	var flick := 1.0 + (Toon.hash01(_drawing, i) - 0.5) * 0.06
-	var top_x := spot.x + (i - 0.5) * 300.0
+	# The lamps hang over the middle of the stage, the beams slanting out.
+	var wide := float(_layout["figure"]) / 2.3
+	var top_x := at.x + (i - (ids.size() - 1) * 0.5) * 300.0 / (ids.size() - 1)
 	# The beam in slices across its width: bright down the middle, fading to
 	# nothing at its edges.
 	var slices := 10
@@ -249,12 +295,12 @@ func _spotlight(i: int) -> void:
 		var a1 := strength * flick * sin(u1 * PI)
 		var t0 := Vector2(top_x - 40 + 80 * u0, -20)
 		var t1 := Vector2(top_x - 40 + 80 * u1, -20)
-		var b0 := spot + Vector2(-210 + 420 * u0, 10)
-		var b1 := spot + Vector2(-210 + 420 * u1, 10)
+		var b0 := at + Vector2(-210 + 420 * u0, 10) * wide
+		var b1 := at + Vector2(-210 + 420 * u1, 10) * wide
 		draw_polygon(PackedVector2Array([t0, t1, b1, b0]),
 				PackedColorArray([Color(1, 0.97, 0.85, a0), Color(1, 0.97, 0.85, a1),
 						Color(1, 0.97, 0.85, a1 * 0.45), Color(1, 0.97, 0.85, a0 * 0.45)]))
-	Toon.glow(self, spot + Vector2(0, 8), Vector2(230, 60), Color(1, 0.96, 0.8, (0.7 if on else 0.15) * flick), 3)
+	Toon.glow(self, at + Vector2(0, 8), Vector2(230, 60) * wide, Color(1, 0.96, 0.8, (0.7 if on else 0.15) * flick), 3)
 
 
 ## The title in a marquee: a red board, a cream rule inside its edge, and a
@@ -320,14 +366,17 @@ func _rim_points(rect: Rect2, n: int) -> PackedVector2Array:
 
 
 ## A playbill card under each brother: his name, a line about him, and his
-## numbers as bars.
+## numbers as bars. Drawn at its full size and shrunk about its top edge
+## when there are four.
 func _playbill(i: int) -> void:
-	var character := GameData.character(IDS[i])
-	var x: float = (SPOTS[i] as Vector2).x
+	var character := GameData.character(ids[i])
+	var x := spot(i).x
 	var on := _lit(i)
+	var card_scale := float(_layout["card"])
+	draw_set_transform(Vector2(x, 740) * (1.0 - card_scale), 0.0, Vector2.ONE * card_scale)
 	var card := Rect2(x - 250, 740, 500, 246)
 	Frames.card(self, card, CREAM if on else Color("cdbd9c"), 0.97)
-	if together:
+	if together and on:
 		_player_badge(i, Vector2(card.position.x + 6, card.position.y + 6))
 	for b in BARS.size():
 		var row: Array = BARS[b]
@@ -348,6 +397,7 @@ func _playbill(i: int) -> void:
 		var width := maxf(bar.size.x * clampf(value, 0.0, 1.0) - 4.0, 12.0)
 		draw_style_box(fill, Rect2(bar.position + Vector2(2, 2), Vector2(width, bar.size.y - 4)))
 		draw_line(bar.position + Vector2(8, 4), bar.position + Vector2(width - 4, 4), Color(1, 1, 1, 0.35), 2.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## A gold medallion on the corner of a playbill: which player takes that
@@ -384,11 +434,15 @@ func _evil_badge() -> void:
 
 
 ## A board on an easel between the brothers, chalked with the records:
-## runs, ways out, the quickest one. Not there before the first run.
+## runs, ways out, the quickest one. Not there before the first run. With
+## four on the poster it stands further up the stage, smaller, behind them.
 func _records() -> void:
 	if Records.runs == 0:
 		return
 	var center := Vector2(960, 548)
+	var board_scale := float(_layout["board"])
+	draw_set_transform(Vector2(960, float(_layout["board_y"])) - center * board_scale, 0.0,
+			Vector2.ONE * board_scale)
 	var board := Rect2(center - Vector2(128, 88), Vector2(256, 176))
 	# The easel: two legs splayed onto the boards, one behind.
 	Toon.hand_line(self, center + Vector2(0, -60), center + Vector2(0, 150), 7.0, 71, Color("5a3a22"))
@@ -419,6 +473,7 @@ func _records() -> void:
 	for r in rows.size():
 		draw_string(font, board.position + Vector2(0, 86 + r * 30), rows[r], HORIZONTAL_ALIGNMENT_CENTER,
 				board.size.x, 22, chalk)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## Red velvet curtains drawn back to either side, a valance with a gold
@@ -426,7 +481,7 @@ func _records() -> void:
 func _curtains() -> void:
 	for side: float in [-1.0, 1.0]:
 		var edge := 0.0 if side < 0.0 else 1920.0
-		var width := 250.0
+		var width := float(_layout["curtain"])
 		var folds := 6
 		for k in folds:
 			var x0 := edge - side * (width * k / folds)

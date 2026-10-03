@@ -15,6 +15,10 @@ extends Node2D
 ## run for the cellar. The ending: the cage bursts, the girls run into
 ## their arms, confetti.
 ##
+## In the girls' own run the story is turned about ([method turn_about]):
+## the Baron is back and has the brothers in his cage, and Роза and
+## Ромашка go to the rescue -- the same scenes, the parts swapped.
+##
 ## Each scene is a function of the time into it ([method _act]): where
 ## everyone stands, which way they look, what pose -- so a shot can be
 ## skipped or cut short with nothing left half done. Sounds and bursts go
@@ -78,13 +82,10 @@ const ENDING: Array[Dictionary] = [
 	{"scene": "reunion", "seconds": 8.5},
 	{"end": "Конец"},
 ]
-## The sweethearts: the older brother's tall girl with a bow, the
-## younger's round one in a hat with a daisy.
-const GIRLS: Array[Dictionary] = [
-	{"build": "lanky", "top": "bow", "size": 0.96, "shirt": "#c8392b", "pants": "#c8392b",
-			"shoes": "#c8392b", "accent": "#c8392b", "wear": "dress", "lashes": true},
-	{"build": "chubby", "top": "flower", "size": 0.94, "shirt": "#3f6fb5", "pants": "#3f6fb5",
-			"shoes": "ink", "accent": "#e0b23a", "wear": "dress", "lashes": true},
+## Before the girls' first run of their own: why they are going down.
+const GIRLS_TURN: Array[Dictionary] = [
+	{"card": "Но Барон Когтев сбежал\nи утащил братьев!", "music": "boss"},
+	{"card": "Держись, Барон!\nРоза и Ромашка идут!", "music": "menu"},
 ]
 const CREAM := Color("f3e6c8")
 const SEPIA := Color("1f140e")
@@ -125,6 +126,11 @@ const IRIS_OPEN := 0.55
 const IRIS_CLOSE := 0.5
 
 var shots: Array[Dictionary] = []
+## Who goes to the rescue and who sits in the cage, by character -- each
+## rescuer's sweetheart at the same place in the other list. The brothers
+## and the girls, or the other way round ([method turn_about]).
+var heroes: Array[String] = ["older", "younger"]
+var captives: Array[String] = ["rose", "daisy"]
 
 var _index := -1
 var _t := 0.0
@@ -168,6 +174,8 @@ var _lamp := 1.0
 var _holes: Array = []
 
 var _cast: Array[Node2D] = []
+## The rescuers, in the older and the younger brother's parts, and the two
+## in the cage: in the girls' run, the girls and the brothers.
 var _older: BrotherLook
 var _younger: BrotherLook
 var _girls: Array[BrotherLook] = []
@@ -390,17 +398,34 @@ func _person(look: Dictionary, at: Vector2, face: Vector2) -> BrotherLook:
 	return figure
 
 
-func _brother(id: String, at: Vector2, face: Vector2) -> BrotherLook:
+## Any of the four, by character.
+func _actor(id: String, at: Vector2, face: Vector2) -> BrotherLook:
 	return _person(GameData.character(id).get("look", {}), at, face)
+
+
+## Rescuer [param i]: the older brother's part (0) or the younger's (1).
+func _hero(i: int, at: Vector2, face: Vector2) -> BrotherLook:
+	return _actor(heroes[i], at, face)
+
+
+## The rescuers' sweethearts, the two the Baron takes.
+func _captives(at: Array[Vector2], face: Array[Vector2]) -> Array[BrotherLook]:
+	return [_actor(captives[0], at[0], face[0]), _actor(captives[1], at[1], face[1])]
+
+
+## The girls' own run: they go to the rescue, the brothers sit in the cage.
+func turn_about() -> void:
+	heroes = ["rose", "daisy"]
+	captives = ["older", "younger"]
 
 
 ## The four of them: the brothers and the girls, where the evening leaves
 ## them -- each couple facing each other, the girls between.
 func _couples(older_x := 850.0, girl_x: Array = [1020.0, 1280.0], younger_x := 1450.0) -> void:
-	_older = _brother("older", Vector2(older_x, WALK), Vector2.RIGHT)
-	_younger = _brother("younger", Vector2(younger_x, WALK), Vector2.LEFT)
-	_girls = [_person(GIRLS[0], Vector2(float(girl_x[0]), WALK), Vector2.LEFT),
-			_person(GIRLS[1], Vector2(float(girl_x[1]), WALK), Vector2.RIGHT)]
+	_older = _hero(0, Vector2(older_x, WALK), Vector2.RIGHT)
+	_younger = _hero(1, Vector2(younger_x, WALK), Vector2.LEFT)
+	_girls = _captives([Vector2(float(girl_x[0]), WALK), Vector2(float(girl_x[1]), WALK)],
+			[Vector2.LEFT, Vector2.RIGHT])
 
 
 func _make_baron(at: Vector2) -> FilmBaron:
@@ -547,10 +572,9 @@ func _stage(scene: String) -> void:
 	match scene:
 		"evening":
 			_night = 0.0
-			_older = _brother("older", Vector2(100, WALK), Vector2.RIGHT)
-			_younger = _brother("younger", Vector2(2400, WALK), Vector2.LEFT)
-			_girls = [_person(GIRLS[0], Vector2(1020, WALK), Vector2.RIGHT),
-					_person(GIRLS[1], Vector2(1280, WALK), Vector2.LEFT)]
+			_older = _hero(0, Vector2(100, WALK), Vector2.RIGHT)
+			_younger = _hero(1, Vector2(2400, WALK), Vector2.LEFT)
+			_girls = _captives([Vector2(1020, WALK), Vector2(1280, WALK)], [Vector2.RIGHT, Vector2.LEFT])
 		"arrival":
 			_holes = [[HOLE, HOLE_R, false]]
 			_couples()
@@ -567,12 +591,12 @@ func _stage(scene: String) -> void:
 			_cage.visible = false
 		"aftermath":
 			_holes = [[HOLE, HOLE_R, false]]
-			_older = _brother("older", Vector2(930, WALK), Vector2.RIGHT)
-			_younger = _brother("younger", Vector2(1370, WALK), Vector2.LEFT)
+			_older = _hero(0, Vector2(930, WALK), Vector2.RIGHT)
+			_younger = _hero(1, Vector2(1370, WALK), Vector2.LEFT)
 		"chase":
 			_holes = [[HATCH, HATCH_R, true]]
-			_older = _brother("older", Vector2(1690, WALK), Vector2.RIGHT)
-			_younger = _brother("younger", Vector2(1830, WALK), Vector2.LEFT)
+			_older = _hero(0, Vector2(1690, WALK), Vector2.RIGHT)
+			_younger = _hero(1, Vector2(1830, WALK), Vector2.LEFT)
 		"phone":
 			_baron = _make_baron(DEN_BARON)
 			_kittens.append(_make_kitten(DEN_BARON + Vector2(260, 10)))
@@ -583,16 +607,15 @@ func _stage(scene: String) -> void:
 			_baron = _make_baron(DEN_BARON + Vector2(80, 0))
 			_kittens.append(_make_kitten(DEN_BARON + Vector2(380, 20)))
 			_make_cage(DEN_CAGE)
-			_girls = [_person(GIRLS[0], DEN_CAGE + Vector2(-70, -40), Vector2.DOWN),
-					_person(GIRLS[1], DEN_CAGE + Vector2(70, -40), Vector2.DOWN)]
+			_girls = _captives([DEN_CAGE + Vector2(-70, -40), DEN_CAGE + Vector2(70, -40)], [Vector2.DOWN, Vector2.DOWN])
 			for girl: BrotherLook in _girls:
 				girl.scale = Vector2(1.5, 1.5)
 			_bat = _make_bat(Vector2(2300, 400))
 		"reunion":
-			_older = _brother("older", Vector2(160, GROUND), Vector2.RIGHT)
-			_younger = _brother("younger", Vector2(320, GROUND), Vector2.RIGHT)
-			_girls = [_person(GIRLS[0], Vector2(CAGE_END.x - 70, GROUND), Vector2.LEFT),
-					_person(GIRLS[1], Vector2(CAGE_END.x + 70, GROUND), Vector2.LEFT)]
+			_older = _hero(0, Vector2(160, GROUND), Vector2.RIGHT)
+			_younger = _hero(1, Vector2(320, GROUND), Vector2.RIGHT)
+			_girls = _captives([Vector2(CAGE_END.x - 70, GROUND), Vector2(CAGE_END.x + 70, GROUND)],
+					[Vector2.LEFT, Vector2.LEFT])
 			_make_cage(CAGE_END)
 
 

@@ -111,6 +111,9 @@ func setup(character_id: String, room_: Room, input_: PlayerInput) -> void:
 	look = BrotherLook.new()
 	look.configure(character.get("look", {}))
 	add_child(look)
+	# What some start out with: Ромашка's sandwich.
+	for item: String in character.get("items", []):
+		take_item(item)
 
 
 func is_invulnerable() -> bool:

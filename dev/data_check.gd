@@ -19,6 +19,16 @@ func _initialize() -> void:
 		_expect(stats.max_hp() >= 2, "%s has at least one heart" % id)
 		_expect(stats.fire_interval() > 0.05 and stats.fire_interval() < 2.0,
 				"%s shoots at a sane rate (%.2f s)" % [id, stats.fire_interval()])
+		# What the captions call them, who they go together with, what opens
+		# them and what they start out with.
+		_expect(c.has("call") and c.has("calls"), "%s has a word for them" % id)
+		var partner := str(c.get("partner", ""))
+		_expect(characters.has(partner) and str(characters[partner].get("partner", "")) == id,
+				"%s goes together with %s, and the other way round" % [id, partner])
+		if c.has("lock"):
+			_expect(Unlocks.opener(str(c["lock"])) != "", "a deed opens %s" % id)
+		for item: String in c.get("items", []):
+			_expect(GameData.items().has(item), "%s starts with %s, which exists" % [id, item])
 	var enemies := GameData.enemies()
 	for kind: String in enemies:
 		var e: Dictionary = enemies[kind]
@@ -41,7 +51,7 @@ func _initialize() -> void:
 	_expect(layout.size() == Room.ROWS, "arena has %d rows (has %d)" % [Room.ROWS, layout.size()])
 	for row in layout:
 		_expect(row.length() == Room.COLS, "arena row '%s' is %d wide" % [row, Room.COLS])
-	print("data: %d brothers, %d enemies, %d items, %d waves, layout %dx%d" % [characters.size(),
+	print("data: %d characters, %d enemies, %d items, %d waves, layout %dx%d" % [characters.size(),
 			enemies.size(), items.size(), waves.size(), layout[0].length() if layout.size() > 0 else 0, layout.size()])
 	quit(1 if _failures > 0 else 0)
 

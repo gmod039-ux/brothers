@@ -278,16 +278,25 @@ func _numbers() -> void:
 		var y := 150.0 + i * 66.0
 		_label(str(rows[i][0]), 32, SOFT, Vector2(260, y), 600, HORIZONTAL_ALIGNMENT_RIGHT)
 		_label(str(rows[i][1]), 36, INK_BROWN, Vector2(900, y - 2), 400, HORIZONTAL_ALIGNMENT_LEFT)
-	# Brother by brother, each with his figure.
+	# One by one, each with their figure: the girls in ink until they are
+	# open, with what opens them.
 	var who: Array = GameData.characters().keys()
 	for i in who.size():
 		var id: String = who[i]
-		var at := Vector2(1440 + (i % 2) * 260.0, 470 + (i / 2) * 380.0)
+		var at := Vector2(1440 + (i % 2) * 260.0, 400 + (i / 2) * 330.0)
+		var open := Unlocks.character_open(id)
 		var figure := BrotherLook.new()
 		figure.configure(GameData.character(id).get("look", {}))
-		figure.scale = Vector2(1.3, 1.3)
+		figure.scale = Vector2(1.15, 1.15)
 		figure.position = at
+		if not open:
+			figure.modulate = Color(0.16, 0.1, 0.07, 0.85)
 		_page_root.add_child(figure)
-		_label(str(GameData.character(id).get("name", id)), 30, INK_BROWN, at + Vector2(-120, 16), 240)
-		_label("забегов %d · побед %d" % [Records.count("runs_" + id), Records.count("wins_" + id)], 20, SOFT,
-				at + Vector2(-120, 56), 240)
+		if open:
+			_label(str(GameData.character(id).get("name", id)), 30, INK_BROWN, at + Vector2(-120, 16), 240)
+			_label("забегов %d · побед %d" % [Records.count("runs_" + id), Records.count("wins_" + id)], 20,
+					SOFT, at + Vector2(-120, 56), 240)
+		else:
+			_label("?", 30, SOFT, at + Vector2(-120, 16), 240)
+			var deed := Unlocks.opener(str(GameData.character(id).get("lock", "")))
+			_note(str(Unlocks.deeds().get(deed, {}).get("hint", "")), 17, RED, at + Vector2(-110, 56), 220)

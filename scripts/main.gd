@@ -296,7 +296,7 @@ func show_select() -> void:
 	select = BrotherSelect.new()
 	select.evil = _evil()
 	_select_layer.add_child(select)
-	var index := BrotherSelect.IDS.find(chosen)
+	var index := select.ids.find(chosen)
 	select.select(maxi(index, 0))
 	select.together = coop
 	select.chosen.connect(_on_chosen)
@@ -316,9 +316,13 @@ func _on_chosen(id: String, both: bool) -> void:
 		Options.brother = id
 		Options.together = both
 		Options.save()
-	await iris.close(select.SPOTS[select.index] + Vector2(0, -150), 0.7)
+	await iris.close(select.focus(select.index), 0.7)
 	select.queue_free()
 	select = null
+	if _recording and _girls_run() and Records.count("runs_rose") + Records.count("runs_daisy") == 0:
+		# The girls' first time: why it is them going down.
+		state = "story"
+		await play_story(Story.GIRLS_TURN)
 	start_run(randi() % 1000000)
 
 
@@ -337,10 +341,11 @@ func start_run(seed_value: int) -> void:
 		# No gamepad for the second brother: alone, then.
 		two = false
 		Controls.assign(false)
-		banner.caption("Второму брату нужен геймпад", "подключи и выбери «вдвоём» снова", 3.0)
+		banner.caption("Второму игроку нужен геймпад", "подключи и выбери «вдвоём» снова", 3.0)
 	var ids: Array[String] = [chosen]
-	if two:
-		ids.append(BrotherSelect.IDS[1 - BrotherSelect.IDS.find(chosen)])
+	var partner := str(GameData.character(chosen).get("partner", ""))
+	if two and partner != "":
+		ids.append(partner)
 	brothers.clear()
 	for i in ids.size():
 		var one := Brother.new()
@@ -353,7 +358,7 @@ func start_run(seed_value: int) -> void:
 		one.health_changed.connect(hud.set_health)
 		one.hurt_taken.connect(_on_hurt)
 		one.died.connect(_on_died.bind(one))
-		one.revived.connect(func() -> void: banner.caption("Братец снова в строю!", "", 1.6))
+		one.revived.connect(func() -> void: banner.caption("%s снова в строю!" % _call(one).capitalize(), "", 1.6))
 		one.inventory_changed.connect(hud.queue_redraw)
 		one.inventory_changed.connect(func() -> void:
 			if one.coins >= 30:
@@ -499,7 +504,7 @@ func _descend() -> void:
 	# Meanwhile, in the Baron's den: the first time down each trapdoor.
 	var bit := 1 << run.floor_index
 	if _recording and Records.interludes & bit == 0 and not Story.interlude(run.floor_index).is_empty():
-		await play_story(Story.interlude(run.floor_index))
+		await play_story(Story.interlude(run.floor_index), _girls_run())
 		Records.interludes |= bit
 		Records.save()
 	banner.clear()
@@ -516,8 +521,9 @@ func _finish() -> void:
 	_on_deed("win_together" if brothers.size() > 1 else "win_" + chosen)
 	var best := _record(true)
 	if _recording and run != null:
-		# The girls are free: the end of the picture, before the numbers.
-		await play_story(Story.ENDING)
+		# The girls are free (or the brothers): the end of the picture, before
+		# the numbers.
+		await play_story(Story.ENDING, _girls_run())
 	Music.play("menu")
 	var lines := _run_lines()
 	var record := Records.best_evil if run != null and run.evil else Records.best_time
@@ -530,18 +536,21 @@ func _finish() -> void:
 	print("finished in %.1f s" % seconds)
 
 
-## Plays [param shots] of the story over everything. Await the signal it
+## Plays [param shots] of the story over everything; [param turned], the
+## girls' version of it ([method Story.turn_about]). Await the signal it
 ## returns for the end of it, skipped or not.
-func play_story(shots: Array[Dictionary]) -> Signal:
+func play_story(shots: Array[Dictionary], turned := false) -> Signal:
 	var story := Story.new()
 	story.shots = shots
+	if turned:
+		story.turn_about()
 	_story_layer.add_child(story)
 	return story.finished
 
 
-## R, Enter or A: another run; Esc or Start: back to the brothers.
+## R, Enter or A: another run; Esc or Start: back to the poster.
 func _over_hint() -> String:
-	return "R, Enter — ещё раз   ·   Esc — выбрать брата"
+	return "R, Enter — ещё раз   ·   Esc — к афише"
 
 
 ## Writes the run that has just ended into the records. True when it was
@@ -556,6 +565,16 @@ func _record(won: bool) -> bool:
 	if Records.knockouts >= 100:
 		_on_deed("kills_100")
 	return best
+
+
+## What the captions call [param one]: "братец" or "подружка".
+func _call(one: Brother) -> String:
+	return str(GameData.character(one.id).get("call", "братец")) if is_instance_valid(one) else "братец"
+
+
+## The girls' own run: the story is turned about for it.
+func _girls_run() -> bool:
+	return bool(GameData.character(chosen).get("she", false))
 
 
 ## The evil mode for the next run: on in the settings and open, or asked
@@ -672,9 +691,11 @@ func _on_hurt() -> void:
 func _on_died(who: Brother) -> void:
 	for one in brothers:
 		if not one.dead:
-			# His brother is still up, and will get him up once the room is
-			# clear.
-			banner.caption("Братец в нокауте!", "расчисти комнату — и он встанет", 2.2)
+			# The other one is still up, and will get them up once the room
+			# is clear.
+			var she := bool(GameData.character(who.id).get("she", false))
+			banner.caption("%s в нокауте!" % _call(who).capitalize(),
+					"расчисти комнату — и %s встанет" % ("она" if she else "он"), 2.2)
 			return
 	state = "over"
 	# Written down now: R before the card comes up still counts the run.
@@ -692,7 +713,8 @@ func _on_died(who: Brother) -> void:
 	if is_instance_valid(who) and who.killed_by != "":
 		lines.insert(lines.size() - 1, "последний удар — %s" % who.killed_by)
 	_add_opened(lines)
-	intertitle.show_card("dead", "Эх, братцы…" if brothers.size() > 1 else "Эх, братец…", lines,
+	var calls := str(GameData.character(chosen).get("calls", "братцы"))
+	intertitle.show_card("dead", "Эх, %s…" % (calls if brothers.size() > 1 else _call(who)), lines,
 			_over_hint(), _looks(), _items())
 
 
@@ -726,7 +748,7 @@ func _pause() -> void:
 		{"id": "resume", "text": "Дальше"},
 		{"id": "options", "text": "Настройки"},
 		{"id": "restart", "text": "Заново"},
-		{"id": "select", "text": "Выбрать брата"},
+		{"id": "select", "text": "К афише"},
 		{"id": "quit", "text": "Выйти из игры"},
 	]
 	card.items = _items()

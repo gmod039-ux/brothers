@@ -23,8 +23,9 @@ extends Node
 ##   ko            knock out the bosses in the room
 ##   bosshp X      set the bosses' health to X of their most (0.5: phase 2)
 ##   story NAME    play the story over the game: opening, ending, the
-##                 scenes between floors (boiler, catacombs), or all of it
-##                 but the end (all)
+##                 scenes between floors (boiler, catacombs), all of it
+##                 but the end (all), or the girls' first card (girls) --
+##                 turned about if a girl is playing
 ##   at C R        stand the brother on tile column C, row R
 ##   secret        into the room by the floor's hidden secret room, at the
 ##                 cracked wall
@@ -191,7 +192,9 @@ func _tour(words: PackedStringArray) -> void:
 						shots = Story.interlude(1)
 					"all":
 						shots = Story.so_far()
-				main.call("play_story", shots)
+					"girls":
+						shots = Story.GIRLS_TURN
+				main.call("play_story", shots, main.call("_girls_run"))
 				i += 2
 			"god":
 				var brother := main.get("brother") as Brother

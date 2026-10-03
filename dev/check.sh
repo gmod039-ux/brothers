@@ -53,6 +53,8 @@ run "floor run, younger" -- brother younger demo seed 3 autoplay 200 need_bosses
 run "whole chapter, older" -- brother older demo seed 8 autoplay 480 need_bosses 3
 # Both brothers, a bot each, through the first floor and its boss.
 run "co-op floor, younger + older" -- brother younger coop demo seed 4 autoplay 110 need_bosses 1
+# And the girls, Ромашка with her sandwich.
+run "co-op floor, daisy + rose" -- brother daisy coop demo seed 4 autoplay 110 need_bosses 1
 
 if [ $failed -eq 0 ]; then echo; echo "ALL OK"; else echo; echo "SOMETHING FAILED"; fi
 exit $failed

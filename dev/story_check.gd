@@ -26,6 +26,11 @@ func _run() -> void:
 	_check(Story.interlude(2).is_empty(), "no scene after the last floor but the ending")
 	_check(Story.so_far().size() == Story.OPENING.size() + Story.interlude(0).size()
 			+ Story.interlude(1).size() + 2, "the story so far is the opening and both scenes, each after a card")
+	# The girls' run: their cards, and the story turned about.
+	await _plays_through(Story.GIRLS_TURN, "girls' cards")
+	await _plays_through(Story.interlude(1), "girls' scene before the catacombs", true)
+	await _plays_through(Story.ENDING, "girls' ending", true)
+	await _turned_cast()
 	await _skips_shot_by_shot()
 	await _escapes()
 	print("%d checks, %d failed" % [_checks, _failures])
@@ -39,17 +44,19 @@ func _check(ok: bool, what: String) -> void:
 		printerr("FAILED: " + what)
 
 
-func _start(shots: Array[Dictionary]) -> Story:
+func _start(shots: Array[Dictionary], turned := false) -> Story:
 	var story := Story.new()
 	story.shots = shots
+	if turned:
+		story.turn_about()
 	root.add_child(story)
 	return story
 
 
 ## Every scene shows and lasts its seconds; the whole takes about as long as
 ## its shots add up to.
-func _plays_through(shots: Array[Dictionary], name: String) -> void:
-	var story := _start(shots)
+func _plays_through(shots: Array[Dictionary], name: String, turned := false) -> void:
+	var story := _start(shots, turned)
 	var done := [false]
 	story.finished.connect(func() -> void: done[0] = true)
 	var seen := {}
@@ -74,6 +81,22 @@ func _plays_through(shots: Array[Dictionary], name: String) -> void:
 	await process_frame
 	_check(not is_instance_valid(story), "the %s is gone once over" % name)
 	print("%s: %.1f s, %d shots" % [name, seconds, shots.size()])
+
+
+## Turned about, the girls run in and the brothers are the ones in the cage.
+func _turned_cast() -> void:
+	var story := _start(Story.ENDING, true)
+	var frames := 0
+	while is_instance_valid(story) and story.call("_kind") != "reunion" and frames < 900:
+		await process_frame
+		frames += 1
+	var rescuer: BrotherLook = story.get("_older") if is_instance_valid(story) else null
+	var caged: Array = story.get("_girls") if is_instance_valid(story) else []
+	_check(rescuer != null and rescuer.top == "bow" and caged.size() == 2 and (caged[0] as BrotherLook).top == "quiff",
+			"in the girls' ending Роза runs in and the older brother is in the cage")
+	if is_instance_valid(story):
+		story.queue_free()
+	await process_frame
 
 
 ## Enter in each shot cuts it short.

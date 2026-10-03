@@ -26,7 +26,7 @@ func _draw() -> void:
 	var line := "E — бомба     Пробел — предмет     Esc — пауза"
 	_word(Vector2(960, 850), line, -0.01, 30)
 	if coop:
-		_word(Vector2(960, 196), "второй брат — на геймпаде", -0.01, 28)
+		_word(Vector2(960, 196), "второй игрок — на геймпаде", -0.01, 28)
 
 
 ## Keycaps in a cluster round [param at], each [label, offset in keys].

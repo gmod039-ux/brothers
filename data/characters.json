@@ -9,6 +9,9 @@
 		"range": 6.0,
 		"shot_speed": 0.95,
 		"luck": 0,
+		"call": "братец",
+		"calls": "братцы",
+		"partner": "younger",
 		"look": {
 			"build": "lanky",
 			"top": "quiff",
@@ -30,6 +33,9 @@
 		"range": 6.8,
 		"shot_speed": 1.1,
 		"luck": 1,
+		"call": "братец",
+		"calls": "братцы",
+		"partner": "older",
 		"look": {
 			"build": "chubby",
 			"top": "ears",
@@ -39,6 +45,63 @@
 			"shoes": "white",
 			"accent": "#e0b23a",
 			"wear": "straps"
+		}
+	},
+	"rose": {
+		"name": "Роза",
+		"about": "Бьёт издалека, и метко",
+		"call": "подружка",
+		"calls": "подружки",
+		"she": true,
+		"partner": "daisy",
+		"lock": "@girls",
+		"hearts": 3,
+		"speed": 1.0,
+		"damage": 3.8,
+		"tears": 2.6,
+		"range": 7.5,
+		"shot_speed": 1.05,
+		"luck": 0,
+		"look": {
+			"build": "lanky",
+			"top": "bow",
+			"size": 0.96,
+			"shirt": "#c8392b",
+			"pants": "#c8392b",
+			"shoes": "#c8392b",
+			"accent": "#c8392b",
+			"wear": "dress",
+			"lashes": true
+		}
+	},
+	"daisy": {
+		"name": "Ромашка",
+		"about": "Везучая, и с бутербродом",
+		"call": "подружка",
+		"calls": "подружки",
+		"she": true,
+		"partner": "rose",
+		"lock": "@girls",
+		"hearts": 4,
+		"speed": 1.0,
+		"damage": 3.2,
+		"tears": 2.8,
+		"range": 6.4,
+		"shot_speed": 1.0,
+		"luck": 2,
+		"items": [
+			"sandwich"
+		],
+		"look": {
+			"build": "chubby",
+			"top": "flower",
+			"size": 0.94,
+			"shirt": "#3f6fb5",
+			"pants": "#3f6fb5",
+			"shoes": "ink",
+			"accent": "#e0b23a",
+			"wear": "dress",
+			"lashes": true
 		}
 	}
 }

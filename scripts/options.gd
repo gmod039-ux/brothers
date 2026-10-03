@@ -34,7 +34,7 @@ static func load_file() -> void:
 	shake = bool(config.get_value("screen", "shake", shake))
 	fullscreen = bool(config.get_value("screen", "fullscreen", fullscreen))
 	brother = str(config.get_value("choice", "brother", brother))
-	if not brother in ["older", "younger"]:
+	if not GameData.characters().has(brother):
 		brother = "older"
 	together = bool(config.get_value("choice", "together", together))
 	evil = bool(config.get_value("choice", "evil", evil))
