@@ -357,6 +357,8 @@ func start_run(seed_value: int) -> void:
 		run.map_changed.connect(hud.queue_redraw)
 		run.bosses_appeared.connect(_on_bosses)
 		run.boss_beaten.connect(_on_boss_beaten)
+		run.miniboss_appeared.connect(_on_miniboss)
+		run.miniboss_beaten.connect(_on_miniboss_beaten)
 		run.trapdoor_entered.connect(_descend)
 		run.unlocked.connect(hud.queue_redraw)
 		run.secret_found.connect(func() -> void: banner.caption("Тайник!", "за стеной что-то есть", 2.0))
@@ -424,6 +426,25 @@ func _on_boss_beaten(_boss: Enemy) -> void:
 	var sub := "люк открыт — вниз!" if not run.is_last_floor() else "люк открыт — на волю!"
 	banner.say("НОКАУТ!", sub, 1.1, "knockout")
 	print("boss beaten on floor %d at %.0f s" % [run.floor_index + 1, _play_time])
+
+
+## A mini-boss: its name on a short card, its bar, the boss's record.
+func _on_miniboss(boss: Boss) -> void:
+	banner.hide_caption()
+	var shown: Array[Boss] = [boss]
+	hud.bosses = shown
+	Music.play("boss")
+	Sfx.play("roar", -4.0, 0.0)
+	boss.stomped.connect(func() -> void: _shake = 0.25)
+	banner.say(boss.title, boss.subtitle, MiniBoss.INTRO - 0.15, "boss")
+
+
+func _on_miniboss_beaten(_boss: Enemy) -> void:
+	hud.bosses = []
+	Music.play("floor%d" % clampi(run.floor_index, 0, 2))
+	Sfx.play("blast", -4.0)
+	_shake = 0.3
+	banner.say("НОКАУТ!", "сундук твой", 1.0, "knockout")
 
 
 ## Down the trapdoor: through the iris to the next floor, or out.

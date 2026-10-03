@@ -22,12 +22,14 @@ const SIDES := {
 	"left": Vector2i(-1, 0),
 }
 const OPPOSITE := {"top": "bottom", "bottom": "top", "left": "right", "right": "left"}
+## How many floors have a mini-boss in one of their fight rooms.
+const MINIBOSS_CHANCE := 0.7
 
 
 class RoomInfo:
 	var cell := Vector2i.ZERO
 	## "start", "normal", "boss", "treasure", "shop", "arcade",
-	## "challenge" or "secret".
+	## "challenge", "miniboss" or "secret".
 	var kind := "normal"
 	var layout_name := ""
 	var rows := PackedStringArray()
@@ -65,6 +67,8 @@ var shop := Vector2i(-1, -1)
 ## over: (-1, -1) for none.
 var arcade := Vector2i(-1, -1)
 var challenge := Vector2i(-1, -1)
+## The fight room the floor's mini-boss waits in, (-1, -1) for none.
+var miniboss := Vector2i(-1, -1)
 ## The secret room, (-1, -1) for none; its info, kept off [member rooms]
 ## while it is hidden.
 var secret := Vector2i(-1, -1)
@@ -210,6 +214,18 @@ func reveal_secret() -> void:
 func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
 	var fights := layouts.fights()
 	var deck: Array[String] = []
+	# On most floors one fight room, two steps from the start at least, is
+	# the mini-boss's.
+	if rng.randf() < MINIBOSS_CHANCE:
+		var fit: Array[Vector2i] = []
+		for cell: Vector2i in rooms:
+			var room_info: RoomInfo = rooms[cell]
+			if room_info.depth >= 2 and not cell in [start, boss, treasure, shop, arcade, challenge]:
+				fit.append(cell)
+		if not fit.is_empty():
+			miniboss = fit[rng.randi() % fit.size()]
+			var chosen: RoomInfo = rooms[miniboss]
+			chosen.kind = "miniboss"
 	for cell: Vector2i in rooms:
 		var info: RoomInfo = rooms[cell]
 		if cell == start:
@@ -226,7 +242,7 @@ func _furnish(rng: RandomNumberGenerator, layouts: RoomLayouts) -> void:
 			info.kind = "challenge"
 		if info.kind != "normal":
 			info.layout_name = "@" + info.kind
-			info.cleared = not info.kind in ["boss", "challenge"]
+			info.cleared = not info.kind in ["boss", "challenge", "miniboss"]
 			info.locked = index > 0 and info.kind in ["treasure", "shop"]
 		else:
 			# Deal layouts from a shuffled deck, so a floor repeats one only

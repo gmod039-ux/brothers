@@ -3,13 +3,21 @@ extends Node2D
 ## The Baron's notary, after a boss is beaten: a black cat in a waistcoat
 ## and sleeve garters at a little desk, a contract on it with a quill and a
 ## pot of red ink. His wares are on the floor in front -- items that cost
-## not coins but a heart, for good. "Подпишите здесь!"
+## not coins but a heart, for good. "Подпишите здесь!" -- each time a
+## brother comes up to the desk, not as he sets it up: then the knockout
+## and its banner have the screen, and nobody would see him say it.
 
 const VEST := Color("8f1f22")
+## A brother this near is greeted.
+const GREET := 420.0
+
+var room: Room
 
 var _clock := 0.0
 var _words := "Подпишите здесь!"
-var _say_for := 3.0
+var _say_for := 0.0
+## Somebody is near: greeted once until everyone has walked off again.
+var _near := false
 
 
 func say(words: String, seconds := 1.8) -> void:
@@ -20,6 +28,14 @@ func say(words: String, seconds := 1.8) -> void:
 func _process(delta: float) -> void:
 	_clock += delta
 	_say_for = maxf(_say_for - delta, 0.0)
+	if room != null:
+		var near := false
+		for brother in room.brothers:
+			if not brother.dead and brother.global_position.distance_to(global_position) < GREET:
+				near = true
+		if near and not _near and _say_for <= 0.0:
+			say("Подпишите здесь!", 2.6)
+		_near = near
 	queue_redraw()
 
 
@@ -69,9 +85,13 @@ func _draw() -> void:
 	Toon.hose(self, body + Vector2(20, -10), Vector2(-4, -48 - tap), -8.0, 7.0)
 	Toon.ball(self, Vector2(-4, -50 - tap), Vector2(8, 7), BrotherLook.WHITE, d, 9, 2.5)
 	if _say_for > 0.0:
+		# To the left of him at the height of his head, the tail pointing at
+		# his mouth: over his head it ran up into the wall.
 		var font := Ui.font()
-		var at := Vector2(-30, -200)
 		var width := font.get_string_size(_words, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x + 50.0
-		Toon.shape(self, PackedVector2Array([at + Vector2(-10, 20), at + Vector2(10, 20), at + Vector2(0, 50)]), Toon.PAPER, 3.0)
+		var at := head + Vector2(-60.0 - width * 0.5, -26.0)
+		var mouth := head + Vector2(-14, 8)
+		var root := at + Vector2(width * 0.5 - 24.0, 4.0)
+		Toon.shape(self, PackedVector2Array([root + Vector2(0, -10), root + Vector2(0, 14), mouth]), Toon.PAPER, 3.0)
 		Toon.blob(self, at, Vector2(width * 0.5, 30), Toon.PAPER, d, 11, 4.0)
 		draw_string(font, at + Vector2(-width * 0.5, 10), _words, HORIZONTAL_ALIGNMENT_CENTER, width, 28, Toon.INK)

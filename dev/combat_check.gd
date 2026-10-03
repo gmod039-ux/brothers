@@ -53,6 +53,7 @@ func _run() -> void:
 	await _obstacles()
 	await _new_items()
 	await _special_rooms()
+	await _minibosses()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -806,11 +807,79 @@ func _special_rooms() -> void:
 			ware = node
 	_expect(ware != null, "the Baron's notary lays out his ware")
 	if ware != null:
-		var hearts := brother.stats.hearts
+		# What it costs, less any heart the item itself gives back (a pie).
+		var item: Dictionary = GameData.items().get(ware.item, {})
+		var hearts := brother.stats.hearts - 1 + int((item.get("add", {}) as Dictionary).get("hearts", 0))
 		await _steps(30)
 		brother.global_position = ware.global_position
 		await _steps(4)
-		_expect(brother.stats.hearts == hearts - 1 and not is_instance_valid(ware), "it costs a heart for good")
+		_expect(brother.stats.hearts == hearts and not is_instance_valid(ware), "it costs a heart for good")
+	run.queue_free()
+	camera.queue_free()
+	await process_frame
+
+
+## Each floor's mini-boss turns up in its room behind shut doors, keeps its
+## minions in check, and leaves a gold chest; the Count gets up twice.
+func _minibosses() -> void:
+	if room != null:
+		room.queue_free()
+		room = null
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await _steps(2)
+	var kinds := ["FlyQueen", "HeadStoker", "BoneCount"]
+	for floor_index in Run.FLOORS:
+		if floor_index > 0:
+			run.start_floor(floor_index)
+			await _steps(2)
+		var cards := [0]
+		var on_card := func(_b: Boss) -> void: cards[0] += 1
+		run.miniboss_appeared.connect(on_card)
+		run.teleport("miniboss")
+		await _steps(10)
+		run.miniboss_appeared.disconnect(on_card)
+		var boss: MiniBoss = null
+		for enemy in run.room.enemies:
+			if enemy is MiniBoss:
+				boss = enemy
+		_expect(boss != null and boss.get_script().get_global_name() == kinds[floor_index],
+				"floor %d's mini-boss is %s" % [floor_index + 1, kinds[floor_index]])
+		if boss == null:
+			continue
+		_expect(cards[0] == 1, "its title card goes up once")
+		_expect(not run.room.open_doors.values().has(true), "the doors shut on it")
+		await _steps(int(MiniBoss.INTRO * 60) + 5)
+		_expect(boss.state != "wait", "after the card it is at it (%s)" % boss.state)
+		if boss is FlyQueen:
+			for i in 4:
+				(boss as FlyQueen)._lay()
+			_expect(boss.minions("fly") == FlyQueen.MOST_FLIES, "the queen keeps to four flies (%d)" % boss.minions("fly"))
+		if boss is BoneCount:
+			var count := boss as BoneCount
+			for life in BoneCount.LIVES:
+				count.hurt(count.hp + 1.0, Vector2.LEFT)
+				_expect(not count.dead and count.state == "pile", "the Count falls apart (%d)" % (life + 1))
+				_expect(not count.can_be_hit(), "and is no target lying there")
+				await _steps(int((BoneCount.PILE_TIME + BoneCount.RISE_TIME + 0.1) * 60))
+				_expect(count.can_be_hit(), "he gets up again (%d)" % (life + 1))
+		boss.hurt(boss.hp + 1.0, Vector2.LEFT)
+		_expect(boss.dead, "the mini-boss goes down")
+		await _steps(10)
+		_expect(run.plan.info(run.cell).cleared and run.room.open_doors.values().has(true), "its room is won, doors open")
+		var chest := false
+		for node in run.room.actors.get_children():
+			if node is Pickup and (node as Pickup).kind == "gold_chest":
+				chest = true
+		_expect(chest, "it leaves a gold chest")
 	run.queue_free()
 	camera.queue_free()
 	await process_frame

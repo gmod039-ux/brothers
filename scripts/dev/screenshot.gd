@@ -13,8 +13,9 @@ extends Node
 ##   press ACTION  press an input action for one frame (p1_right, confirm …)
 ##   hurt | die    hit the brother, or knock out the first brother still up
 ##   bomb          drop a bomb at his feet
-##   goto KIND     jump to the floor's shop, treasure room, boss room … or
-##                 a fight room ("normal", the first one on the plan)
+##   goto KIND     jump to the floor's shop, treasure room, boss room,
+##                 mini-boss … or a fight room ("normal", the first one on
+##                 the plan, or a layout's name)
 ##   coins N       give him N coins
 ##   floor N       go down to floor N (1 is the first)
 ##   god on|off    whether hits cost anything

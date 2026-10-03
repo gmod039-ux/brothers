@@ -268,6 +268,12 @@ func _draw_map() -> void:
 					Toon.spot(self, at + Vector2(sx * 3.5, 3), Vector2(3.5, 3.5), Color("b8322a"))
 				draw_line(at + Vector2(-3, 1), at + Vector2(1, -6), Toon.INK, 1.5)
 				draw_line(at + Vector2(3, 1), at + Vector2(1, -6), Toon.INK, 1.5)
+			"miniboss":
+				# A crown, once they have been in.
+				if info.visited:
+					Toon.shape(self, PackedVector2Array([at + Vector2(-7, 5), at + Vector2(-8, -5), at + Vector2(-3, 0),
+							at + Vector2(0, -7), at + Vector2(3, 0), at + Vector2(8, -5), at + Vector2(7, 5)]),
+							Color("e0b23a"), 2.0)
 			"challenge":
 				# Crossed swords.
 				for sx: float in [-1.0, 1.0]:
@@ -308,6 +314,9 @@ func _draw_boss_bar() -> void:
 	for t in 3:
 		draw_line(skull + Vector2(-6 + t * 6, 12), skull + Vector2(-6 + t * 6, 17), Toon.INK, 2.0)
 	# Marks where the phases change.
-	for mark: float in [0.33, 0.66]:
+	var marks: Array[float] = [0.33, 0.66]
+	if is_instance_valid(bosses[0]):
+		marks = bosses[0].phase_marks()
+	for mark: float in marks:
 		var x := bar.position.x + bar.size.x * mark
 		draw_line(Vector2(x, bar.position.y), Vector2(x, bar.end.y), Toon.INK, 3.0)

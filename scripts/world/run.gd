@@ -15,6 +15,9 @@ signal secret_found
 ## should go up.
 signal bosses_appeared(bosses: Array[Boss])
 signal boss_beaten(boss: Boss)
+## The floor's mini-boss is in and its title card should go up; and down.
+signal miniboss_appeared(boss: Boss)
+signal miniboss_beaten(boss: Boss)
 signal trapdoor_entered
 signal floor_started(index: int)
 signal map_changed
@@ -54,6 +57,7 @@ var trapdoor: Trapdoor
 var kills := 0
 var rooms_cleared := 0
 var bosses_beaten := 0
+var minibosses_beaten := 0
 ## Items not yet offered this run: each turns up once at most.
 var pool: Array[String] = []
 
@@ -134,6 +138,16 @@ func _stop_slide() -> void:
 ## walking there: for screenshots and trying things out.
 func teleport(kind: String) -> void:
 	_stop_slide()
+	if kind == "miniboss" and plan.miniboss == Vector2i(-1, -1):
+		# A floor without one: the first fight room not yet been in gets it.
+		for at: Vector2i in plan.rooms:
+			var info := plan.info(at)
+			if info.kind == "normal" and not info.visited:
+				plan.miniboss = at
+				info.kind = "miniboss"
+				info.layout_name = "@miniboss"
+				info.rows = layouts.get_rows("@miniboss")
+				break
 	if layouts.rooms.has(kind) and not kind.begins_with("@"):
 		# A layout this floor did not deal: the first fight room gets it.
 		var dealt := false
@@ -329,6 +343,10 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		"challenge":
 			_open_challenge(info)
 			return
+		"miniboss":
+			if not info.cleared:
+				_start_miniboss()
+			return
 	if info.cleared:
 		if info.kind == "boss":
 			# Back in a beaten boss's room: the way down is still open. It
@@ -351,6 +369,54 @@ func _populate(info: FloorPlan.RoomInfo) -> void:
 		_toughen(enemy)
 	_fighting = true
 	_slam_doors()
+
+
+## Each floor's mini-boss: Madame Zhuzhu in the basement, the foreman in
+## the boiler room, the Count in the catacombs.
+func _make_miniboss() -> MiniBoss:
+	match floor_index:
+		0:
+			return FlyQueen.new()
+		1:
+			return HeadStoker.new()
+	return BoneCount.new()
+
+
+## The mini-boss's fight: the doors bang shut, a short title card while
+## everyone holds still, then at it.
+func _start_miniboss() -> void:
+	_slam_doors()
+	var boss := _make_miniboss()
+	boss.setup_boss(room, rng, floor_index)
+	if brothers.size() > 1:
+		boss.max_hp *= 1.4
+		boss.hp = boss.max_hp
+	room.actors.add_child(boss)
+	boss.global_position = room.tile_center(Vector2i(6, 2))
+	room.enemies.append(boss)
+	boss.knocked_out.connect(_on_miniboss_down)
+	_fighting = true
+	miniboss_appeared.emit(boss)
+	for brother in brothers:
+		brother.frozen = true
+	await create_tween().tween_interval(MiniBoss.INTRO).finished
+	for brother in brothers:
+		brother.frozen = false
+	if is_instance_valid(boss):
+		boss.wake()
+
+
+## Down: its minions go with it, and it leaves a gold chest and coins.
+func _on_miniboss_down(beaten: Enemy) -> void:
+	kills += 1
+	minibosses_beaten += 1
+	for enemy in room.enemies.duplicate():
+		enemy.knock_out()
+	miniboss_beaten.emit(beaten)
+	var at := room.tile_center(_open_tile_near(Vector2i(6, 3)))
+	_drop("gold_chest", at)
+	for i in 3:
+		_drop("coin", at + Vector2(-60.0 + i * 60.0, 80.0))
 
 
 ## The challenge: a prize behind bars in the middle and a sign. Step up to
@@ -417,6 +483,7 @@ func _lay_out_deal(info: FloorPlan.RoomInfo) -> void:
 	if info.deal.is_empty():
 		return
 	var desk := Contract.new()
+	desk.room = room
 	room.actors.add_child(desk)
 	desk.global_position = room.tile_center(Vector2i(10, 1)) + Vector2(0, 40)
 	room.block_tile(Vector2i(10, 1))

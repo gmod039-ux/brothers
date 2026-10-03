@@ -85,6 +85,7 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 	var secrets := 0
 	var arcades := 0
 	var challenges := 0
+	var minis := 0
 	for seed_value in SEEDS:
 		rng.seed = seed_value
 		var plan := FloorPlan.generate(rng, floor_index, layouts)
@@ -131,6 +132,12 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 					% [extra[1], seed_value])
 		_expect(plan.challenge == Vector2i(-1, -1) or not plan.info(plan.challenge).cleared,
 				"a challenge waits to be fought (seed %d)" % seed_value)
+		if plan.miniboss != Vector2i(-1, -1):
+			minis += 1
+			var mini := plan.info(plan.miniboss)
+			_expect(mini.kind == "miniboss" and mini.layout_name == "@miniboss" and not mini.cleared,
+					"the mini-boss's room is set (seed %d)" % seed_value)
+			_expect(mini.depth >= 2, "the mini-boss is not next to the start (seed %d)" % seed_value)
 		for cell: Vector2i in plan.rooms:
 			var info := plan.info(cell)
 			_expect(info.rows.size() == Room.ROWS, "room %s has a layout (seed %d)" % [cell, seed_value])
@@ -138,9 +145,9 @@ func _check_floors(layouts: RoomLayouts, floor_index: int) -> void:
 				_expect(info.depth <= boss.depth, "no dead end deeper than the boss (seed %d)" % seed_value)
 		if _failures > 20:
 			break
-	print("floor %d: %d seeds, %d to %d rooms, a shop on %d%%, a secret room on %d%%, an arcade on %d%%, a challenge on %d%%"
-			% [floor_index + 1, SEEDS, smallest, largest, shops * 100 / SEEDS, secrets * 100 / SEEDS, arcades * 100 / SEEDS,
-			challenges * 100 / SEEDS])
+	print(("floor %d: %d seeds, %d to %d rooms, a shop on %d%%, a secret room on %d%%, an arcade on %d%%, "
+			+ "a challenge on %d%%, a mini-boss on %d%%") % [floor_index + 1, SEEDS, smallest, largest, shops * 100 / SEEDS,
+			secrets * 100 / SEEDS, arcades * 100 / SEEDS, challenges * 100 / SEEDS, minis * 100 / SEEDS])
 
 
 func _expect(ok: bool, what: String) -> void:

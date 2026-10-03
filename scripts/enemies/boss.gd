@@ -69,6 +69,11 @@ func setup_boss(room_: Room, rng_: RandomNumberGenerator, floor_index_: int) -> 
 	_spawn = 0.0
 
 
+## Where the health bar marks the phases, as shares of full health.
+func phase_marks() -> Array[float]:
+	return [0.33, 0.66]
+
+
 ## Starts the fight, once the title card has had its moment.
 func wake() -> void:
 	if state == "wait":

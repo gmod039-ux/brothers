@@ -9,7 +9,8 @@ extends Node2D
 ## floor, each at rest, in its warning pose, and knocked out;
 ## `-- bestiary deep` the boiler room's and the catacombs' own, at rest and
 ## in each of their moves; `-- bestiary bosses` the bosses: coming on,
-## beaten up in phase 2, winding up in phase 3, and knocked out.
+## beaten up in phase 2, winding up in phase 3, and knocked out;
+## `-- bestiary minis` the mini-bosses the same way.
 
 const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten", "stoker", "valve", "ghost", "skeleton", "bat"]
 
@@ -45,6 +46,10 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("deep"):
 		title.text = "Котельная и катакомбы"
 		_deep(rng)
+		return
+	if OS.get_cmdline_user_args().has("minis"):
+		title.text = "Мини-боссы"
+		_minis(rng)
 		return
 	if OS.get_cmdline_user_args().has("bosses"):
 		title.text = "Боссы: выход, фаза 2, ярость, нокаут"
@@ -126,6 +131,43 @@ func _deep(rng: RandomNumberGenerator) -> void:
 				enemy.set("_windup", 0.3)
 			if pose == "pile" or pose == "appear":
 				enemy.set("_t", 0.2)
+
+
+## Rows: the queen, the foreman, the Count. Columns: coming on, an attack
+## winding up, the second phase, knocked out.
+func _minis(rng: RandomNumberGenerator) -> void:
+	var attacks := ["buzz", "pound_windup", "summon"]
+	var furious := ["spit_windup", "charge_windup", "throw_windup"]
+	for row in 3:
+		for col in 4:
+			var boss: MiniBoss
+			match row:
+				0:
+					boss = FlyQueen.new()
+				1:
+					boss = HeadStoker.new()
+				_:
+					boss = BoneCount.new()
+			boss.setup_boss(room, rng, row)
+			add_child(boss)
+			boss.set_physics_process(false)
+			boss.scale = Vector2(0.95, 0.95)
+			boss.position = Vector2(330 + col * 440.0, 360 + row * 300.0)
+			match col:
+				1:
+					boss.state = attacks[row]
+					boss._t = 0.3
+				2:
+					boss.phase = 2
+					boss.state = furious[row]
+					boss._t = 0.3
+					if boss is BoneCount:
+						(boss as BoneCount).collapses = 1
+				3:
+					boss._ko = Boss.SHAKE_TIME + Boss.FALL_TIME + 0.5
+					boss.set_process(false)
+					boss.queue_redraw()
+		_caption(["Жужу", "Бригадир", "Граф"][row], Vector2(110, 300 + row * 300.0), 30)
 
 
 func _bosses(rng: RandomNumberGenerator) -> void:

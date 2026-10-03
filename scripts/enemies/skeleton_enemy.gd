@@ -97,13 +97,17 @@ func _throw() -> void:
 
 ## A bone from [param a] to [param b]: a white shaft with a knob at each end.
 func _bone(a: Vector2, b: Vector2, width: float, boil: int, seed_: int, flash: bool) -> void:
-	var bone := paint(BONE, flash).darkened(0.08 * floor_look)
-	Toon.stroke(self, PackedVector2Array([a, b]), width + 5.0)
+	draw_bone(self, a, b, width, paint(BONE, flash).darkened(0.08 * floor_look), boil, seed_)
+
+
+## A bone drawn into [param ci] in [param fill]: shared with the Count.
+static func draw_bone(ci: CanvasItem, a: Vector2, b: Vector2, width: float, fill: Color, boil: int, seed_: int) -> void:
+	Toon.stroke(ci, PackedVector2Array([a, b]), width + 5.0)
 	var across := (b - a).normalized().orthogonal() * width * 0.45
 	for end: Vector2 in [a, b]:
-		Toon.blob(self, end + across, Vector2(width * 0.55, width * 0.55), bone, boil, seed_, 2.5)
-		Toon.blob(self, end - across, Vector2(width * 0.55, width * 0.55), bone, boil, seed_ + 1, 2.5)
-	Toon.stroke(self, PackedVector2Array([a, b]), width, bone)
+		Toon.blob(ci, end + across, Vector2(width * 0.55, width * 0.55), fill, boil, seed_, 2.5)
+		Toon.blob(ci, end - across, Vector2(width * 0.55, width * 0.55), fill, boil, seed_ + 1, 2.5)
+	Toon.stroke(ci, PackedVector2Array([a, b]), width, fill)
 
 
 func draw_body(boil: int, flash: bool) -> void:
@@ -151,22 +155,35 @@ func draw_body(boil: int, flash: bool) -> void:
 
 ## The skull: a grin full of teeth, black sockets with a glint in them.
 func _skull(at: Vector2, boil: int, flash: bool, dazed: bool) -> void:
-	var bone := paint(BONE, flash).darkened(0.08 * floor_look)
-	Toon.ball(self, at, Vector2(17.0, 16.0), bone, boil, _seed + 40)
-	Toon.box(self, at + Vector2(0, 12.0), Vector2(11.0, 6.0), bone, boil, _seed + 41, 3.0)
-	var look := gaze()
+	var eyes := "dazed" if dazed else ("shut" if eyes_shut() else "open")
+	draw_skull(self, at, 1.0, paint(BONE, flash).darkened(0.08 * floor_look), boil, _seed, gaze(), eyes, _clock)
+
+
+## A skull [param k] times the size of a Костяшка's, drawn into
+## [param ci]: [param eyes] "open" (a glint looking along [param look]),
+## "shut", "dazed" (stars going round in the sockets) or "fire" (a red
+## glow in them).
+static func draw_skull(ci: CanvasItem, at: Vector2, k: float, fill: Color, boil: int, seed_: int, look: Vector2,
+		eyes: String, clock: float) -> void:
+	Toon.ball(ci, at, Vector2(17.0, 16.0) * k, fill, boil, seed_ + 40)
+	Toon.box(ci, at + Vector2(0, 12.0) * k, Vector2(11.0, 6.0) * k, fill, boil, seed_ + 41, 3.0)
 	for sx: float in [-1.0, 1.0]:
-		var e := at + Vector2(sx * 6.5, -2.0)
-		Toon.blob(self, e, Vector2(5.0, 6.0), Toon.INK, boil, _seed + 42 + int(sx), 0.0)
-		if dazed:
-			Toon.star(self, e, 3.5, _clock * 6.0, Color("f2c14e"))
-		elif not eyes_shut():
-			Toon.spot(self, e + look * 1.5 + Vector2(-1, -1.5), Vector2(1.8, 2.0), Color(1, 1, 1, 0.9))
-	Toon.shape(self, PackedVector2Array([at + Vector2(0, 3), at + Vector2(-2.5, 8), at + Vector2(2.5, 8)]), Toon.INK, 0.5)
-	for k in 5:
-		var x := -8.0 + k * 4.0
-		Toon.stroke(self, PackedVector2Array([at + Vector2(x, 10.0), at + Vector2(x, 15.0)]), 1.6)
-	Toon.stroke(self, PackedVector2Array([at + Vector2(-10, 12.5), at + Vector2(10, 12.5)]), 1.6)
+		var e := at + Vector2(sx * 6.5, -2.0) * k
+		Toon.blob(ci, e, Vector2(5.0, 6.0) * k, Toon.INK, boil, seed_ + 42 + int(sx), 0.0)
+		match eyes:
+			"dazed":
+				Toon.star(ci, e, 3.5 * k, clock * 6.0, Color("f2c14e"))
+			"fire":
+				Toon.spot(ci, e, Vector2(2.6, 3.0) * k, Color("e8402a"))
+				Toon.spot(ci, e + Vector2(-0.6, -0.8) * k, Vector2(1.0, 1.2) * k, Color("ffd84a"))
+			"open":
+				Toon.spot(ci, e + (look * 1.5 + Vector2(-1, -1.5)) * k, Vector2(1.8, 2.0) * k, Color(1, 1, 1, 0.9))
+	Toon.shape(ci, PackedVector2Array([at + Vector2(0, 3) * k, at + Vector2(-2.5, 8) * k, at + Vector2(2.5, 8) * k]),
+			Toon.INK, 0.5)
+	for j in 5:
+		var x := (-8.0 + j * 4.0) * k
+		Toon.stroke(ci, PackedVector2Array([at + Vector2(x, 10.0 * k), at + Vector2(x, 15.0 * k)]), 1.6 * maxf(k * 0.7, 1.0))
+	Toon.stroke(ci, PackedVector2Array([at + Vector2(-10, 12.5) * k, at + Vector2(10, 12.5) * k]), 1.6 * maxf(k * 0.7, 1.0))
 
 
 ## Fallen apart: a heap of bones with the skull on top, seeing stars --
