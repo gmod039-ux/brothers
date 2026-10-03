@@ -25,6 +25,11 @@ static var story_seen := false
 static var interludes := 0
 ## The deeds done (see [Unlocks]), by id.
 static var deeds: Array[String] = []
+## Every item and trinket ever picked up, by id: the album shows these.
+static var found: Array[String] = []
+## Tallies for the album, by name: "minibosses", "secrets", "jackpots",
+## "runs_older", "wins_younger"...
+static var counts := {}
 
 
 static func load_file() -> void:
@@ -40,6 +45,8 @@ static func load_file() -> void:
 	story_seen = bool(config.get_value("story", "seen", false))
 	interludes = int(config.get_value("story", "interludes", 0))
 	deeds.assign(config.get_value("unlocks", "deeds", []))
+	found.assign(config.get_value("album", "found", []))
+	counts = config.get_value("album", "counts", {})
 
 
 static func save() -> void:
@@ -53,13 +60,40 @@ static func save() -> void:
 	config.set_value("story", "seen", story_seen)
 	config.set_value("story", "interludes", interludes)
 	config.set_value("unlocks", "deeds", deeds)
+	config.set_value("album", "found", found)
+	config.set_value("album", "counts", counts)
 	config.save(path)
 
 
-## Writes down a run that has ended. Returns true when it was a way out
-## quicker than any before.
-static func add_run(won: bool, seconds: float, floor_reached: int, kos: int, beaten: int) -> bool:
+## One more of tally [param key], kept at once.
+static func bump(key: String, by := 1) -> void:
+	counts[key] = int(counts.get(key, 0)) + by
+	save()
+
+
+static func count(key: String) -> int:
+	return int(counts.get(key, 0))
+
+
+## An item or trinket picked up: in the album from now on. True the first
+## time.
+static func find(id: String) -> bool:
+	if found.has(id):
+		return false
+	found.append(id)
+	save()
+	return true
+
+
+## Writes down a run that has ended, played by [param who] (ids). Returns
+## true when it was a way out quicker than any before.
+static func add_run(won: bool, seconds: float, floor_reached: int, kos: int, beaten: int,
+		who: Array[String] = []) -> bool:
 	runs += 1
+	for id in who:
+		counts["runs_" + id] = int(counts.get("runs_" + id, 0)) + 1
+		if won:
+			counts["wins_" + id] = int(counts.get("wins_" + id, 0)) + 1
 	deepest = maxi(deepest, floor_reached)
 	knockouts += kos
 	bosses += beaten

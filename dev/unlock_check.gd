@@ -29,6 +29,7 @@ func _run() -> void:
 	await _deeds()
 	await _pool()
 	await _chain_and_jackpot()
+	await _album()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH))
 	print("unlock: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -114,6 +115,41 @@ func _pool() -> void:
 	run.queue_free()
 	camera.queue_free()
 	Unlocks.everything = true
+	await process_frame
+
+
+## The album opens, turns its pages and closes on Esc.
+func _album() -> void:
+	Records.found.assign(["pepper"])
+	var album := Album.new()
+	root.add_child(album)
+	var closed := [false]
+	album.closed.connect(func() -> void: closed[0] = true)
+	for i in 3:
+		await process_frame
+	_check(album.page == 0, "the album opens on its items")
+	await _press("menu_right")
+	await _press("menu_right")
+	_check(album.page == 2, "← → turn its pages (%d)" % album.page)
+	await _press("menu_right")
+	_check(album.page == 0, "and round again")
+	await _press("menu_back")
+	await process_frame
+	_check(closed[0], "Esc closes it")
+
+
+func _press(action: String) -> void:
+	var event := InputEventAction.new()
+	event.action = action
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	await process_frame
+	var release := InputEventAction.new()
+	release.action = action
+	release.pressed = false
+	Input.parse_input_event(release)
+	await process_frame
 	await process_frame
 
 

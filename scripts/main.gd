@@ -18,6 +18,7 @@ extends Node2D
 ##   all                    everything open, as if every deed were done (the
 ##                          bot, tours and checks always have it so)
 ##   shot / tour …          screenshots, see scripts/dev/screenshot.gd
+##   album [PAGE]           the album by itself (0 items, 1 deeds, 2 numbers)
 
 var world: Node2D
 var camera: Camera2D
@@ -141,6 +142,14 @@ func _ready() -> void:
 	if _args.has("items"):
 		state = "sheet"
 		_select_layer.add_child(preload("res://scripts/dev/item_sheet.gd").new())
+		return
+	if _args.has("album"):
+		state = "sheet"
+		# As it stands in the records; `all` for everything open.
+		Unlocks.everything = _args.has("all")
+		var album := Album.new()
+		album.page = int(_arg("album", "0")) if _arg("album", "0").is_valid_int() else 0
+		_select_layer.add_child(album)
 		return
 	if _args.has("bestiary"):
 		state = "sheet"
@@ -348,6 +357,8 @@ func start_run(seed_value: int) -> void:
 			if one.coins >= 30:
 				_on_deed("coins_30"))
 		one.item_taken.connect(func(id: String) -> void:
+			if _recording:
+				Records.find(id)
 			var item: Dictionary = GameData.items().get(id, {})
 			var text := str(item.get("text", ""))
 			if item.has("active"):
@@ -376,6 +387,7 @@ func start_run(seed_value: int) -> void:
 		run.unlocked.connect(hud.queue_redraw)
 		run.secret_found.connect(func() -> void:
 			banner.caption("Тайник!", "за стеной что-то есть", 2.0)
+			_tally("secrets")
 			_on_deed("secret"))
 		run.deed.connect(_on_deed)
 		if _args.has("verbose"):
@@ -458,6 +470,7 @@ func _on_miniboss(boss: Boss) -> void:
 
 
 func _on_miniboss_beaten(_boss: Enemy) -> void:
+	_tally("minibosses")
 	_on_deed("miniboss")
 	hud.bosses = []
 	Music.play("floor%d" % clampi(run.floor_index, 0, 2))
@@ -532,14 +545,25 @@ func _over_hint() -> String:
 func _record(won: bool) -> bool:
 	if not _recording or run == null:
 		return false
-	var best := Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten)
+	var who: Array[String] = []
+	for one in brothers:
+		who.append(one.id)
+	var best := Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten, who)
 	if Records.knockouts >= 100:
 		_on_deed("kills_100")
 	return best
 
 
+## One more for the album's tallies, in a real game.
+func _tally(key: String) -> void:
+	if _recording:
+		Records.bump(key)
+
+
 ## A deed done: the first time, what it opens goes up on the screen.
 func _on_deed(id: String) -> void:
+	if id == "jackpot":
+		_tally("jackpots")
 	var opened := Unlocks.achieve(id)
 	if opened.is_empty():
 		return
@@ -747,12 +771,21 @@ func _open_options(from_select: bool) -> CardMenu:
 	]
 	if from_select:
 		card.lines.insert(card.lines.size() - 1, {"id": "story", "text": "Смотреть историю"})
+		card.lines.insert(card.lines.size() - 1, {"id": "album", "text": "Альбом"})
 		card.lines.append({"id": "quit", "text": "Выйти из игры"})
 	card.hint = "← → менять   ·   Esc — назад"
 	card.changed.connect(_on_option_changed)
 	card.picked.connect(func(id: String) -> void:
 		if id == "quit":
 			get_tree().quit()
+		elif id == "album":
+			card.active = false
+			card.visible = false
+			var album := Album.new()
+			_menu_layer.add_child(album)
+			album.closed.connect(func() -> void:
+				if is_instance_valid(card):
+					card.wake())
 		elif id == "story":
 			var story := play_story(Story.so_far())
 			card.close()
