@@ -7,10 +7,11 @@ extends Node2D
 ##
 ## `-- bestiary creeps` instead shows the three everyday enemies floor by
 ## floor, each at rest, in its warning pose, and knocked out;
-## `-- bestiary bosses` the bosses: coming on, beaten up in phase 2,
-## winding up in phase 3, and knocked out.
+## `-- bestiary deep` the boiler room's and the catacombs' own, at rest and
+## in each of their moves; `-- bestiary bosses` the bosses: coming on,
+## beaten up in phase 2, winding up in phase 3, and knocked out.
 
-const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten"]
+const SMALL := ["fly", "walker", "shooter", "pup", "ember", "kitten", "stoker", "valve", "ghost", "skeleton", "bat"]
 
 var room: Room
 
@@ -41,6 +42,10 @@ func _ready() -> void:
 		title.text = "Мелочь по этажам"
 		_creeps(rng)
 		return
+	if OS.get_cmdline_user_args().has("deep"):
+		title.text = "Котельная и катакомбы"
+		_deep(rng)
+		return
 	if OS.get_cmdline_user_args().has("bosses"):
 		title.text = "Боссы: выход, фаза 2, ярость, нокаут"
 		title.label_settings.font_size = 56
@@ -49,18 +54,23 @@ func _ready() -> void:
 	for i in SMALL.size():
 		var kind: String = SMALL[i]
 		var enemy := _make(kind, room, rng)
-		enemy.scale = Vector2(1.7, 1.7)
-		enemy.position = Vector2(200 + i * 304.0, 400)
-		_caption(str(GameData.enemies()[kind]["name"]), Vector2(200 + i * 304.0, 430), 30)
+		var row := 0 if i < 6 else 1
+		var col := i if i < 6 else i - 6
+		var x := 200 + col * 304.0 + row * 152.0
+		enemy.scale = Vector2(1.45, 1.45)
+		enemy.position = Vector2(x, 290 + row * 270.0)
+		if kind in ["stoker", "valve", "skeleton"]:
+			enemy.floor_look = 1 if kind != "skeleton" else 2
+		_caption(str(GameData.enemies()[kind]["name"]), Vector2(x, 310 + row * 270.0), 28)
 	var bosses: Array[Boss] = [Boss.new(), StoveBoss.new(), BaronBoss.new()]
 	for i in bosses.size():
 		var boss := bosses[i]
 		boss.setup_boss(room, rng, 0)
 		add_child(boss)
 		boss.set_physics_process(false)
-		boss.scale = Vector2(1.1, 1.1)
-		boss.position = Vector2(400 + i * 560.0, 900)
-		_caption(boss.title, Vector2(400 + i * 560.0, 930), 40)
+		boss.scale = Vector2(0.95, 0.95)
+		boss.position = Vector2(400 + i * 560.0, 950)
+		_caption(boss.title, Vector2(400 + i * 560.0, 975), 36)
 
 
 ## Rows: basement, boiler room, catacombs. Columns: each creep at rest and
@@ -90,6 +100,32 @@ func _creeps(rng: RandomNumberGenerator) -> void:
 					enemy._ko = 0.12
 					enemy.set_process(false)
 					enemy.queue_redraw()
+
+
+## The deep floors' own: each in the moves it makes.
+func _deep(rng: RandomNumberGenerator) -> void:
+	var rows := [
+		["Котельная", [["stoker", "walk"], ["stoker", "dig"], ["stoker", "heave"], ["valve", ""], ["valve", "windup"],
+				["ember", ""]]],
+		["Катакомбы", [["ghost", "drift"], ["ghost", "appear"], ["skeleton", "walk"], ["skeleton", "windup"],
+				["skeleton", "pile"], ["bat", "flutter"], ["bat", "squeak"]]],
+	]
+	for row in rows.size():
+		var line: Array = rows[row][1]
+		_caption(str(rows[row][0]), Vector2(140, 330 + row * 400.0), 30)
+		for col in line.size():
+			var kind: String = line[col][0]
+			var pose: String = line[col][1]
+			var enemy := _make(kind, room, rng)
+			enemy.floor_look = row + 1
+			enemy.scale = Vector2(1.7, 1.7)
+			enemy.position = Vector2(400 + col * 225.0, 450 + row * 400.0)
+			if pose != "":
+				enemy.set("state", pose)
+			if pose == "windup" and enemy is ValveEnemy:
+				enemy.set("_windup", 0.3)
+			if pose == "pile" or pose == "appear":
+				enemy.set("_t", 0.2)
 
 
 func _bosses(rng: RandomNumberGenerator) -> void:
@@ -127,20 +163,7 @@ func _bosses(rng: RandomNumberGenerator) -> void:
 
 
 func _make(kind: String, room: Room, rng: RandomNumberGenerator) -> Enemy:
-	var enemy: Enemy
-	match kind:
-		"fly":
-			enemy = FlyEnemy.new()
-		"walker":
-			enemy = WalkerEnemy.new()
-		"shooter":
-			enemy = ShooterEnemy.new()
-		"pup":
-			enemy = PupEnemy.new()
-		"ember":
-			enemy = EmberEnemy.new()
-		_:
-			enemy = KittenEnemy.new()
+	var enemy := Waves.make(kind)
 	enemy.setup(kind, room, rng)
 	enemy._spawn = 0.0
 	add_child(enemy)

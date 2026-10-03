@@ -14,6 +14,12 @@ var delay := 0.0
 ## "coal", "card", or "bag": a sack of money that bursts into coins where
 ## it lands.
 var look := "coal"
+## Who threw it, for the line on the death card; the boss whose it is if
+## left empty.
+var source := ""
+## Thrown rather than dropped: where from, in the world. It comes over in
+## an arc from there instead of down from the sky.
+var thrown_from := Vector2.INF
 
 var _clock := 0.0
 var _landed := false
@@ -40,7 +46,8 @@ func _physics_process(delta: float) -> void:
 	_landed = true
 	for brother in room.brothers:
 		if not _harmless and not brother.dead and brother.global_position.distance_to(global_position) < REACH:
-			brother.hurt(1, global_position, "Пыхтун" if look == "coal" else "Барон Когтев")
+			var by := source if source != "" else ("Пыхтун" if look == "coal" else "Барон Когтев")
+			brother.hurt(1, global_position, by)
 	Sfx.play("hit", -2.0, 0.2)
 	if look == "bag":
 		# What the Baron throws is his own money: it stays on the floor.
@@ -69,6 +76,12 @@ func _draw() -> void:
 	var d := int(_clock * Toon.FPS)
 	if not _landed:
 		Toon.spot(self, Vector2.ZERO, Vector2(REACH, REACH * 0.34) * (0.3 + 0.7 * t), Color(Toon.INK, 0.35))
+		if thrown_from.is_finite():
+			var from := thrown_from - global_position
+			var over := from.lerp(Vector2.ZERO, t) + Vector2(0, -sin(t * PI) * 260.0 - 18.0 * (1.0 - t))
+			Toon.blob(self, over, Vector2(20, 16), COAL, d, 1, 4.0, t * 6.0)
+			Toon.spot(self, over + Vector2(-6, -6), Vector2(5, 3), Color(1, 1, 1, 0.35))
+			return
 		var height := (1.0 - t) * (1.0 - t) * 700.0
 		if look == "card":
 			var spin := _clock * 7.0

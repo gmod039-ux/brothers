@@ -1,7 +1,12 @@
 class_name RoomLayouts
 extends RefCounted
 ## The room layouts of a floor, read from a text file of them (see
-## data/rooms/basement.txt): each one a name and seven rows of tiles.
+## data/rooms/basement.txt): each one a name and seven rows of tiles. Each
+## floor has its own fights in its own file; the special rooms (start,
+## treasure, shop, boss, secret) are the basement's on every floor.
+
+## Each floor's file, top to bottom.
+const FILES := ["res://data/rooms/basement.txt", "res://data/rooms/boiler.txt", "res://data/rooms/catacombs.txt"]
 
 ## Tiles in front of the doors: these must be floor, or a door could open
 ## onto a rock.
@@ -12,7 +17,10 @@ const DOOR_TILES := {
 	"right": Vector2i(12, 3),
 }
 ## Enemies a layout letter stands for.
-const ENEMIES := {"f": "fly", "w": "walker", "s": "shooter"}
+const ENEMIES := {
+	"f": "fly", "w": "walker", "s": "shooter", "p": "pup", "e": "ember", "k": "kitten",
+	"c": "stoker", "v": "valve", "g": "ghost", "b": "skeleton", "t": "bat",
+}
 
 ## name -> rows
 var rooms := {}
@@ -38,6 +46,20 @@ static func load_file(path: String) -> RoomLayouts:
 			rows.append(line)
 	if name != "":
 		layouts.rooms[name] = rows
+	return layouts
+
+
+## The layouts of floor [param index]: its own fights, and the special
+## rooms every floor shares.
+static func for_floor(index: int) -> RoomLayouts:
+	var layouts := load_file(FILES[0])
+	if index <= 0 or index >= FILES.size():
+		return layouts
+	var own := load_file(FILES[index])
+	for name in layouts.fights():
+		layouts.rooms.erase(name)
+	for name: String in own.rooms:
+		layouts.rooms[name] = own.rooms[name]
 	return layouts
 
 

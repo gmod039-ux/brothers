@@ -49,6 +49,7 @@ func _run() -> void:
 	await _last_blow()
 	await _key_opens_door()
 	await _secret_room()
+	await _deep_enemies()
 	print("combat: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -481,6 +482,56 @@ func _last_blow() -> void:
 
 
 # --- helpers ---------------------------------------------------------------
+
+
+## The boiler room's and the catacombs' own lot do what they say.
+func _deep_enemies() -> void:
+	# A stoker's coal comes down where the brother stands, and hurts.
+	await _fresh_room(EMPTY)
+	var brother := _brother(Vector2i(4, 3))
+	brother.god = false
+	var full := brother.hp
+	var stoker := _enemy("stoker", Vector2i(9, 3)) as StokerEnemy
+	stoker._heave(brother)
+	await _steps(int((Falling.WARN + 0.2) * 60))
+	_expect(brother.hp == full - 1, "a stoker's coal costs half a heart (hp %d → %d)" % [full, brother.hp])
+	# A valve blows four jets, a cross and then an X.
+	await _fresh_room(EMPTY)
+	_brother(Vector2i(1, 1))
+	var valve := _enemy("valve", Vector2i(6, 3)) as ValveEnemy
+	valve._diagonal = false
+	valve._blow()
+	var jets := 0
+	for node in room.actors.get_children():
+		if node is Shot and (node as Shot).hostile:
+			jets += 1
+	_expect(jets == 4, "a valve blows four jets (%d)" % jets)
+	_expect(valve._diagonal, "and the next lot goes the other way")
+	# A skeleton falls apart once and gets up; the second time it is out.
+	await _fresh_room(EMPTY)
+	_brother(Vector2i(1, 3))
+	var bones := _enemy("skeleton", Vector2i(8, 3)) as SkeletonEnemy
+	bones.set_physics_process(true)
+	var out := [false]
+	bones.knocked_out.connect(func(_e: Enemy) -> void: out[0] = true)
+	bones.hurt(bones.hp + 1.0, Vector2.LEFT)
+	_expect(not bones.dead and bones.state == "pile", "a skeleton knocked down only falls apart")
+	_expect(not bones.can_be_hit() and not bones.can_touch(), "a heap of bones is no target and no danger")
+	_expect(room.enemies.has(bones), "the room is not clear while it lies there")
+	await _steps(int((SkeletonEnemy.PILE_TIME + SkeletonEnemy.RISE_TIME + 0.2) * 60))
+	_expect(bones.state == "walk" and bones.can_be_hit(), "it pulls itself together again (%s)" % bones.state)
+	bones.hurt(bones.hp + 1.0, Vector2.LEFT)
+	_expect(out[0] and bones.dead, "the second time it stays down")
+	# A ghost cannot be hit or touched while it has faded away.
+	await _fresh_room(EMPTY)
+	var haunted := _brother(Vector2i(2, 3))
+	var ghost := _enemy("ghost", Vector2i(8, 3)) as GhostEnemy
+	ghost._switch("gone")
+	_expect(not ghost.can_be_hit() and not ghost.can_touch(), "a faded ghost is out of reach")
+	ghost._reappear(haunted)
+	_expect(room.floor_rect().has_point(ghost.global_position), "it turns up again on the floor")
+	_expect(ghost.global_position.distance_to(haunted.global_position) < 320.0, "close to the brother")
+	_expect(ghost.can_be_hit(), "and can be hit as it appears")
 
 
 func _fresh_room(layout: Array) -> void:

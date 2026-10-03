@@ -65,7 +65,6 @@ func begin(rng_: RandomNumberGenerator, camera_: Camera2D, brothers_: Array[Brot
 	rng = rng_
 	camera = camera_
 	brothers = brothers_
-	layouts = RoomLayouts.load_file("res://data/rooms/basement.txt")
 	for id: String in GameData.items():
 		pool.append(id)
 	pool.sort()
@@ -84,6 +83,7 @@ func start_floor(index: int) -> void:
 	_stop_slide()
 	floor_index = index
 	_floor_seed = rng.randi()
+	layouts = RoomLayouts.for_floor(index)
 	plan = FloorPlan.generate(rng, index, layouts)
 	bosses.clear()
 	trapdoor = null
@@ -119,7 +119,8 @@ func teleport(kind: String) -> void:
 	_stop_slide()
 	for at: Vector2i in plan.rooms:
 		var info := plan.info(at)
-		if info.kind == kind:
+		# "normal" or a layout's own name: a fight room.
+		if info.kind == kind or (info.kind == "normal" and info.layout_name == kind):
 			info.locked = false
 			var old := room
 			room = null

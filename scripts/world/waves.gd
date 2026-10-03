@@ -74,25 +74,40 @@ func _spawn_wave(wave: Dictionary) -> void:
 				enemy.knocked_out.connect(func(_e: Enemy) -> void: kills += 1)
 
 
-## Puts an enemy of [param kind] into [param room] at [param at].
-static func spawn(kind: String, room_: Room, rng_: RandomNumberGenerator, at: Vector2) -> Enemy:
-	var enemy: Enemy
+## A new enemy of [param kind], not set up yet; null for no such kind.
+static func make(kind: String) -> Enemy:
 	match kind:
 		"fly":
-			enemy = FlyEnemy.new()
+			return FlyEnemy.new()
 		"walker":
-			enemy = WalkerEnemy.new()
+			return WalkerEnemy.new()
 		"shooter":
-			enemy = ShooterEnemy.new()
+			return ShooterEnemy.new()
 		"pup":
-			enemy = PupEnemy.new()
+			return PupEnemy.new()
 		"ember":
-			enemy = EmberEnemy.new()
+			return EmberEnemy.new()
 		"kitten":
-			enemy = KittenEnemy.new()
-		_:
-			push_error("no enemy called %s" % kind)
-			return null
+			return KittenEnemy.new()
+		"stoker":
+			return StokerEnemy.new()
+		"valve":
+			return ValveEnemy.new()
+		"ghost":
+			return GhostEnemy.new()
+		"skeleton":
+			return SkeletonEnemy.new()
+		"bat":
+			return BatEnemy.new()
+	return null
+
+
+## Puts an enemy of [param kind] into [param room] at [param at].
+static func spawn(kind: String, room_: Room, rng_: RandomNumberGenerator, at: Vector2) -> Enemy:
+	var enemy := make(kind)
+	if enemy == null:
+		push_error("no enemy called %s" % kind)
+		return null
 	enemy.setup(kind, room_, rng_)
 	room_.actors.add_child(enemy)
 	enemy.global_position = at

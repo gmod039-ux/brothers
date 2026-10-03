@@ -79,5 +79,57 @@
 		"radius": 20,
 		"contact": 1,
 		"knockback": 1.3
+	},
+	"stoker": {
+		"name": "Кочегар",
+		"hp": 15,
+		"speed": 70,
+		"radius": 28,
+		"contact": 1,
+		"knockback": 0.7,
+		"throw_every": 3.0,
+		"windup": 0.6
+	},
+	"valve": {
+		"name": "Вентиль",
+		"hp": 18,
+		"speed": 0,
+		"radius": 28,
+		"contact": 1,
+		"knockback": 0,
+		"shot_every": 2.8,
+		"windup": 0.55,
+		"shot_speed": 330,
+		"shot_range": 5
+	},
+	"ghost": {
+		"name": "Привидение",
+		"hp": 11,
+		"speed": 80,
+		"radius": 26,
+		"contact": 1,
+		"flying": true,
+		"knockback": 0.9
+	},
+	"skeleton": {
+		"name": "Костяшка",
+		"hp": 12,
+		"speed": 85,
+		"radius": 26,
+		"contact": 1,
+		"knockback": 0.8,
+		"throw_every": 3.0,
+		"windup": 0.5,
+		"shot_speed": 400,
+		"shot_range": 8
+	},
+	"bat": {
+		"name": "Нетопырь",
+		"hp": 6,
+		"speed": 150,
+		"radius": 20,
+		"contact": 1,
+		"flying": true,
+		"knockback": 1.3
 	}
 }

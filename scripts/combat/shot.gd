@@ -170,6 +170,26 @@ func _draw() -> void:
 		Toon.box(self, at, Vector2(r * 0.8, r * 1.1), BrotherLook.WHITE, boil, 3, 3.5, spin)
 		Toon.heart(self, at, r * 0.9, 2, Color("c8392b"), Color("c8392b"))
 		return
+	if look == "bone":
+		# A bone, end over end.
+		var turn := Vector2.from_angle(_clock * 13.0) * r * 0.95
+		var across := turn.orthogonal().normalized() * r * 0.32
+		Toon.stroke(self, PackedVector2Array([at - turn, at + turn]), r * 0.55 + 5.0)
+		for end: Vector2 in [at - turn, at + turn]:
+			Toon.blob(self, end + across, Vector2(r * 0.34, r * 0.34), fill, boil, 4, 2.5)
+			Toon.blob(self, end - across, Vector2(r * 0.34, r * 0.34), fill, boil, 5, 2.5)
+		Toon.stroke(self, PackedVector2Array([at - turn, at + turn]), r * 0.55, fill)
+		return
+	if look == "steam":
+		# A puff of steam, swelling as it goes, wisps trailing.
+		var grow := 1.0 + clampf(travelled / reach, 0.0, 1.0) * 0.5
+		var behind := -velocity.normalized()
+		for k in 2:
+			Toon.spot(self, at + behind * r * (1.4 + k * 1.1), Vector2(r, r * 0.8) * (0.7 - k * 0.2) * grow,
+					Color(1, 1, 1, 0.35 - k * 0.12), boil, k)
+		Toon.blob(self, at, Vector2(r * 1.15, r) * grow, fill, boil, get_instance_id() % 89, 3.5)
+		Toon.spot(self, at + Vector2(-r * 0.3, -r * 0.3), Vector2(r * 0.4, r * 0.3), Color(1, 1, 1, 0.8), 0, 0)
+		return
 	# A trail of smaller drops behind, the way a fast thing is drawn.
 	var back := -velocity.normalized()
 	for k in 3:

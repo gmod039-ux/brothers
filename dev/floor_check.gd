@@ -1,5 +1,6 @@
 extends SceneTree
 ## Floors hold together:
+## - each floor has its own dozen fights or more (data/rooms/*.txt);
 ## - every room layout is 13 by 7, uses only known letters, leaves the tiles
 ##   in front of doors open, and has all its open tiles connected, so no
 ##   enemy is walled off and every door is reachable from every other;
@@ -16,9 +17,16 @@ var _failures := 0
 
 
 func _initialize() -> void:
-	var layouts := RoomLayouts.load_file("res://data/rooms/basement.txt")
-	_check_layouts(layouts)
 	for floor_index in Run.FLOORS:
+		var layouts := RoomLayouts.for_floor(floor_index)
+		_check_layouts(layouts)
+		_expect(layouts.fights().size() >= 12, "floor %d has a dozen fights at least (%d)"
+				% [floor_index, layouts.fights().size()])
+		if floor_index > 0:
+			# Its own: no fight shared with the basement.
+			for name in RoomLayouts.load_file(RoomLayouts.FILES[floor_index]).rooms:
+				_expect(not name.begins_with("@"), "floor %d keeps its special rooms in the basement's file (%s)"
+						% [floor_index, name])
 		_check_floors(layouts, floor_index)
 	quit(1 if _failures > 0 else 0)
 
