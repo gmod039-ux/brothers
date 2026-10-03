@@ -31,6 +31,17 @@
   него Godot превращает `dev/*` в `*/dev/*` и выкидывает ещё и
   `scripts/dev/` (его грузит `main.gd` — сборка бы не запустилась).
   Скрипт кладёт `build/.gdignore`, чтобы Godot не лез в старые сборки.
+  Ещё не берутся фото-текстуры полов и стен (`bricks_*`, `stone_floor_*`,
+  `terracotta_tiles_002`, `metal_pattern_001`): они нужны только для
+  отладочного `-- textures N`, обычная игра рисует тушью (−12 МБ). В
+  собранной игре `textures N` поэтому не работает.
+- Размеры: mac-zip ~99 МБ (universal-бинарник 171 МБ — львиная доля),
+  Windows ~76 МБ, Linux ~66 МБ. В чат больше 30 МиБ файлом не отдать:
+  `split -b 25000000 -a 1 --numeric-suffixes=1 brothers-mac.zip
+  parts/brothers-mac.zip.part` и на маке одной строкой `cd ~/Downloads &&
+  cat brothers-mac.zip.part1 … part4 > brothers-mac.zip && unzip -oq
+  brothers-mac.zip && xattr -dr com.apple.quarantine Братья.app && open
+  Братья.app`.
 - Шаблоны экспорта 4.7.2 нужны в
   `~/.local/share/godot/export_templates/4.7.2.stable/` (на маке —
   `~/Library/Application Support/Godot/export_templates/4.7.2.stable/`):
