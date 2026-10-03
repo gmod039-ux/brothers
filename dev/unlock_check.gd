@@ -30,6 +30,7 @@ func _run() -> void:
 	await _pool()
 	await _chain_and_jackpot()
 	await _album()
+	await _evil()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH))
 	print("unlock: %d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -115,6 +116,47 @@ func _pool() -> void:
 	run.queue_free()
 	camera.queue_free()
 	Unlocks.everything = true
+	await process_frame
+
+
+## The evil mode makes everything tougher, the shop dearer, and keeps a
+## record of its own.
+func _evil() -> void:
+	var camera := Camera2D.new()
+	root.add_child(camera)
+	var run := Run.new()
+	root.add_child(run)
+	var brother := Brother.new()
+	brother.setup("older", null, PlayerInput.new())
+	brother.god = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6
+	run.begin(rng, camera, [brother] as Array[Brother])
+	await process_frame
+	# In the room, so they go with it: set up and freed by hand, they leaked.
+	var mild := Waves.spawn("walker", run.room, rng, run.room.tile_center(Vector2i(2, 2)))
+	run._toughen(mild)
+	run.evil = true
+	var mean := Waves.spawn("walker", run.room, rng, run.room.tile_center(Vector2i(10, 2)))
+	run._toughen(mean)
+	_check(is_equal_approx(mean.max_hp, mild.max_hp * Run.EVIL_HP), "in the evil mode enemies are tougher")
+	_check(is_equal_approx(mean.speed, mild.speed * Run.EVIL_SPEED), "and quicker")
+	_check(run.price_of("item") == Run.PRICES["item"] + Run.EVIL_MARKUP, "the shop is dearer")
+	run.teleport("boss")
+	await process_frame
+	# Not typed: a Boss here, beside the walkers above, kept scripts alive at exit.
+	var boss = run.bosses[0] if not run.bosses.is_empty() else null
+	_check(boss != null and is_equal_approx(boss.max_hp, float(GameData.enemies()["boss"]["hp"]) * Run.EVIL_BOSS_HP),
+			"the boss is tougher")
+	# Past the boss's title card: its wait would outlive the run.
+	for i in int((Run.BOSS_INTRO + 0.3) * 60):
+		await process_frame
+	run.queue_free()
+	camera.queue_free()
+	Records.best_time = 0.0
+	Records.best_evil = 0.0
+	Records.add_run(true, 900.0, 3, 50, 3, [], true)
+	_check(Records.best_evil == 900.0 and Records.best_time == 0.0, "an evil way out has its own record")
 	await process_frame
 
 

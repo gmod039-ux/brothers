@@ -36,6 +36,11 @@ const BARS := [
 ]
 
 var index := 0
+## The evil mode is on: a red ribbon with a skull says so.
+var evil := false:
+	set(value):
+		evil = value
+		queue_redraw()
 ## Both brothers go: the one picked for the first player, the other for the
 ## second, on a gamepad.
 var together := false:
@@ -165,6 +170,8 @@ func _draw() -> void:
 	_records()
 	_curtains()
 	_footlights()
+	if evil:
+		_evil_badge()
 
 
 ## The backcloth: a sunburst of cream rays from behind the title, fading into
@@ -360,6 +367,22 @@ func _player_badge(i: int, at: Vector2) -> void:
 	draw_string(Ui.font(), at + Vector2(44, 12), what, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, color)
 
 
+## A red ribbon across the top corner with a skull on it: the evil mode.
+func _evil_badge() -> void:
+	var at := Vector2(1640, 120)
+	draw_set_transform(at, 0.18, Vector2.ONE)
+	Frames.ribbon(self, Vector2.ZERO, 380.0, 64.0, Color("7a1418"))
+	draw_string(Ui.font(), Vector2(-150, 13), "ЗЛОЙ РЕЖИМ", HORIZONTAL_ALIGNMENT_CENTER, 300, 30, Color("f3e6c8"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var skull := at + Vector2(-210, -40)
+	Toon.ball(self, skull, Vector2(24, 22), Color("efe6cf"), _drawing, 1, 4.0)
+	for sx: float in [-1.0, 1.0]:
+		Toon.spot(self, skull + Vector2(sx * 8.0, -2.0), Vector2(5, 6), Toon.INK)
+	Toon.box(self, skull + Vector2(0, 18), Vector2(13, 7), Color("efe6cf"), _drawing, 2, 3.0)
+	for j in 3:
+		draw_line(skull + Vector2(-6 + j * 6, 13), skull + Vector2(-6 + j * 6, 23), Toon.INK, 2.0)
+
+
 ## A board on an easel between the brothers, chalked with the records:
 ## runs, ways out, the quickest one. Not there before the first run.
 func _records() -> void:
@@ -387,7 +410,9 @@ func _records() -> void:
 			Color(GOLD, 0.95))
 	draw_line(board.position + Vector2(56, 50), board.position + Vector2(board.size.x - 56, 50), Color(chalk, 0.5), 2.0)
 	var rows := ["забегов: %d" % Records.runs, "выбрались: %d" % Records.wins]
-	if Records.best_time > 0.0:
+	if evil and Records.best_evil > 0.0:
+		rows.append("злой режим: %s" % Records.clock(Records.best_evil))
+	elif Records.best_time > 0.0:
 		rows.append("быстрее всех: %s" % Records.clock(Records.best_time))
 	else:
 		rows.append("дальше всех: этаж %d" % maxi(Records.deepest, 1))

@@ -41,6 +41,12 @@ const CHALLENGERS := [["fly", "walker", "shooter", "pup"], ["stoker", "ember", "
 		["ghost", "skeleton", "bat", "kitten"]]
 ## The chance of the Baron's notary turning up after a boss (not the last).
 const DEAL_CHANCE := 0.5
+## The evil mode: enemies tougher and quicker, bosses tougher, the rooms
+## stingier and the shop dearer.
+const EVIL_HP := 1.35
+const EVIL_SPEED := 1.1
+const EVIL_BOSS_HP := 1.3
+const EVIL_MARKUP := 2
 ## Seconds a knocked-out brother lies there once the room is clear, before
 ## his brother gets him up.
 const REVIVE_AFTER := 1.2
@@ -61,6 +67,8 @@ var kills := 0
 var rooms_cleared := 0
 var bosses_beaten := 0
 var minibosses_beaten := 0
+## The evil mode is on for this run.
+var evil := false
 ## Items not yet offered this run: each turns up once at most.
 var pool: Array[String] = []
 ## Trinkets likewise.
@@ -414,6 +422,9 @@ func _start_miniboss() -> void:
 	if brothers.size() > 1:
 		boss.max_hp *= 1.4
 		boss.hp = boss.max_hp
+	if evil:
+		boss.max_hp *= EVIL_BOSS_HP
+		boss.hp = boss.max_hp
 	room.actors.add_child(boss)
 	boss.global_position = room.tile_center(Vector2i(6, 2))
 	room.enemies.append(boss)
@@ -534,20 +545,25 @@ func _slam_doors() -> void:
 		Fx.burst(room, room.door_point(side), "dust", 5, 0.7)
 
 
+## What [param kind] costs in the shop: dearer in the evil mode.
+func price_of(kind: String) -> int:
+	return int(PRICES[kind]) + (EVIL_MARKUP if evil else 0)
+
+
 ## A shop: the shopkeeper behind his counter, across the room from the
 ## door, and his wares in a row in front of it.
 func _open_shop(info: FloorPlan.RoomInfo) -> void:
 	if info.stock.is_empty() and not info.looted:
 		var item := draw_item()
 		if item != "":
-			info.stock.append(["item", item, PRICES["item"]])
-		info.stock.append(["heart", "", PRICES["heart"]])
-		info.stock.append(["bomb", "", PRICES["bomb"]])
-		info.stock.append(["key", "", PRICES["key"]])
+			info.stock.append(["item", item, price_of("item")])
+		info.stock.append(["heart", "", price_of("heart")])
+		info.stock.append(["bomb", "", price_of("bomb")])
+		info.stock.append(["key", "", price_of("key")])
 		if rng.randf() < 0.5:
 			var trinket := draw_trinket()
 			if trinket != "":
-				info.stock.append(["trinket", trinket, PRICES["trinket"]])
+				info.stock.append(["trinket", trinket, price_of("trinket")])
 		# Stocked once: what is bought is gone for good.
 		info.looted = true
 	var keeper_row := 5 if room.doors.has("top") else 1
@@ -603,9 +619,9 @@ func _stock_secret(info: FloorPlan.RoomInfo) -> void:
 func _toughen(enemy: Enemy) -> void:
 	if enemy == null:
 		return
-	enemy.max_hp *= 1.0 + 0.25 * floor_index
+	enemy.max_hp *= (1.0 + 0.25 * floor_index) * (EVIL_HP if evil else 1.0)
 	enemy.hp = enemy.max_hp
-	enemy.speed *= 1.0 + 0.06 * floor_index
+	enemy.speed *= (1.0 + 0.06 * floor_index) * (EVIL_SPEED if evil else 1.0)
 	enemy.floor_look = floor_index
 	enemy.knocked_out.connect(func(_e: Enemy) -> void: kills += 1)
 
@@ -637,6 +653,9 @@ func _start_boss() -> void:
 		if brothers.size() > 1:
 			# Two brothers hit twice as often.
 			boss.max_hp *= 1.4
+			boss.hp = boss.max_hp
+		if evil:
+			boss.max_hp *= EVIL_BOSS_HP
 			boss.hp = boss.max_hp
 		room.actors.add_child(boss)
 		var col := 6 if bosses.size() == 1 else (3 + i * 6)
@@ -767,7 +786,7 @@ func _reward() -> void:
 	var luck := 0.0
 	for brother in brothers:
 		luck = maxf(luck, brother.stats.luck)
-	var nothing := clampf(0.4 - luck * 0.06, 0.1, 0.4)
+	var nothing := clampf(0.4 - luck * 0.06, 0.1, 0.4) + (0.15 if evil else 0.0)
 	var at := room.tile_center(_open_tile_near(Vector2i(6, 3)))
 	if rng.randf() < nothing:
 		return
@@ -785,7 +804,7 @@ func _reward() -> void:
 		for i in rng.randi_range(1, 3):
 			_drop("coin", at + Vector2(i * 26.0 - 26.0, (i % 2) * 18.0))
 	elif roll < 0.7:
-		_drop("half_heart" if rng.randf() < 0.6 else "heart", at)
+		_drop("half_heart" if evil or rng.randf() < 0.6 else "heart", at)
 	elif roll < 0.85:
 		_drop("bomb", at)
 	else:

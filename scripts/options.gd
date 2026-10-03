@@ -20,6 +20,8 @@ static var fullscreen := false
 ## The last choice on the poster, to be there again next time.
 static var brother := "older"
 static var together := false
+## The evil mode, once it is open (see [Unlocks]).
+static var evil := false
 
 
 static func load_file() -> void:
@@ -35,6 +37,7 @@ static func load_file() -> void:
 	if not brother in ["older", "younger"]:
 		brother = "older"
 	together = bool(config.get_value("choice", "together", together))
+	evil = bool(config.get_value("choice", "evil", evil))
 
 
 static func save() -> void:
@@ -46,6 +49,7 @@ static func save() -> void:
 	config.set_value("screen", "fullscreen", fullscreen)
 	config.set_value("choice", "brother", brother)
 	config.set_value("choice", "together", together)
+	config.set_value("choice", "evil", evil)
 	config.save(PATH)
 
 
@@ -57,6 +61,7 @@ static func value(id: String) -> Variant:
 		"film": return film
 		"shake": return shake
 		"fullscreen": return fullscreen
+		"evil": return evil
 	return null
 
 
@@ -67,6 +72,7 @@ static func set_value(id: String, v: Variant) -> void:
 		"film": film = _level(v)
 		"shake": shake = bool(v)
 		"fullscreen": fullscreen = bool(v)
+		"evil": evil = bool(v)
 	apply_sound()
 
 

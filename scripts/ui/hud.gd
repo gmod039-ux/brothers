@@ -66,6 +66,8 @@ func set_health(_hp: int, _max_hp: int) -> void:
 func _process(_delta: float) -> void:
 	if run != null:
 		var text := "%s · этаж %d" % [run.floor_name(), run.floor_index + 1]
+		if run.evil:
+			text += " · злой"
 		if _floor.text != text:
 			_floor.text = text
 	if not bosses.is_empty():

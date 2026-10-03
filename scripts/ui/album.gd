@@ -264,6 +264,7 @@ func _numbers() -> void:
 		["забегов", str(Records.runs)],
 		["выбрались", str(Records.wins)],
 		["быстрее всех", Records.clock(Records.best_time) if Records.best_time > 0.0 else "—"],
+		["быстрее всех (злой)", Records.clock(Records.best_evil) if Records.best_evil > 0.0 else "—"],
 		["дальше всех", "этаж %d" % maxi(Records.deepest, 1) if Records.runs > 0 else "—"],
 		["нокаутов", str(Records.knockouts)],
 		["боссов побито", str(Records.bosses)],

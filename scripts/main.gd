@@ -17,6 +17,7 @@ extends Node2D
 ##   autoplay S             quit after S seconds of play, printing a summary
 ##   all                    everything open, as if every deed were done (the
 ##                          bot, tours and checks always have it so)
+##   evil                   the evil mode, whatever the settings say
 ##   shot / tour …          screenshots, see scripts/dev/screenshot.gd
 ##   album [PAGE]           the album by itself (0 items, 1 deeds, 2 numbers)
 
@@ -293,6 +294,7 @@ func show_select() -> void:
 	camera.position = Room.SIZE * 0.5
 	hud.visible = false
 	select = BrotherSelect.new()
+	select.evil = _evil()
 	_select_layer.add_child(select)
 	var index := BrotherSelect.IDS.find(chosen)
 	select.select(maxi(index, 0))
@@ -376,6 +378,7 @@ func start_run(seed_value: int) -> void:
 	else:
 		run = Run.new()
 		run.name = "Run"
+		run.evil = _evil()
 		world.add_child(run)
 		run.floor_started.connect(_on_floor)
 		run.map_changed.connect(hud.queue_redraw)
@@ -517,10 +520,11 @@ func _finish() -> void:
 		await play_story(Story.ENDING)
 	Music.play("menu")
 	var lines := _run_lines()
+	var record := Records.best_evil if run != null and run.evil else Records.best_time
 	if best:
 		lines.append("новый рекорд — быстрее всех!")
-	elif Records.best_time > 0.0 and _recording:
-		lines.append("рекорд — %s" % Records.clock(Records.best_time))
+	elif record > 0.0 and _recording:
+		lines.append("рекорд — %s" % Records.clock(record))
 	_add_opened(lines)
 	intertitle.show_card("won", "Выбрались!", lines, _over_hint(), _looks(), _items())
 	print("finished in %.1f s" % seconds)
@@ -548,10 +552,16 @@ func _record(won: bool) -> bool:
 	var who: Array[String] = []
 	for one in brothers:
 		who.append(one.id)
-	var best := Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten, who)
+	var best := Records.add_run(won, _play_time, run.floor_index + 1, run.kills, run.bosses_beaten, who, run.evil)
 	if Records.knockouts >= 100:
 		_on_deed("kills_100")
 	return best
+
+
+## The evil mode for the next run: on in the settings and open, or asked
+## for on the command line.
+func _evil() -> bool:
+	return _args.has("evil") or (Options.evil and Unlocks.is_open("@evil"))
 
 
 ## One more for the album's tallies, in a real game.
@@ -595,6 +605,8 @@ func _run_lines() -> PackedStringArray:
 				Run.FLOORS, run.rooms_cleared])
 		lines.append("нокаутов: %d   ·   боссов: %d   ·   время %d:%02d" % [run.kills, run.bosses_beaten,
 				seconds / 60, seconds % 60])
+		if run.evil:
+			lines.append("злой режим")
 	elif waves != null:
 		lines.append("волна %d   ·   время %d:%02d" % [waves.current, seconds / 60, seconds % 60])
 	lines.append("забег №%d" % run_seed)
@@ -770,6 +782,8 @@ func _open_options(from_select: bool) -> CardMenu:
 		{"id": "back", "text": "Назад"},
 	]
 	if from_select:
+		if Unlocks.is_open("@evil"):
+			card.lines.insert(card.lines.size() - 1, {"id": "evil", "text": "Злой режим", "toggle": Options.evil})
 		card.lines.insert(card.lines.size() - 1, {"id": "story", "text": "Смотреть историю"})
 		card.lines.insert(card.lines.size() - 1, {"id": "album", "text": "Альбом"})
 		card.lines.append({"id": "quit", "text": "Выйти из игры"})
@@ -814,6 +828,9 @@ func _on_option_changed(id: String, value: Variant) -> void:
 			film.strength = Options.film
 		"fullscreen":
 			_set_fullscreen(Options.fullscreen)
+		"evil":
+			if select != null:
+				select.evil = _evil()
 		"sounds":
 			# A sample of how loud they are now.
 			Sfx.play("coin", 0.0, 0.0)
